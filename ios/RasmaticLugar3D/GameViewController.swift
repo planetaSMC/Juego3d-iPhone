@@ -225,7 +225,7 @@ final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
 
     func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
         guard let url = urlSchemeTask.request.url else {
-            finish(urlSchemeTask, with: .badRequest)
+            finish(urlSchemeTask, with: 400)
             return
         }
 
@@ -237,12 +237,12 @@ final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
 
         // Solo se sirve lo que esta dentro de www/ (sin ../).
         guard fileURL.path.hasPrefix(root.path + "/") || fileURL.path == root.path else {
-            finish(urlSchemeTask, with: .forbidden)
+            finish(urlSchemeTask, with: 403)
             return
         }
 
         guard let data = try? Data(contentsOf: fileURL, options: [.mappedIfSafe]) else {
-            finish(urlSchemeTask, with: .notFound)
+            finish(urlSchemeTask, with: 404)
             return
         }
 
@@ -258,7 +258,7 @@ final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
                                              statusCode: 200,
                                              httpVersion: "HTTP/1.1",
                                              headerFields: headers) else {
-            finish(urlSchemeTask, with: .internalServerError)
+            finish(urlSchemeTask, with: 500)
             return
         }
 

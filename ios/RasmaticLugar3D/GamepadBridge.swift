@@ -197,7 +197,7 @@ final class GamepadBridge {
         edge("r1", pad.rightShoulder.isPressed, "interact")
         edge("r2", pad.rightTrigger.value >= GamepadBridge.triggerOn, "interact")
         edge("b", pad.buttonB.isPressed, "pause")
-        edge("start", pad.buttonMenu?.isPressed ?? false, "pause")
+        edge("start", pad.buttonMenu.isPressed, "pause")
         edge("x", pad.buttonX.isPressed, "menu")
         edge("y", pad.buttonY.isPressed, "home")
         edge("select", pad.buttonOptions?.isPressed ?? false, "dock")
