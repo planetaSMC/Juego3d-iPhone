@@ -1,0 +1,61 @@
+RASMATIC · Lugar 3D — entrega iPhone
+====================================
+
+QUÉ HAY EN ESTA CARPETA
+-----------------------
+- RASMATIC-Lugar3D-iPhone-20261112.zip
+  Proyecto completo (web, Xcode, herramientas y documentación).
+- RASMATIC-Lugar3D-iPhone-20261112.zip.sha256
+  Hash del ZIP para comprobar la descarga.
+
+NO HAY UN .ipa TODAVÍA
+----------------------
+Este proyecto se preparó en Windows. Un .ipa de iOS necesita compilarse con
+Xcode en macOS; no se puede generar en Windows. Por eso no existe
+dist/RasmaticLugar3D-unsigned.ipa ni dist/RasmaticLugar3D-signed.ipa.
+
+Tampoco se firmó nada: la firma la hace quien instala la app con su cuenta
+Apple. No se generaron certificados ni credenciales.
+
+CÓMO OBTENER EL .ipa (SIN MAC)
+------------------------------
+1. Subir el proyecto a un repositorio de GitHub.
+2. Actions -> "iOS app (ipa sin firmar)" -> Run workflow.
+3. Esperar ~5-10 minutos.
+4. Descargar el artefacto "RasmaticLugar3D-ipa".
+5. Descomprimirlo: adentro está RasmaticLugar3D-unsigned.ipa.
+
+El flujo ya ejecuta:
+  - node tools/check-xcode.js        (118 comprobaciones)
+  - ./tools/build-ipa.sh             (xcodebuild, sin firma)
+  - node tools/verify-ipa.js ...     (estructura, Mach-O y juego completo)
+
+Con una Mac también se puede generar localmente:
+
+  chmod +x tools/build-ipa.sh
+  ./tools/build-ipa.sh
+
+CÓMO INSTALARLO
+---------------
+- Guía de 11 pasos por USB en Windows: docs/instalar-en-iphone.md
+- Firma, requisitos y límites de Apple: docs/firma-y-requisitos.md
+- Mando Bluetooth: docs/mando-bluetooth.md
+- VR Box: docs/vr-box-preview.md
+- Pruebas y límites: docs/pruebas.md
+
+QUÉ ESTÁ VERIFICADO
+-------------------
+- Juego completo en Chromium con viewport de iPhone: 21/21 + offline.
+- Modo VR en escritorio: 21/21.
+- Mando nativo y VR móvil en iPhone simulado: 21/21.
+- Proyecto iOS: 118/118 comprobaciones estructurales.
+- Verificador de .ipa: probado con un IPA sintético.
+
+QUÉ NO ESTÁ VERIFICADO
+----------------------
+- Compilación real con Xcode (no hay macOS).
+- Firma e instalación (no hay Apple ID/certificado).
+- Apertura en un iPhone real, Safari/WKWebView.
+- Mando Bluetooth real y VR Box físicas.
+
+Nada de eso se declara como probado. Ver docs/pruebas.md.

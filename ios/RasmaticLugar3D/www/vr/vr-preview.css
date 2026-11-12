@@ -1,0 +1,413 @@
+/* ============================================================
+   RASMATIC · VR BOX PREVIEW - capa visual (solo escritorio)
+   No toca ninguna regla del juego: todo cuelga de #vr-*.
+   ============================================================ */
+
+#vr-launch,
+#vr-panel,
+#vr-panel *,
+#vr-guides,
+#vr-guides *,
+.vr-vignette {
+  box-sizing: border-box;
+}
+
+#vr-launch {
+  position: fixed;
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(150, 210, 255, .55);
+  border-radius: 999px;
+  background: rgba(8, 22, 46, .82);
+  color: #dcecff;
+  font: 800 12px/1 "Exo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: .12em;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(2, 10, 26, .45);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition: border-color .15s, background .15s, transform .15s;
+}
+
+#vr-launch span {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: linear-gradient(145deg, #1b5fd6, #2f8bff);
+  color: #fff;
+  font-size: 10px;
+  letter-spacing: .04em;
+}
+
+#vr-launch:hover { border-color: #8fd0ff; background: rgba(12, 34, 70, .92); }
+#vr-launch:active { transform: scale(.97); }
+#vr-launch.on { border-color: #7cf0c0; color: #c9ffe9; }
+#vr-launch.on span { background: linear-gradient(145deg, #0f8a5c, #34d399); }
+
+#vr-panel {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  z-index: 70;
+  display: none;
+  width: min(340px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  padding: 0;
+  border: 1px solid rgba(140, 200, 255, .32);
+  border-radius: 16px;
+  background: rgba(6, 18, 38, .94);
+  color: #e6f1ff;
+  font: 400 13px/1.35 "Exo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, .55);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+#vr-panel.on { display: block; }
+
+#vr-panel header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(10, 30, 62, .98), rgba(8, 22, 46, .94));
+  border-bottom: 1px solid rgba(140, 200, 255, .18);
+}
+
+#vr-panel header b {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  color: #9fd4ff;
+}
+
+#vr-panel header b span { color: #fff; }
+#vr-panel header i {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: .08em;
+  color: rgba(210, 232, 255, .5);
+}
+
+#vr-panel header button {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .06);
+  color: #dcecff;
+  font: 700 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+#vr-panel header button:hover { background: rgba(255, 255, 255, .14); }
+
+#vr-panel .vr-body { padding: 12px 14px 14px; }
+
+#vr-panel .vr-field {
+  display: block;
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: rgba(210, 232, 255, .78);
+}
+
+#vr-panel .vr-field output {
+  float: right;
+  font-weight: 800;
+  color: #8fd0ff;
+  letter-spacing: .02em;
+}
+
+#vr-panel select,
+#vr-panel input[type="number"] {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid rgba(140, 200, 255, .28);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .06);
+  color: #eaf5ff;
+  font: 600 12px/1 "Exo 2", system-ui, sans-serif;
+  outline: none;
+}
+
+#vr-panel select:focus,
+#vr-panel input[type="number"]:focus { border-color: #6fc3ff; }
+
+#vr-panel .vr-custom {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+#vr-panel .vr-custom .vr-field { flex: 1; margin-bottom: 0; }
+
+#vr-panel input[type="range"] {
+  display: block;
+  width: 100%;
+  margin: 6px 0 0;
+  height: 18px;
+  accent-color: #4aa8ff;
+  cursor: pointer;
+}
+
+#vr-panel .vr-checks {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 10px;
+  border: 1px solid rgba(140, 200, 255, .16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .035);
+}
+
+#vr-panel .vr-checks label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(220, 238, 255, .86);
+  cursor: pointer;
+}
+
+#vr-panel .vr-checks input { accent-color: #4aa8ff; }
+
+#vr-panel .vr-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+#vr-panel .vr-actions button {
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid rgba(140, 200, 255, .3);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .07);
+  color: #e6f1ff;
+  font: 700 11.5px/1.2 "Exo 2", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+#vr-panel .vr-actions button:hover { background: rgba(90, 170, 255, .2); }
+#vr-panel .vr-actions button#vr-exit {
+  border-color: rgba(255, 150, 140, .45);
+  color: #ffd3ce;
+  background: rgba(120, 30, 30, .3);
+}
+#vr-panel .vr-actions button#vr-exit:hover { background: rgba(160, 40, 40, .42); }
+
+#vr-panel .vr-info {
+  margin: 12px 0 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(74, 168, 255, .1);
+  border: 1px solid rgba(74, 168, 255, .2);
+  color: #b9dcff;
+  font-size: 10.5px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+
+#vr-panel .vr-note {
+  margin: 6px 0 0;
+  color: rgba(200, 222, 245, .52);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+/* ---------------- guias de pantalla ---------------- */
+#vr-guides {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: none;
+  pointer-events: none;
+}
+
+#vr-guides.on { display: block; }
+
+#vr-stage-guide {
+  position: absolute;
+  border: 1px solid rgba(120, 200, 255, .5);
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .45) inset, 0 0 26px rgba(80, 170, 255, .14);
+}
+
+#vr-safe {
+  position: absolute;
+  border: 1px dashed rgba(255, 208, 120, .55);
+  border-radius: 8px;
+}
+
+#vr-safe span {
+  position: absolute;
+  left: 6px;
+  bottom: 4px;
+  font: 800 8px/1 system-ui, sans-serif;
+  letter-spacing: .16em;
+  color: rgba(255, 208, 120, .65);
+}
+
+/* ---------------- viñeta de lentes ---------------- */
+.vr-vignette {
+  position: fixed;
+  z-index: 15;
+  display: none;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center,
+    rgba(0, 0, 0, 0) 46%,
+    rgba(0, 0, 0, .18) 72%,
+    rgba(0, 0, 0, .52) 100%);
+}
+
+body.vr-vignette .vr-vignette { display: block; }
+
+/* ---------------- HUD oculto ---------------- */
+body.vr-hud-off #rg-hud,
+body.vr-hud-off #rg-act,
+body.vr-hud-off #ras-pause-btn { display: none !important; }
+
+/* ---------------- boton principal del panel ---------------- */
+#vr-panel .vr-primary {
+  width: 100%;
+  min-height: 40px;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(124, 240, 192, .55);
+  border-radius: 11px;
+  background: linear-gradient(145deg, #0f8a5c, #1fb87a);
+  color: #eafff6;
+  font: 800 12.5px/1.2 "Exo 2", system-ui, sans-serif;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+
+#vr-panel .vr-primary.on {
+  border-color: rgba(255, 170, 150, .6);
+  background: linear-gradient(145deg, #8a2f2f, #c0453c);
+  color: #ffe9e5;
+}
+
+/* ---------------- copias por ojo (HUD y menus) ---------------- */
+.vr-mirror {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 16;
+  display: none;
+  overflow: hidden;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.vr-mirror.on { display: block; }
+
+/* El original queda invisible pero conserva el foco y los .click() que usa
+   el mando. El selector apunta al hijo directo de body para no ocultar la
+   copia que vive dentro de .vr-mirror. */
+body.vr-mirror-hud > #rg-hud,
+body.vr-mirror-pause > #ras-pause,
+body.vr-mirror-end > #rg-end {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* En VR con mando no hacen falta los controles tactiles. Si el mando se
+   desconecta, body.ras-pad-on desaparece y vuelven solos: el juego nunca
+   queda bloqueado. */
+body.vr-on.ras-pad-on #ras-stick,
+body.vr-on.ras-pad-on #ras-run,
+body.vr-on.ras-pad-on #ras-pause-btn,
+body.vr-on.ras-pad-on #rg-act,
+body.vr-on.ras-pad-on #ras-pad-badge { display: none !important; }
+
+/* Foco del mando dentro de las copias (el original esta a opacity 0). */
+.vr-mirror .vr-focus,
+.vr-mirror #ras-pause button.vr-focus,
+.vr-mirror #rg-again.vr-focus {
+  outline: 3px solid #4aa8ff !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 5px rgba(74, 168, 255, .22) !important;
+}
+
+/* ---------------- aviso de orientacion ---------------- */
+#vr-rotate {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: rgba(4, 12, 28, .94);
+  color: #eaf5ff;
+  text-align: center;
+  font-family: "Exo 2", system-ui, sans-serif;
+}
+
+#vr-rotate.on { display: flex; }
+
+#vr-rotate .vr-rotate-card { max-width: 320px; }
+#vr-rotate b {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 20px;
+  letter-spacing: .06em;
+}
+#vr-rotate p {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: .8;
+}
+#vr-rotate button {
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid rgba(140, 200, 255, .4);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  color: #eaf5ff;
+  font: 700 12px/1 "Exo 2", system-ui, sans-serif;
+}
+
+/* En el telefono el boton VR va arriba al centro: abajo chocaria con el
+   joystick. En VR el JS lo mueve dentro del ojo izquierdo. */
+@media (pointer: coarse) {
+  #vr-launch {
+    left: calc(50% - 44px);
+    top: calc(8px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    height: 34px;
+    padding: 0 10px;
+  }
+}
+
+/* El panel no debe tapar el boton de salir en ventanas bajas. */
+@media (max-height: 520px) {
+  #vr-panel { top: 8px; max-height: calc(100vh - 16px); }
+  #vr-panel .vr-body { padding: 8px 10px 10px; }
+  #vr-panel .vr-field { margin-bottom: 7px; }
+  #vr-panel .vr-note { display: none; }
+}

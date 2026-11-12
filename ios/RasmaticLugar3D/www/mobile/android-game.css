@@ -1,0 +1,311 @@
+/* ============================================================
+   RASMATIC Android - capa visual del juego de almacén
+   ------------------------------------------------------------
+   Oculta el HUD y los paneles de la experiencia original y define
+   el marcador, el tiempo, el pedido y el botón de interacción.
+   No toca la escena 3D ni el HTML original.
+   ============================================================ */
+
+/* ---------- fuera la experiencia anterior ---------- */
+html.ras-android #bar,
+html.ras-android #brand,
+html.ras-android #zone,
+html.ras-android #map,
+html.ras-android #cap,
+html.ras-android #dock,
+html.ras-android #dockhint,
+html.ras-android #act,
+html.ras-android #intro,
+html.ras-android #info,
+html.ras-android #pad,
+html.ras-android #full,
+html.ras-android #ras-run,
+html.ras-android #ras-pause-btn,
+html.ras-android #ras-pause,
+html.ras-android #ras-pad-badge,
+html.ras-android #ras-game {
+  display: none !important;
+}
+
+/* En la partida el joystick manda aunque el menú de destinos esté
+   minimizado (el dock ya no existe). */
+html.ras-android body.ras-arena #ras-stick { display: block; }
+html.ras-android body.ras-arena.ras-pad-on #ras-stick { display: none !important; }
+html.ras-android body.rg-over #ras-stick { display: none !important; }
+html.ras-android body.ras-arena #corners { display: none; }
+html.ras-android body.ras-arena #loading { display: none; }
+
+/* ---------- HUD ---------- */
+#rg-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  font-family: "Exo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #fff;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.rg-panel {
+  background: rgba(8, 22, 46, .82);
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(4, 14, 34, .35);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* marcador: esquina superior izquierda */
+#rg-score {
+  position: absolute;
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+}
+.rg-team { display: flex; flex-direction: column; line-height: 1; }
+.rg-team span {
+  font-size: 10px;
+  letter-spacing: .14em;
+  font-weight: 700;
+  opacity: .72;
+}
+.rg-team b {
+  font-family: "Exo 2", system-ui, sans-serif;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: .02em;
+}
+#rg-score .rg-p b { color: #7cc4ff; }
+#rg-score .rg-b b { color: #ffc46b; }
+.rg-sep {
+  width: 1px;
+  height: 34px;
+  background: rgba(255, 255, 255, .22);
+}
+
+/* tiempo: esquina superior derecha */
+#rg-time {
+  position: absolute;
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  padding: 9px 16px;
+  font-family: "Exo 2", system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  font-variant-numeric: tabular-nums;
+}
+#rg-time.low { color: #ff8a7a; border-color: rgba(255, 138, 122, .6); }
+
+/* pedido del jugador */
+#rg-req {
+  position: absolute;
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  top: calc(76px + env(safe-area-inset-top, 0px));
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px 10px 12px;
+  min-width: 176px;
+}
+#rg-req.on { display: flex; }
+#rg-req .rg-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .85);
+  box-shadow: 0 0 18px currentColor;
+  background: #888;
+}
+#rg-req .rg-req-txt { display: flex; flex-direction: column; line-height: 1.1; }
+#rg-req .rg-req-txt small {
+  font-size: 10px;
+  letter-spacing: .16em;
+  font-weight: 700;
+  opacity: .72;
+}
+#rg-req .rg-req-txt b {
+  font-family: "Exo 2", system-ui, sans-serif;
+  font-size: 21px;
+  font-weight: 900;
+  letter-spacing: .02em;
+}
+
+/* qué lleva el jugador: debajo del pedido, fuera de la zona del joystick */
+#rg-carry {
+  position: absolute;
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  top: calc(148px + env(safe-area-inset-top, 0px));
+  display: none;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 15px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+#rg-carry.on { display: flex; }
+#rg-carry i {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #888;
+  border: 1px solid rgba(255, 255, 255, .8);
+}
+
+/* aviso central */
+#rg-toast {
+  position: absolute;
+  left: 50%;
+  top: 21%;
+  transform: translate(-50%, -8px);
+  max-width: 86vw;
+  padding: 12px 22px;
+  border-radius: 14px;
+  font-size: clamp(15px, 4.6vw, 21px);
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-align: center;
+  background: rgba(8, 22, 46, .9);
+  border: 1px solid rgba(255, 255, 255, .3);
+  opacity: 0;
+  transition: opacity .18s, transform .18s;
+}
+#rg-toast.on { opacity: 1; transform: translate(-50%, 0); }
+#rg-toast.ok { color: #8ff0c2; border-color: rgba(143, 240, 194, .6); }
+#rg-toast.bad { color: #ffb0a4; border-color: rgba(255, 176, 164, .6); }
+
+/* pista de inicio: por encima del joystick */
+#rg-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(196px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  padding: 9px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .3s;
+}
+#rg-hint.on { opacity: 1; }
+
+/* ---------- botón de interacción ---------- */
+#rg-act {
+  position: fixed;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  z-index: 9;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 132px;
+  height: 62px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 18px;
+  font-family: "Exo 2", system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: #08203f;
+  background: linear-gradient(160deg, #ffffff, #cfe3ff);
+  box-shadow: 0 12px 26px rgba(4, 14, 34, .4), inset 0 0 0 1px rgba(255, 255, 255, .7);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+#rg-act.on { display: flex; }
+#rg-act:active { transform: scale(.97); }
+#rg-act.go { color: #fff; background: linear-gradient(160deg, #2fbf86, #16855b); }
+#rg-act.take { color: #08203f; }
+#rg-act.give { color: #08203f; background: linear-gradient(160deg, #ffe9a8, #ffc247); }
+
+/* ---------- final de partida ---------- */
+#rg-end {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: radial-gradient(ellipse at center, rgba(10, 26, 58, .78), rgba(6, 16, 36, .94));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+#rg-end.on { display: flex; }
+#rg-end .rg-card {
+  width: min(430px, 100%);
+  padding: 26px 22px 22px;
+  border-radius: 22px;
+  text-align: center;
+  color: #eaf2ff;
+  background: rgba(10, 26, 58, .92);
+  border: 1px solid rgba(255, 255, 255, .22);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .5);
+}
+#rg-end h2 {
+  margin: 0 0 4px;
+  font-family: "Exo 2", system-ui, sans-serif;
+  font-size: 24px;
+  letter-spacing: .06em;
+}
+#rg-end h2.win { color: #6ff0b4; }
+#rg-end h2.lose { color: #ffb0a4; }
+#rg-end h2.tie { color: #ffd27a; }
+#rg-end .rg-sub {
+  margin: 0 0 18px;
+  font-size: 13px;
+  opacity: .72;
+  letter-spacing: .04em;
+}
+#rg-end .rg-final {
+  display: flex;
+  justify-content: center;
+  gap: 26px;
+  margin: 0 0 20px;
+}
+#rg-end .rg-final div { display: flex; flex-direction: column; gap: 2px; }
+#rg-end .rg-final span { font-size: 11px; letter-spacing: .14em; opacity: .7; font-weight: 700; }
+#rg-end .rg-final b {
+  font-family: "Exo 2", system-ui, sans-serif;
+  font-size: 44px;
+  line-height: 1;
+}
+#rg-end .rg-final .rg-fp b { color: #7cc4ff; }
+#rg-end .rg-final .rg-fb b { color: #ffc46b; }
+#rg-end button {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  width: 100%;
+  padding: 15px 20px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: .06em;
+  color: #08203f;
+  background: linear-gradient(160deg, #ffffff, #cfe3ff);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+#rg-end button:active { transform: scale(.985); }
+
+/* ---------- pantallas bajas / horizontales ---------- */
+@media (max-height: 430px) {
+  .rg-team b { font-size: 24px; }
+  #rg-time { font-size: 22px; padding: 6px 12px; }
+  #rg-req { top: calc(64px + env(safe-area-inset-top, 0px)); padding: 7px 13px 7px 9px; }
+  #rg-req .rg-swatch { width: 30px; height: 30px; }
+  #rg-req .rg-req-txt b { font-size: 17px; }
+  #rg-carry { top: calc(112px + env(safe-area-inset-top, 0px)); font-size: 12px; }
+  #rg-act { height: 54px; min-width: 118px; font-size: 13.5px; }
+  #rg-hint { bottom: calc(148px + env(safe-area-inset-bottom, 0px)); font-size: 12px; }
+  #rg-end .rg-final b { font-size: 36px; }
+}

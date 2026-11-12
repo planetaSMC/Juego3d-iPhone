@@ -1,0 +1,56 @@
+name: iOS app (ipa sin firmar)
+
+# Compila la app en una Mac de la nube y deja el .ipa como artefacto.
+# No hace falta tener Mac: GitHub presta el runner macOS.
+#
+#   1. Subi esta carpeta a un repositorio de GitHub (puede ser publico).
+#   2. Pestaña "Actions" -> "iOS app (ipa sin firmar)" -> "Run workflow".
+#   3. Al terminar, descargar el artefacto "RasmaticLugar3D-ipa".
+#   4. Instalarlo con AltStore/Sideloadly (ver docs/instalar-en-iphone.md).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 25
+
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v4
+
+      - name: Version de Xcode
+        run: xcodebuild -version
+
+      - name: Comprobar el proyecto antes de compilar
+        run: node tools/check-xcode.js
+
+      - name: Compilar el .ipa sin firmar
+        run: |
+          chmod +x tools/build-ipa.sh
+          ./tools/build-ipa.sh
+
+      - name: Verificar el .ipa (estructura, Mach-O y juego completo)
+        run: node tools/verify-ipa.js dist/RasmaticLugar3D-unsigned.ipa
+
+      - name: Resumen
+        run: |
+          set -euo pipefail
+          IPA=dist/RasmaticLugar3D-unsigned.ipa
+          echo "### .ipa generado" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| | |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Tamano | $(wc -c < "$IPA" | tr -d ' ') B |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| SHA-256 | \`$(shasum -a 256 "$IPA" | cut -d' ' -f1)\` |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Subir el .ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: RasmaticLugar3D-ipa
+          path: dist/*.ipa
+          if-no-files-found: error
+          retention-days: 30

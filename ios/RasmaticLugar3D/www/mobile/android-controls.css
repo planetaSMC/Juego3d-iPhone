@@ -1,0 +1,362 @@
+/* ============================================================
+   RASMATIC Android - capa de controles tactiles
+   No modifica la escena ni el HUD original: solo agrega controles
+   y oculta los controles de teclado que no aplican en tactil.
+   ============================================================ */
+
+html.ras-android #pad { display: none !important; }        /* reemplazado por joystick analogico */
+html.ras-android #full { display: none !important; }       /* Android ya es inmersivo */
+html.ras-android #map { display: none !important; }        /* menos HUD: sin minimapa */
+html.ras-android #dockhint { top: calc(104px + env(safe-area-inset-top, 0px)); }
+html.ras-android #dockhint kbd { display: none; }
+/* El menu de destinos ocupa el ancho inferior: cederle el lugar al joystick. */
+html.ras-android body:not(.dockmin) #ras-stick,
+html.ras-android body:not(.dockmin) #ras-run { display: none; }
+/* Con mando fisico conectado no hacen falta los controles tactiles de
+   movimiento: se ocultan y queda solo la escena. */
+html.ras-android body.ras-pad-on #ras-stick,
+html.ras-android body.ras-pad-on #ras-run { display: none !important; }
+
+#ras-touch {
+  /* Capa de posicionamiento, NO un panel a pantalla completa: con inset:0
+     podia quedar por encima del HUD y robar toques en algunos WebView.
+     Los hijos son position:fixed, asi que no necesitan el contenedor. */
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 5;
+  pointer-events: none;
+  transition: opacity .35s;
+}
+html.ras-android body.intro #ras-touch,
+html.ras-android body.info #ras-touch,
+html.ras-android body.ras-paused #ras-touch {
+  opacity: 0;
+  pointer-events: none;
+}
+/* Un padre con pointer-events:none no desactiva a los hijos con auto. */
+html.ras-android body.intro #ras-stick,
+html.ras-android body.intro #ras-run,
+html.ras-android body.info #ras-stick,
+html.ras-android body.info #ras-run,
+html.ras-android body.ras-paused #ras-stick,
+html.ras-android body.ras-paused #ras-run {
+  pointer-events: none;
+}
+html.ras-android body:not(.place) #ras-stick,
+html.ras-android body:not(.place) #ras-run {
+  display: none;
+}
+
+/* El boton contextual comparte zona con el joystick: debe quedar encima. */
+html.ras-android #act { z-index: 6; }
+/* Pero nunca por encima de un menu abierto: el original ya lo oculta en
+   tactil, se refuerza aqui para cualquier tamano/orientacion. */
+html.ras-android body:not(.dockmin) #act,
+html.ras-android body.info #act,
+html.ras-android body.ras-paused #act { display: none !important; }
+
+/* Respuesta tactil inmediata y sin seleccion de texto en botones. */
+html.ras-android #dock button,
+html.ras-android #dockhint,
+html.ras-android #act,
+html.ras-android #intro button,
+html.ras-android #info button,
+html.ras-android #bar button,
+html.ras-android #ras-pause button,
+html.ras-android #ras-game button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- joystick ---------- */
+#ras-stick {
+  position: fixed;
+  left: calc(18px + env(safe-area-inset-left, 0px));
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  width: clamp(108px, 21vmin, 156px);
+  height: clamp(108px, 21vmin, 156px);
+  border-radius: 50%;
+  pointer-events: auto;
+  touch-action: none;
+  background: radial-gradient(circle at 50% 42%,
+      rgba(255, 255, 255, .30),
+      rgba(255, 255, 255, .13) 58%,
+      rgba(255, 255, 255, .07));
+  border: 1px solid rgba(255, 255, 255, .55);
+  box-shadow: 0 8px 22px rgba(8, 24, 56, .28), inset 0 0 26px rgba(255, 255, 255, .18);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  user-select: none;
+  -webkit-user-select: none;
+}
+#ras-stick::before {
+  content: "";
+  position: absolute;
+  inset: 17%;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, .38);
+}
+#ras-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46%;
+  height: 46%;
+  margin: -23% 0 0 -23%;
+  border-radius: 50%;
+  background: linear-gradient(160deg, rgba(255, 255, 255, .96), rgba(196, 212, 233, .78));
+  border: 1px solid rgba(255, 255, 255, .95);
+  box-shadow: 0 5px 16px rgba(8, 24, 56, .38);
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* ---------- correr ---------- */
+#ras-run {
+  position: fixed;
+  left: calc(18px + clamp(108px, 21vmin, 156px) + 14px + env(safe-area-inset-left, 0px));
+  bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  pointer-events: auto;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 11px/1 "Exo 2", system-ui, sans-serif;
+  letter-spacing: .06em;
+  color: var(--ink, #0f2a55);
+  background: var(--glass, rgba(255, 255, 255, .8));
+  border: 1px solid var(--line, rgba(15, 42, 85, .18));
+  box-shadow: 0 6px 18px rgba(8, 24, 56, .24);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  user-select: none;
+  -webkit-user-select: none;
+}
+#ras-run.on {
+  background: #1f9d6a;
+  color: #fff;
+  border-color: transparent;
+}
+
+/* ---------- pausa ---------- */
+#ras-pause-btn {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  right: calc(14px + env(safe-area-inset-right, 0px));
+  z-index: 6;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  pointer-events: auto;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink, #0f2a55);
+  background: var(--glass, rgba(255, 255, 255, .8));
+  border: 1px solid var(--line, rgba(15, 42, 85, .18));
+  box-shadow: 0 6px 18px rgba(8, 24, 56, .24);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+#ras-pause-btn svg { width: 18px; height: 18px; fill: currentColor; }
+
+html.ras-android body.intro #ras-pause-btn,
+html.ras-android body.info #ras-pause-btn {
+  display: none;
+}
+
+/* ---------- aviso de mando ---------- */
+#ras-pad-badge {
+  position: fixed;
+  right: calc(14px + env(safe-area-inset-right, 0px));
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 5;
+  max-width: min(320px, 62vw);
+  padding: 7px 13px;
+  border-radius: 999px;
+  font: 600 12px/1.2 "Exo 2", system-ui, sans-serif;
+  color: var(--ink, #0f2a55);
+  background: var(--glass, rgba(255, 255, 255, .84));
+  border: 1px solid var(--line, rgba(15, 42, 85, .18));
+  box-shadow: 0 6px 18px rgba(8, 24, 56, .2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .3s, transform .3s;
+  pointer-events: none;
+}
+#ras-pad-badge.on { opacity: 1; transform: none; }
+/* El aviso solo tiene sentido al caminar: en presentacion/modelo o con el
+   menu de destinos abierto se solapa con los controles originales. */
+html.ras-android body:not(.place) #ras-pad-badge,
+html.ras-android body:not(.dockmin) #ras-pad-badge,
+html.ras-android body.ras-paused #ras-pad-badge { display: none; }
+
+/* ---------- menu de pausa ---------- */
+#ras-pause {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  background: rgba(8, 20, 45, .62);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+}
+#ras-pause[hidden] { display: none !important; }
+#ras-pause .ras-card {
+  width: min(430px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 24px 22px;
+  border-radius: 22px;
+  color: var(--ink, #0f2a55);
+  background: var(--panel, rgba(255, 255, 255, .97));
+  border: 1px solid var(--line, rgba(15, 42, 85, .18));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
+  font-family: "Exo 2", system-ui, sans-serif;
+  animation: ras-pop .25s ease;
+}
+@keyframes ras-pop {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  to { opacity: 1; transform: none; }
+}
+#ras-pause h2 {
+  margin: 0 0 2px;
+  font-family: Orbitron, "Exo 2", sans-serif;
+  font-size: 19px;
+  letter-spacing: .12em;
+}
+#ras-pause .ras-sub {
+  margin: 0 0 16px;
+  font-size: 12.5px;
+  opacity: .7;
+  letter-spacing: .05em;
+}
+#ras-pause button {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 46px;
+  margin: 0 0 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  font: 700 14px/1 "Exo 2", system-ui, sans-serif;
+  color: var(--ink, #0f2a55);
+  background: var(--soft, rgba(31, 95, 208, .08));
+  border: 1px solid var(--line, rgba(15, 42, 85, .18));
+  transition: background .2s, color .2s;
+}
+#ras-pause button.pri {
+  color: #fff;
+  background: #1f9d6a;
+  border-color: transparent;
+}
+#ras-pause button:active { transform: scale(.985); }
+#ras-pause .ras-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 4px 0 14px;
+}
+#ras-pause .ras-modes button {
+  margin: 0;
+  height: 40px;
+  font-size: 12.5px;
+  padding: 0 6px;
+}
+#ras-pause .ras-modes button.on {
+  color: #fff;
+  background: #1f5fd0;
+  border-color: transparent;
+}
+#ras-pause .ras-help {
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  opacity: .68;
+  text-align: center;
+}
+
+/* ---------- modo juego (reservado) ---------- */
+#ras-game {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: radial-gradient(ellipse at center, rgba(10, 26, 58, .72), rgba(8, 20, 45, .92));
+}
+#ras-game[hidden] { display: none !important; }
+#ras-game .ras-card {
+  width: min(460px, 100%);
+  padding: 26px 24px;
+  border-radius: 22px;
+  color: #eaf2ff;
+  background: rgba(10, 26, 58, .72);
+  border: 1px solid rgba(255, 255, 255, .22);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
+  text-align: center;
+  font-family: "Exo 2", system-ui, sans-serif;
+}
+#ras-game h2 {
+  margin: 0 0 6px;
+  font-family: Orbitron, "Exo 2", sans-serif;
+  font-size: 20px;
+  letter-spacing: .14em;
+  background: linear-gradient(90deg, #5aa2ff, #38c28a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+#ras-game p {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  opacity: .9;
+}
+#ras-game button {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  background: #1f9d6a;
+}
+#ras-game small {
+  display: block;
+  margin-top: 14px;
+  font-size: 11.5px;
+  opacity: .65;
+  line-height: 1.5;
+}
+
+@media (max-height: 430px) {
+  #ras-stick { width: 104px; height: 104px; }
+  #ras-run { left: calc(18px + 104px + 12px + env(safe-area-inset-left, 0px)); bottom: calc(26px + env(safe-area-inset-bottom, 0px)); width: 52px; height: 52px; }
+  #ras-pause .ras-card { padding: 18px; }
+  #ras-pause button { height: 42px; margin-bottom: 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ras-pause .ras-card { animation: none; }
+}
