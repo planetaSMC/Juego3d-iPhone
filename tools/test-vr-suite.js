@@ -114,6 +114,23 @@
 
     ok('V01b boton de acceso visible en escritorio', launchVisible === true, { visible: launchVisible });
 
+    /* ---------------- V15: logo fuera de la partida ---------------- */
+    const LOGO = G().logo;
+    const logoHidden = !!LOGO &&
+      LOGO.emblem.visible === false && LOGO.emblemRefl.visible === false &&
+      Array.isArray(LOGO.letters) && LOGO.letters.length > 0 &&
+      LOGO.letters.every((m) => m.visible === false) &&
+      (!LOGO.slogan || LOGO.slogan.visible === false) &&
+      (!LOGO.bubble || LOGO.bubble.visible === false) &&
+      LOGO.visible() === false;
+    ok('V15 el logo RASMATIC no aparece en la partida',
+      logoHidden && !!window.RasmaticArena,
+      { emblema: LOGO && LOGO.emblem.visible, reflejo: LOGO && LOGO.emblemRefl.visible,
+        letras: LOGO && LOGO.letters.filter((m) => m.visible).length,
+        eslogan: !!(LOGO && LOGO.slogan && LOGO.slogan.visible),
+        cartel: !!(LOGO && LOGO.bubble && LOGO.bubble.visible),
+        arena: !!window.RasmaticArena, estado: D().state });
+
     /* ---------------- V02: activar ---------------- */
     VR.reset();
     VR.enable();
@@ -324,6 +341,233 @@
       mean9 > 5 && mean9 < 250 && Math.abs(mean9 - mean0) < 25,
       { rt: rtOn, paso_directo: s9b.path === 'direct',
         brillo_con: +mean9.toFixed(1), brillo_sin: +mean0.toFixed(1) });
+
+    /* ================ calibración avanzada ================ */
+    VR.reset();
+    await frames(2);
+    tp(0, 30, 0, 0);
+    await frames(3);
+
+    /* ---------------- V16: cámara ---------------- */
+    const s16a = VR.state();
+    const eyeA = s16a.eyes[0].position.slice();
+    const qA = s16a.eyes[0].quaternion.slice();
+    const p5A = s16a.eyes[0].projection[5];
+
+    VR.set('camHeight', 0.5);
+    await frames(2);
+    const eyeH = VR.state().eyes[0].position.slice();
+    VR.set('camHeight', 0);
+
+    VR.set('camDist', 1);
+    await frames(2);
+    const eyeD = VR.state().eyes[0].position.slice();
+    VR.set('camDist', 0);
+
+    VR.set('camPitch', 10);
+    await frames(2);
+    const qP = VR.state().eyes[0].quaternion.slice();
+    VR.set('camPitch', 0);
+
+    VR.set('camZoom', 1.5);
+    await frames(2);
+    const p5Z = VR.state().eyes[0].projection[5];
+    VR.set('camZoom', 1);
+    await frames(2);
+
+    ok('V16 cámara: altura, distancia, inclinación y zoom',
+      Math.abs((eyeH[1] - eyeA[1]) - 0.5) < 0.03 &&
+      Math.abs((eyeD[2] - eyeA[2]) - 1) < 0.05 &&
+      Math.abs(qP[0] - qA[0]) > 0.05 &&
+      p5Z > p5A * 1.2,
+      { altura_m: +(eyeH[1] - eyeA[1]).toFixed(3),
+        distancia_m: +(eyeD[2] - eyeA[2]).toFixed(3),
+        pitch_q: +qP[0].toFixed(3),
+        proyeccion_zoom: +p5Z.toFixed(3), proyeccion_base: +p5A.toFixed(3) });
+
+    /* ---------------- V17: intensidad 3D ---------------- */
+    VR.set('depth', 0);
+    await frames(2);
+    const d0 = dist3(VR.state().eyes[0].position, VR.state().eyes[1].position);
+    VR.set('depth', 1.5);
+    await frames(2);
+    const d15 = dist3(VR.state().eyes[0].position, VR.state().eyes[1].position);
+    VR.set('depth', 1);
+    await frames(2);
+    ok('V17 intensidad 3D escala la separación estéreo',
+      d0 < 0.0005 && Math.abs(d15 - 0.096) < 0.002,
+      { separacion_0: +d0.toFixed(5), separacion_150: +d15.toFixed(4) });
+
+    /* ---------------- V18: lentes independientes ---------------- */
+    const base18 = VR.state();
+    VR.set('eyeScaleL', 0.8);
+    VR.set('eyeOffXR', 10);
+    VR.set('eyeOffYL', 5);
+    await frames(2);
+    const s18 = VR.state();
+    VR.resetGroup('left');
+    VR.resetGroup('right');
+    await frames(2);
+    const back18 = VR.state();
+    ok('V18 escala y desplazamiento independientes por ojo',
+      s18.eyes[0].w < base18.eyes[0].w * 0.9 &&
+      s18.eyes[1].x > base18.eyes[1].x + 20 &&
+      s18.eyes[0].y > base18.eyes[0].y + 20 &&
+      Math.abs(back18.eyes[0].w - base18.eyes[0].w) <= 1 &&
+      Math.abs(back18.eyes[1].x - base18.eyes[1].x) <= 1,
+      { ancho_izq: [base18.eyes[0].w, s18.eyes[0].w],
+        x_der: [base18.eyes[1].x, s18.eyes[1].x],
+        y_izq: [base18.eyes[0].y, s18.eyes[0].y] });
+
+    /* ---------------- V19: pantalla, aspecto y recorte ---------------- */
+    VR.set('stageX', 10);
+    await frames(2);
+    const st19 = VR.state().stage;
+    const W19 = VR.state().canvas.width;
+    VR.set('stageX', 0);
+    VR.set('aspect', 2);
+    await frames(2);
+    const a19 = VR.state().stage;
+    VR.set('aspect', 0);
+    VR.set('cropL', 0.1);
+    await frames(2);
+    const p19 = VR.state().path;
+    VR.set('cropL', 0);
+    await frames(2);
+    const p19b = VR.state().path;
+    ok('V19 desplazamiento del conjunto, aspecto y recorte por ojo',
+      Math.abs(st19.x - Math.round(W19 * 0.10)) <= 1 &&
+      Math.abs(a19.aspect - 2) < 0.02 &&
+      p19 === 'rt' && p19b === 'direct',
+      { x_conjunto: st19.x, esperado: Math.round(W19 * 0.10),
+        aspecto: +a19.aspect.toFixed(3), recorte_rt: p19, sin_recorte: p19b });
+
+    /* ---------------- V20: imagen ---------------- */
+    VR.set('profile', 'window');
+    await frames(2);
+    const g20a = await grab();
+    const m20a = meanRegion(g20a.ctx, g20a.st.eyes[0]);
+    VR.set('brightness', 1.4);
+    await frames(2);
+    const s20 = VR.state();
+    const g20b = await grab();
+    const m20b = meanRegion(g20b.ctx, g20b.st.eyes[0]);
+    VR.set('brightness', 1);
+    await frames(2);
+    const p20 = VR.state().path;
+    VR.set('saturation', 0);
+    await frames(2);
+    const p20b = VR.state().path;
+    VR.resetGroup('image');
+    await frames(2);
+    const p20c = VR.state().path;
+    ok('V20 imagen: el brillo cambia de verdad y el neutro vuelve al paso directo',
+      s20.path === 'rt' && m20b > m20a + 3 &&
+      p20 === 'direct' && p20b === 'rt' && p20c === 'direct',
+      { brillo_antes: +m20a.toFixed(1), brillo_despues: +m20b.toFixed(1),
+        rt_brillo: s20.path, neutro: p20, saturacion: p20b, restaurado: p20c });
+
+    /* ---------------- V21: modo prueba ---------------- */
+    const testChk = document.getElementById('vr-test');
+    testChk.checked = true;
+    testChk.dispatchEvent(new Event('change', { bubbles: true }));
+    await frames(3);
+    await sleep(400);
+    const s21 = VR.state();
+    const bodyTest21 = document.body.classList.contains('vr-test');
+    const overlay21 = getComputedStyle(document.getElementById('vr-test-overlay')).display;
+    const hud21 = getComputedStyle(document.getElementById('rg-hud')).display;
+    const g21 = await grab();
+    const m21 = meanRegion(g21.ctx, g21.st.eyes[0]);
+    testChk.checked = false;
+    testChk.dispatchEvent(new Event('change', { bubbles: true }));
+    await frames(3);
+    await sleep(400);
+    const s21b = VR.state();
+    const bodyTest21b = document.body.classList.contains('vr-test');
+    ok('V21 modo prueba independiente (cuadrícula, HUD oculto y vuelta)',
+      s21.test === true && bodyTest21 &&
+      overlay21 !== 'none' && hud21 === 'none' && m21 > 2 &&
+      s21.mirrors.hud === false &&
+      s21b.test === false && !bodyTest21b &&
+      s21b.mirrors.hud === true,
+      { prueba: s21.test, body_prueba: bodyTest21, overlay: overlay21, hud: hud21,
+        brillo_prueba: +m21.toFixed(1), espejo_hud: s21.mirrors.hud,
+        vuelta: s21b.test, body_vuelta: bodyTest21b, espejo_vuelta: s21b.mirrors.hud });
+
+    /* ---------------- V22: perfiles de calibración ---------------- */
+    VR.set('fov', 84);
+    VR.set('brightness', 1.2);
+    const saved22 = VR.saveConfig('prueba-vr');
+    const list22 = VR.listConfigs();
+    VR.reset();
+    const reset22 = VR.state().settings;
+    const loaded22 = VR.loadConfig('prueba-vr');
+    const load22 = VR.state().settings;
+    const json22 = VR.exportConfig();
+    VR.reset();
+    const imported22 = VR.importConfig(json22);
+    const imp22 = VR.state().settings;
+    VR.deleteConfig('prueba-vr');
+    const deleted22 = VR.listConfigs().indexOf('prueba-vr') < 0;
+    ok('V22 guardar, cargar, exportar, importar y borrar perfiles',
+      saved22 && list22.indexOf('prueba-vr') >= 0 &&
+      Math.abs(reset22.fov - 70) < 0.01 &&
+      loaded22 && Math.abs(load22.fov - 84) < 0.01 &&
+      Math.abs(load22.brightness - 1.2) < 0.001 &&
+      imported22 && Math.abs(imp22.fov - 84) < 0.01 &&
+      deleted22,
+      { guardado: saved22, lista: list22.length, fov_reset: reset22.fov,
+        fov_cargado: load22.fov, brillo_cargado: load22.brightness,
+        importado: imported22, borrado: deleted22 });
+
+    /* ---------------- V23: persistencia ---------------- */
+    VR.set('ipd', 68);
+    VR.set('camHeight', 0.2);
+    const raw23 = JSON.parse(localStorage.getItem('rasmatic.vr.settings.v2') || '{}');
+    VR.disable();
+    VR.enable();
+    await frames(2);
+    const after23 = VR.state().settings;
+    ok('V23 la calibración se guarda y sobrevive a salir/entrar',
+      raw23.ipd === 68 && Math.abs(raw23.camHeight - 0.2) < 0.001 &&
+      after23.ipd === 68 && Math.abs(after23.camHeight - 0.2) < 0.001,
+      { guardado: { ipd: raw23.ipd, altura: raw23.camHeight },
+        tras_reentrar: { ipd: after23.ipd, altura: after23.camHeight } });
+
+    /* ---------------- V24: restaurar por categoría ---------------- */
+    VR.set('fov', 80);
+    VR.set('camDist', 1);
+    VR.set('brightness', 1.3);
+    VR.resetGroup('cam');
+    const s24 = VR.state().settings;
+    VR.resetGroup('image');
+    const s24b = VR.state().settings;
+    ok('V24 restaurar una categoría no toca las demás',
+      Math.abs(s24.fov - 70) < 0.01 && Math.abs(s24.camDist) < 0.001 &&
+      Math.abs(s24.brightness - 1.3) < 0.001 &&
+      Math.abs(s24b.brightness - 1) < 0.001,
+      { tras_camara: { fov: s24.fov, distancia: s24.camDist, brillo: s24.brightness },
+        tras_imagen: { brillo: s24b.brightness } });
+
+    /* ---------------- V25: controles del panel ---------------- */
+    const needIds = ['vr-camHeight', 'vr-depth', 'vr-cropL', 'vr-cropR', 'vr-brightness',
+      'vr-test', 'vr-reset-all', 'vr-fov', 'vr-ipd', 'vr-exit', 'vr-cfg-save'];
+    const missingIds = needIds.filter((id) => !document.getElementById(id));
+    const tabCount = document.querySelectorAll('#vr-tabs [data-tab]').length;
+    const fovInput = document.getElementById('vr-fov');
+    fovInput.value = '75';
+    fovInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await sleep(80);
+    const fovUI = VR.state().settings.fov;
+    VR.set('fov', 70);
+    ok('V25 panel completo por categorías y control conectado',
+      missingIds.length === 0 && tabCount === 7 && Math.abs(fovUI - 75) < 0.01,
+      { faltantes: missingIds, pestañas: tabCount, fov_desde_ui: fovUI });
+
+    VR.reset();
+    await frames(2);
+    tp(0, 30, 0, 0);
 
     /* ---------------- V10: controles de Windows ---------------- */
     /* Se espera por frames renderizados, no por milisegundos: con WebGL

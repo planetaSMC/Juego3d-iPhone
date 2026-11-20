@@ -77,13 +77,13 @@ node tools/test-vr.js
 ```
 
 Abre un navegador Chromium en ventana de escritorio (1280×720, DPR 1, sin
-emulación táctil), ejecuta los casos V01–V14 dentro de la página, prueba el
+emulación táctil), ejecuta los casos V01–V25 dentro de la página, prueba el
 mouse con eventos reales, la entrada directa `?vr=1` y guarda capturas.
 
 ### Resultado
 
 ```
-21/21 casos superados.
+32/32 casos superados.
   ok   mouse gira la camara (yaw 0.000 -> -0.800)
   ok   el modo VR arranca solo con ?vr=1
 Consola sin errores.
@@ -94,7 +94,15 @@ distintos), separación ocular de 64 mm, frustums off-axis opuestos, IPD 50–75
 mm, convergencia, perfiles de pantalla, tamaño y separación central, HUD por ojo
 y HUD plano, distorsión por render target, WASD + Shift + Espacio + Escape,
 restauración de cámara/renderer al salir y que el juego normal siga funcionando
-después (recoger + entregar +1). Detalle en `docs/vr-box-preview.md`.
+después (recoger + entregar +1).
+
+La calibración nueva (V15–V25) comprueba además: logo RASMATIC oculto en la
+partida, altura/distancia/inclinación/zoom de cámara, intensidad 3D, escala y
+desplazamiento independientes por ojo, desplazamiento del conjunto, aspecto
+forzado, recorte por ojo, brillo real con vuelta al paso directo, modo prueba
+con HUD oculto, guardar/cargar/exportar/importar/borrar perfiles, persistencia
+en `localStorage`, restaurar por categoría y los 7 controles del panel
+conectados. Detalle en `docs/vr-box-preview.md`.
 
 ---
 
@@ -238,7 +246,8 @@ Modo VR de escritorio:
 | `docs/evidencias/vr-03-vr-iphone.png` | perfil iPhone 15 horizontal + guías |
 | `docs/evidencias/vr-04-distortion.png` | distorsión de lente al 20 % |
 | `docs/evidencias/vr-05-portrait.png` | perfil iPhone 15 vertical |
-| `docs/evidencias/vr-06-panel.png` | panel de ajustes abierto |
+| `docs/evidencias/vr-06-panel.png` | panel de calibración abierto (pestaña Cámara) |
+| `docs/evidencias/vr-07-test-mode.png` | modo prueba: cuadrícula, centros de lente y simetría |
 
 Mando y VR en iPhone simulado:
 
@@ -266,7 +275,7 @@ probó:
 | Instalación como PWA | requiere Safari iOS | “Añadir a pantalla de inicio” |
 | **Mando Bluetooth real** | requiere iPhone + mando | emparejar y probar sticks, A/L2/B/X (`docs/mando-bluetooth.md`) |
 | **`GameController` de iOS** | requiere iOS real | la app ya lo usa; confirmar el aviso al conectar |
-| **VR Box físicas** | requieren las gafas y un iPhone | calibrar IPD/convergencia con las lentes puestas |
+| **VR Box físicas** | requieren las gafas y un iPhone | calibrar FOV, IPD, convergencia, tamaño, margen central y distorsión con las lentes puestas, usando el modo prueba |
 | Seguimiento de cabeza | fuera de alcance (no hay AR/WebXR) | — |
 | Rendimiento real (fps, batería) | hardware distinto | jugar una partida completa en el iPhone |
 | Service worker en iPhone | solo se habilita en https | servir por https o usar la app nativa |

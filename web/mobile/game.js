@@ -823,11 +823,6 @@
     if (st && stockP[st.def.c] > 0) {
       setHint(null);
       setAction('RECOGER', 'take');
-    } else if (Math.abs(G.player.z) < 7 && Math.abs(G.player.x) < 11.5) {
-      /* El emblema RASMATIC ocupa el centro del vestíbulo: es sólido y hay
-         que bordearlo para entrar al pasillo de góndolas. */
-      setHint('Rodeá el logo por el costado');
-      setAction(null, '');
     } else {
       setHint(null);
       setAction(null, '');

@@ -310,7 +310,7 @@ body.intro #intro{opacity:1;pointer-events:auto}
 </div>
 
 <div id="brand" class="hud"><b>RASMATIC</b><i>Tu espacio, nuestro control.</i></div>
-<div id="zone" class="hud">Vestíbulo · Logo Rasmatic</div>
+<div id="zone" class="hud">Vestíbulo · Recepción</div>
 <canvas id="map" class="hud" aria-label="Minimapa"></canvas>
 <div id="cap" role="status" aria-live="polite"></div>
 <div id="dock"><button data-v="frente">Inicio</button><button data-v="consulta">← Consulta</button><button data-v="enfermeria">Enfermería →</button><button data-v="pasillo">Pasillo</button><button data-v="maquina">Máquina</button><button data-v="aerea">Vista aérea</button><span class="sep"></span><button id="guide" class="pri">▶ Recorrido guiado</button><button id="full" aria-label="Pantalla completa">⛶</button><button id="anim">Animación</button></div>
@@ -794,7 +794,7 @@ function updateMachine(t){
 const machLight=new THREE.PointLight(0xffffff,0.8,48); machLight.position.set(3,4,MZ+13); scene.add(machLight);
 
 /* ---------- texto ---------- */
-const letters=[]; let slogan=null;
+const letters=[]; let slogan=null; let logoBubble=null;
 function buildText(){
   const word='RASMATIC';
   const cols=[['#1d5fd0','#0f3a86'],['#1a58c4','#0f3a86'],['#1a6aa0','#145a5a'],['#1f8a58','#0e4a33'],['#1b6a86','#0f3a60'],['#1a4f9a','#0c2a5e'],['#164a8c','#0a2450'],['#1b3f72','#0a2040']];
@@ -828,6 +828,8 @@ function buildText(){
 /* ---------- animación (modo película) ---------- */
 const corners={tl:document.getElementById('cTL'),br:document.getElementById('cBR')};
 function updateFilm(t){
+  emblem.visible=emblemRefl.visible=true;
+  if(logoBubble)logoBubble.visible=true;
   const u=clamp(t/FLY);
   const p=0.22*u+0.78*u*u*(3-2*u);
   let z=zStart+(-66-zStart)*p;
@@ -852,12 +854,23 @@ function updateFilm(t){
   updateMachine(t);
 }
 function setRot(ry,rx){emblem.rotation.set(rx,ry,0);emblemRefl.rotation.set(rx,ry,0);}
+/* [Juego] muestra u oculta el logo del centro (emblema, nombre, eslogan y
+   cartel) sin borrar geometría ni recursos. La partida lo mantiene oculto. */
+function setLogo(on){
+  on=!!on;
+  emblem.visible=emblemRefl.visible=on;
+  letters.forEach(m=>{m.visible=on;});
+  if(slogan)slogan.visible=on;
+  if(logoBubble)logoBubble.visible=on;
+  return on;
+}
 
 /* ---------- modo modelo (girar a mano) ---------- */
 let mode='film', userRy=0.55, userRx=0.08, dist=27, autoSpin=true;
 function updateModel(dt){
   if(autoSpin) userRy+=dt*0.45;
   setRot(userRy,userRx);
+  emblem.visible=emblemRefl.visible=true;
   camera.position.set(0,0.4,dist); camera.lookAt(0,0,0);
   scene.fog.near=90; scene.fog.far=200;
   blueL.position.set(-8,2,10); greenL.position.set(8,-2,10);
@@ -1009,7 +1022,7 @@ const PLG=[],PLL=[];
 const keys={};
 function blocked(x,z){ if(PP.y>=2)return false;
   if(z<-82||z>47||Math.abs(x)>70)return true;
-  if(Math.abs(x)<11&&Math.abs(z)<1.8)return true;                                   // la R y el nombre
+  if(Math.abs(x)<11&&Math.abs(z)<1.8&&!window.RasmaticArena)return true;              // la R y el nombre (solo fuera de la partida)
   if(z>-14.4){
     if(x<-15.2)return true;                                                           // pared de estantes de la consulta
     if(x>15.2){ if(x<=19){ if(z<28.2||z>35.8)return true; } else if(x>48.2||z<16.8||z>47.2)return true; }  // puerta a la enfermería
@@ -1051,8 +1064,14 @@ function updatePlace(dt){
   scene.fog.near=90; scene.fog.far=320;
   blueL.position.set(PP.x-6,0,PP.z-8); greenL.position.set(PP.x+6,-2,PP.z-8);
   setRot(performance.now()/1000*0.7,0);                                              // la R gira
-  letters.forEach(m=>{m.material.opacity=1;m.visible=true;m.scale.setScalar(1);});
-  if(slogan){slogan.material.opacity=1;slogan.visible=true;slogan.position.y=(CY-740)*PX;}
+  /* [Juego] el emblema RASMATIC del centro del vestíbulo estorba en la
+     partida: se oculta junto con el nombre, el eslogan y su cartel. No se
+     borra la geometría (sigue disponible para el modo película/modelo). */
+  const logoOn=!window.RasmaticArena;
+  emblem.visible=emblemRefl.visible=logoOn;
+  letters.forEach(m=>{m.visible=logoOn;if(logoOn){m.material.opacity=1;m.scale.setScalar(1);}});
+  if(slogan){slogan.visible=logoOn;if(logoOn){slogan.material.opacity=1;slogan.position.y=(CY-740)*PX;}}
+  if(logoBubble)logoBubble.visible=logoOn;
   const co=1-sm(0,6,Math.hypot(PP.x,PP.z-33)); corners.tl.style.opacity=co; corners.br.style.opacity=co;
   /* [Juego] el giro de 360 grados es de presentacion: en la partida el CNC
      lo maneja mobile/game.js. */
@@ -1252,11 +1271,13 @@ function addBubble(x,y,z,t1,t2){
   const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:bubbleTex(t1,t2),transparent:true,fog:false,depthWrite:false}));
   spr.center.set(0.5,0.02);spr.position.set(x,y,z);spr.scale.set(W,H,1);spr.renderOrder=12;
   PLG[0].add(spr);BUB.push({spr,x,y,z,w:W,h:H});
+  return spr;
 }
 addBubble(36.8,FLOOR+10.7,31.6,'Médico','“Cada hora cuenta.”');
 addBubble(-7.2,FLOOR+10.7,31.6,'Farmacéutica','“¿Sabés cuánto tiempo perdemos?”');
 addBubble(0,FLOOR+11.6,MZ+3.5,'Máquina RASMATIC','“Yo soy la solución.”');
-addBubble(0,3.9,0.8,'RASMATIC','Quiénes somos · acercate a la R');
+/* Cartel del emblema: se oculta junto con el logo durante la partida. */
+logoBubble=addBubble(0,3.9,0.8,'RASMATIC','Quiénes somos · acercate a la R');
 
 /* ---------- contenido (cada dato aparece una sola vez) ---------- */
 const hero=(av,t)=>'<div class="hero"><div class="av">'+av+'</div><p class="say">'+t+'</p></div>';
@@ -1532,6 +1553,9 @@ window.RasmaticCore={
   game:{
     scene,camera,renderer,place:PLG[0],player:PP,
     machine:MACHINES[0],spec:MSPEC,boxY,
+    logo:{emblem,emblemRefl,letters,bubble:logoBubble,
+      get slogan(){return slogan;}, set:setLogo,
+      visible:()=>emblem.visible},
     home:{x:HOME_HX,y:HOME_Y,ext:PAD_EXT,ret:PAD_RET,zm:ZM,mz:MZ,pxOff:PX_OFF,floor:FLOOR},
     mats:{coat:CM.coat,skin:CM.skin,hair:CM.hair,dark:CM.dark,white:CM.white,
       blue:CM.blue,green:CM.green,gray:CM.gray,alu:MM.alu,std},

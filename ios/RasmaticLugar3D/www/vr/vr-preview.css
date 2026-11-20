@@ -1,5 +1,5 @@
 /* ============================================================
-   RASMATIC · VR BOX PREVIEW - capa visual (solo escritorio)
+   RASMATIC · VR BOX - capa visual de calibración
    No toca ninguna regla del juego: todo cuelga de #vr-*.
    ============================================================ */
 
@@ -8,6 +8,8 @@
 #vr-panel *,
 #vr-guides,
 #vr-guides *,
+#vr-test-overlay,
+#vr-test-overlay *,
 .vr-vignette {
   box-sizing: border-box;
 }
@@ -52,25 +54,27 @@
 #vr-launch.on { border-color: #7cf0c0; color: #c9ffe9; }
 #vr-launch.on span { background: linear-gradient(145deg, #0f8a5c, #34d399); }
 
+/* ---------------- panel ---------------- */
 #vr-panel {
   position: fixed;
   top: calc(12px + env(safe-area-inset-top, 0px));
   right: calc(12px + env(safe-area-inset-right, 0px));
   z-index: 70;
   display: none;
-  width: min(340px, calc(100vw - 24px));
+  width: min(380px, calc(100vw - 24px));
   max-height: calc(100vh - 24px);
   overflow: auto;
   padding: 0;
   border: 1px solid rgba(140, 200, 255, .32);
   border-radius: 16px;
-  background: rgba(6, 18, 38, .94);
+  background: rgba(6, 18, 38, .96);
   color: #e6f1ff;
   font: 400 13px/1.35 "Exo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
   box-shadow: 0 22px 60px rgba(0, 0, 0, .55);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
 }
 
@@ -79,19 +83,19 @@
 #vr-panel header {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 14px;
-  background: linear-gradient(180deg, rgba(10, 30, 62, .98), rgba(8, 22, 46, .94));
+  padding: 11px 14px;
+  background: linear-gradient(180deg, rgba(10, 30, 62, .99), rgba(8, 22, 46, .97));
   border-bottom: 1px solid rgba(140, 200, 255, .18);
 }
 
 #vr-panel header b {
   font-size: 12px;
   font-weight: 900;
-  letter-spacing: .16em;
+  letter-spacing: .14em;
   color: #9fd4ff;
 }
 
@@ -100,13 +104,13 @@
   margin-left: auto;
   font-style: normal;
   font-size: 10px;
-  letter-spacing: .08em;
+  letter-spacing: .06em;
   color: rgba(210, 232, 255, .5);
 }
 
 #vr-panel header button {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, .18);
   border-radius: 8px;
@@ -118,14 +122,93 @@
 
 #vr-panel header button:hover { background: rgba(255, 255, 255, .14); }
 
-#vr-panel .vr-body { padding: 12px 14px 14px; }
+/* Fila siempre visible: modo prueba y salida segura. */
+#vr-panel .vr-quick {
+  position: sticky;
+  top: 50px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(8, 22, 46, .98);
+  border-bottom: 1px solid rgba(140, 200, 255, .14);
+}
+
+#vr-panel .vr-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-right: auto;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #cfe6ff;
+  cursor: pointer;
+}
+
+#vr-panel .vr-switch input { width: 18px; height: 18px; accent-color: #4aa8ff; }
+
+#vr-panel .vr-danger {
+  border-color: rgba(255, 150, 140, .5) !important;
+  color: #ffd3ce !important;
+  background: rgba(120, 30, 30, .32) !important;
+}
+
+#vr-panel .vr-quick .vr-danger {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 150, 140, .5);
+  border-radius: 9px;
+  font: 800 11px/1 "Exo 2", system-ui, sans-serif;
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+
+/* Pestañas por categoría. */
+#vr-panel .vr-tabs {
+  position: sticky;
+  top: 94px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px 12px;
+  background: rgba(8, 22, 46, .98);
+  border-bottom: 1px solid rgba(140, 200, 255, .14);
+}
+
+#vr-panel .vr-tabs::-webkit-scrollbar { display: none; }
+
+#vr-panel .vr-tabs button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid rgba(140, 200, 255, .22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .04);
+  color: rgba(220, 238, 255, .78);
+  font: 700 10.5px/1 "Exo 2", system-ui, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#vr-panel .vr-tabs button.on {
+  border-color: rgba(124, 240, 192, .6);
+  background: rgba(31, 184, 122, .18);
+  color: #d6fff0;
+}
+
+#vr-panel .vr-body { padding: 10px 14px 4px; }
+
+#vr-panel .vr-tab-panel { display: none; }
+#vr-panel .vr-tab-panel.on { display: block; }
 
 #vr-panel .vr-field {
   display: block;
   margin: 0 0 10px;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: .06em;
+  letter-spacing: .05em;
   color: rgba(210, 232, 255, .78);
 }
 
@@ -137,22 +220,34 @@
 }
 
 #vr-panel select,
-#vr-panel input[type="number"] {
+#vr-panel input[type="number"],
+#vr-panel input[type="text"],
+#vr-panel textarea {
   display: block;
   width: 100%;
   margin-top: 5px;
-  height: 32px;
+  min-height: 34px;
   padding: 0 9px;
   border: 1px solid rgba(140, 200, 255, .28);
   border-radius: 9px;
   background: rgba(255, 255, 255, .06);
   color: #eaf5ff;
-  font: 600 12px/1 "Exo 2", system-ui, sans-serif;
+  font: 600 12px/1.3 "Exo 2", system-ui, sans-serif;
   outline: none;
 }
 
+#vr-panel textarea {
+  min-height: 78px;
+  padding: 8px 9px;
+  resize: vertical;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
 #vr-panel select:focus,
-#vr-panel input[type="number"]:focus { border-color: #6fc3ff; }
+#vr-panel input:focus,
+#vr-panel textarea:focus { border-color: #6fc3ff; }
 
 #vr-panel .vr-custom {
   display: flex;
@@ -162,19 +257,118 @@
 
 #vr-panel .vr-custom .vr-field { flex: 1; margin-bottom: 0; }
 
+/* Cada control: etiqueta + valor, slider y botones de precisión. */
+#vr-panel .vr-ctl {
+  margin: 0 0 11px;
+  padding: 8px 9px 7px;
+  border: 1px solid rgba(140, 200, 255, .13);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .028);
+}
+
+#vr-panel .vr-ctl-h {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  color: rgba(218, 236, 255, .9);
+}
+
+#vr-panel .vr-ctl-h output {
+  margin-left: auto;
+  font-weight: 800;
+  color: #8fd0ff;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#vr-panel .vr-ctl-r {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+#vr-panel .vr-step {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(140, 200, 255, .3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .07);
+  color: #e6f1ff;
+  font: 800 16px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+#vr-panel .vr-step:active { background: rgba(90, 170, 255, .28); }
+
 #vr-panel input[type="range"] {
-  display: block;
-  width: 100%;
-  margin: 6px 0 0;
-  height: 18px;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  height: 30px;
   accent-color: #4aa8ff;
   cursor: pointer;
 }
 
+#vr-panel .vr-help {
+  display: block;
+  margin-top: 4px;
+  color: rgba(200, 222, 245, .56);
+  font-size: 10px;
+  line-height: 1.4;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+#vr-panel .vr-reset {
+  width: 100%;
+  min-height: 34px;
+  margin: 4px 0 8px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 208, 120, .34);
+  border-radius: 9px;
+  background: rgba(255, 208, 120, .08);
+  color: #ffe6b8;
+  font: 700 11.5px/1.2 "Exo 2", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+#vr-panel .vr-card {
+  margin: 0 0 10px;
+  padding: 9px;
+  border: 1px solid rgba(140, 200, 255, .16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .035);
+}
+
+#vr-panel .vr-card .vr-primary { margin-top: 8px; }
+
+#vr-panel .vr-preset {
+  margin: 0 0 8px;
+  font-size: 11.5px;
+  color: rgba(210, 232, 255, .8);
+}
+
+#vr-panel .vr-preset b { color: #8fd0ff; }
+
+#vr-panel .vr-cfg-status {
+  min-height: 14px;
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  color: #9ff0c8;
+}
+
+#vr-panel .vr-cfg-status.bad { color: #ffb3a8; }
+
 #vr-panel .vr-checks {
   display: grid;
   gap: 6px;
-  margin: 12px 0;
+  margin: 10px 0;
   padding: 10px;
   border: 1px solid rgba(140, 200, 255, .16);
   border-radius: 10px;
@@ -191,7 +385,7 @@
   cursor: pointer;
 }
 
-#vr-panel .vr-checks input { accent-color: #4aa8ff; }
+#vr-panel .vr-checks input { width: 18px; height: 18px; accent-color: #4aa8ff; }
 
 #vr-panel .vr-actions {
   display: grid;
@@ -200,7 +394,7 @@
 }
 
 #vr-panel .vr-actions button {
-  min-height: 34px;
+  min-height: 36px;
   padding: 6px 8px;
   border: 1px solid rgba(140, 200, 255, .3);
   border-radius: 9px;
@@ -211,15 +405,14 @@
 }
 
 #vr-panel .vr-actions button:hover { background: rgba(90, 170, 255, .2); }
-#vr-panel .vr-actions button#vr-exit {
-  border-color: rgba(255, 150, 140, .45);
-  color: #ffd3ce;
-  background: rgba(120, 30, 30, .3);
+
+#vr-panel .vr-foot {
+  padding: 8px 14px 14px;
+  border-top: 1px solid rgba(140, 200, 255, .12);
 }
-#vr-panel .vr-actions button#vr-exit:hover { background: rgba(160, 40, 40, .42); }
 
 #vr-panel .vr-info {
-  margin: 12px 0 6px;
+  margin: 10px 0 6px;
   padding: 8px 10px;
   border-radius: 8px;
   background: rgba(74, 168, 255, .1);
@@ -270,6 +463,84 @@
   color: rgba(255, 208, 120, .65);
 }
 
+/* ---------------- modo prueba ---------------- */
+#vr-test-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  display: none;
+  pointer-events: none;
+}
+
+body.vr-test #vr-test-overlay { display: block; }
+
+#vr-test-overlay .vr-test-eye {
+  position: absolute;
+  border: 1px dashed rgba(120, 200, 255, .55);
+  border-radius: 10px;
+  background: rgba(40, 120, 220, .04);
+}
+
+#vr-test-overlay .vr-test-eye i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  transform: translate(-50%, -50%);
+}
+
+#vr-test-overlay .vr-test-eye i:before,
+#vr-test-overlay .vr-test-eye i:after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 194, 102, .9);
+}
+
+#vr-test-overlay .vr-test-eye i:before {
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  transform: translateX(-.5px);
+}
+
+#vr-test-overlay .vr-test-eye i:after {
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 1px;
+  transform: translateY(-.5px);
+}
+
+#vr-test-overlay .vr-test-eye b {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%);
+  font: 800 9px/1 system-ui, sans-serif;
+  letter-spacing: .16em;
+  color: rgba(160, 215, 255, .7);
+}
+
+#vr-test-overlay .vr-test-sym {
+  position: absolute;
+  width: 0;
+  border-left: 1px dashed rgba(255, 194, 102, .55);
+}
+
+/* En el modo prueba manda la escena de calibración: fuera HUD y táctiles. */
+body.vr-test #rg-hud,
+body.vr-test #rg-act,
+body.vr-test #ras-stick,
+body.vr-test #ras-run,
+body.vr-test #ras-pause-btn,
+body.vr-test #ras-pad-badge,
+body.vr-test #rg-end,
+body.vr-test #ras-pause {
+  display: none !important;
+}
+
 /* ---------------- viñeta de lentes ---------------- */
 .vr-vignette {
   position: fixed;
@@ -292,7 +563,7 @@ body.vr-hud-off #ras-pause-btn { display: none !important; }
 /* ---------------- boton principal del panel ---------------- */
 #vr-panel .vr-primary {
   width: 100%;
-  min-height: 40px;
+  min-height: 42px;
   margin: 0 0 8px;
   padding: 8px 10px;
   border: 1px solid rgba(124, 240, 192, .55);
@@ -407,7 +678,9 @@ body.vr-on.ras-pad-on #ras-pad-badge { display: none !important; }
 /* El panel no debe tapar el boton de salir en ventanas bajas. */
 @media (max-height: 520px) {
   #vr-panel { top: 8px; max-height: calc(100vh - 16px); }
-  #vr-panel .vr-body { padding: 8px 10px 10px; }
-  #vr-panel .vr-field { margin-bottom: 7px; }
+  #vr-panel .vr-body { padding: 8px 10px 4px; }
+  #vr-panel .vr-ctl { margin-bottom: 8px; }
+  #vr-panel .vr-help { display: none; }
   #vr-panel .vr-note { display: none; }
+  #vr-panel .vr-tabs { top: 92px; }
 }

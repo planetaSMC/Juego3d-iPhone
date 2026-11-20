@@ -309,6 +309,22 @@ async function main() {
     await sleep(1200);
     await shot('vr-06-panel.png');
 
+    /* Modo prueba: cuadricula, centros de lente y referencias de simetria. */
+    await evaluate(`(function(){
+      var v = window.RasmaticVR;
+      v.set('testMode', true);
+      v.panel(false);
+      return true;
+    })()`);
+    await sleep(1400);
+    await shot('vr-07-test-mode.png');
+    await evaluate(`(function(){
+      var v = window.RasmaticVR;
+      v.set('testMode', false);
+      v.disable();
+      return true;
+    })()`);
+
     /* ---------------- Acceso directo ?vr=1 ---------------- */
     console.log('\nAcceso directo con ?vr=1:');
     await cdp.send('Page.navigate', { url: base + '?vr=1' });

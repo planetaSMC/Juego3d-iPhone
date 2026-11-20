@@ -1,7 +1,7 @@
 /* ============================================================
    RASMATIC · VR BOX  (Windows y app iOS)
    ------------------------------------------------------------
-   Previsualizacion estereoscopica y modo VR real para colocar el
+   Modo estereoscopico real + calibracion completa para usar el
    telefono dentro de unas VR Box.
 
    Reglas de diseno:
@@ -12,10 +12,15 @@
        reutilizando la camara del juego (conserva la mano y el HUD).
      - El HUD y los menus se dibujan por ojo (dos copias), para que
        cada lente vea la interfaz completa y no una mitad cortada.
+     - El postproceso (distorsion, recorte e imagen) solo se activa
+       cuando hace falta: sin ajustes, el camino es directo.
 
    Superficie publica (para pruebas y consola):
      RasmaticVR.enable() / disable() / toggle()
      RasmaticVR.set(clave, valor) / profile(nombre) / reset()
+     RasmaticVR.resetGroup(grupo)
+     RasmaticVR.saveConfig(nombre) / loadConfig(nombre) / deleteConfig(nombre)
+     RasmaticVR.listConfigs() / exportConfig() / importConfig(texto)
      RasmaticVR.isActive() / isDesktop() / isMobile() / state()
    ============================================================ */
 (function () {
@@ -33,8 +38,9 @@
   var renderer = core.game.renderer;
   var gameCamera = core.game.camera;
 
-  var VERSION = 'vr-preview-1.1';
+  var VERSION = 'vr-cal-2.0';
   var STORE_KEY = 'rasmatic.vr.settings.v2';
+  var CFG_KEY = 'rasmatic.vr.profiles.v1';
   var LEGACY_KEY = 'rasmatic.vr.settings.v1';
   var FORCE = /[?&]vr=1\b/.test(location.search);
   /* Movil = iPhone/iPad/Android o cualquier pantalla tactil. En la app iOS
@@ -44,22 +50,53 @@
     window.matchMedia('(pointer:coarse)').matches;
   var DESKTOP = !MOBILE;
 
+  /* ------------------------------------------------------------------
+     Ajustes. Todo valor neutro es el que deja la imagen como antes:
+     camDist/camHeight/camShift/camPitch 0, depth 1, offsets 0, escala 1,
+     imagen 1, nitidez 0, recorte 0.
+     ------------------------------------------------------------------ */
   var DEFAULTS = {
-    ipd: 64,            /* milimetros entre centros de ojos */
-    convergence: 3.0,   /* metros: plano de disparidad cero */
-    fov: 62,            /* grados verticales (el juego usa 62 en la partida) */
-    zoom: 1.0,          /* 0.5..1: tamano de cada imagen dentro de su mitad */
-    gap: 0.0,           /* 0..0.1: separacion central extra (fraccion del semiancho) */
-    distortion: 0.0,    /* 0..0.3: aproximacion de lente VR Box */
+    /* Estereo */
+    ipd: 64,             /* milimetros entre centros de ojos */
+    convergence: 3.0,    /* metros: plano de disparidad cero */
+    depth: 1.0,          /* intensidad estereo (0 = plano) */
+    /* Camara */
+    fov: 70,             /* grados verticales por ojo */
+    camZoom: 1.0,        /* zoom optico: 1 = neutro */
+    camDist: 0.0,        /* metros: + aleja, - acerca */
+    camHeight: 0.0,      /* metros: sube/baja el punto de vista */
+    camShiftX: 0.0,      /* metros: corre la camara a izquierda/derecha */
+    camShiftY: 0.0,      /* metros: corre la camara arriba/abajo */
+    camPitch: 0.0,       /* grados: inclina la vista */
+    /* Distribucion de pantalla */
+    zoom: 1.0,           /* 0.5..1: tamano de cada imagen en su mitad */
+    gap: 0.02,           /* 0..0.1: separacion central (fraccion del semiancho) */
+    stageX: 0.0,         /* % del ancho: desplaza el conjunto */
+    stageY: 0.0,         /* % del alto: desplaza el conjunto */
+    aspect: 0.0,         /* 0 = automatico; otro valor fuerza el marco */
+    distortion: 0.0,     /* 0..0.3: aproximacion de lente VR Box */
     profile: 'window',
     customW: 1920,
     customH: 1080,
+    /* Lente izquierda / derecha */
+    eyeOffXL: 0.0, eyeOffXR: 0.0,   /* % del ancho del ojo */
+    eyeOffYL: 0.0, eyeOffYR: 0.0,   /* % del alto del ojo */
+    eyeScaleL: 1.0, eyeScaleR: 1.0, /* escala independiente */
+    cropL: 0.0, cropR: 0.0,         /* 0..0.25: recorte simetrico de bordes */
+    /* Imagen */
+    brightness: 1.0,
+    contrast: 1.0,
+    saturation: 1.0,
+    gamma: 1.0,
+    sharpness: 0.0,
+    /* Interfaz / modo */
     guides: false,
+    vignette: false,
+    testMode: false,
     /* per-eye: una copia del HUD dentro de cada ojo (VR real).
        flat: una sola copia recortada al marco (vista previa de escritorio).
        off: sin HUD. */
-    hudMode: 'per-eye',
-    vignette: false
+    hudMode: 'per-eye'
   };
 
   var PROFILES = {
@@ -73,6 +110,144 @@
     custom: { label: 'Personalizado', w: 0, h: 0 }
   };
 
+  /* Limites seguros por parametro: [minimo, maximo, paso]. */
+  var SPEC = {
+    ipd: [50, 75, 1],
+    convergence: [0.5, 10, 0.1],
+    depth: [0, 2, 0.01],
+    fov: [40, 110, 1],
+    camZoom: [0.5, 2, 0.01],
+    camDist: [-3, 3, 0.05],
+    camHeight: [-1.5, 1.5, 0.02],
+    camShiftX: [-0.6, 0.6, 0.01],
+    camShiftY: [-0.6, 0.6, 0.01],
+    camPitch: [-20, 20, 0.5],
+    zoom: [0.5, 1, 0.01],
+    gap: [0, 0.1, 0.005],
+    stageX: [-25, 25, 0.5],
+    stageY: [-25, 25, 0.5],
+    aspect: [0, 3, 0.01],
+    distortion: [0, 0.3, 0.01],
+    eyeOffXL: [-25, 25, 0.5],
+    eyeOffXR: [-25, 25, 0.5],
+    eyeOffYL: [-25, 25, 0.5],
+    eyeOffYR: [-25, 25, 0.5],
+    eyeScaleL: [0.6, 1.2, 0.01],
+    eyeScaleR: [0.6, 1.2, 0.01],
+    cropL: [0, 0.25, 0.005],
+    cropR: [0, 0.25, 0.005],
+    brightness: [0.5, 1.8, 0.01],
+    contrast: [0.5, 1.8, 0.01],
+    saturation: [0, 2, 0.01],
+    gamma: [0.5, 2.2, 0.01],
+    sharpness: [0, 1, 0.01]
+  };
+
+  /* Definicion de cada control: etiqueta, limites, formato y ayuda breve. */
+  var CTL = {
+    fov: { g: 'cam', label: 'Campo de visión (FOV)', min: 40, max: 110, step: 1, dec: 0, suffix: '°',
+      help: 'Grados verticales de cada ojo. Más grados = se ve más escenario y todo queda menos “encima”.' },
+    camZoom: { g: 'cam', label: 'Zoom de cámara', min: 0.5, max: 2, step: 0.01, dec: 2, suffix: '×',
+      help: '1,00 = neutro. Más de 1 acerca la imagen; menos de 1 la aleja.' },
+    camDist: { g: 'cam', label: 'Distancia de cámara', min: -3, max: 3, step: 0.05, dec: 2, suffix: ' m',
+      help: 'Positivo aleja la cámara (más escenario); negativo la acerca. No mueve al personaje.' },
+    camHeight: { g: 'cam', label: 'Altura de cámara', min: -1.5, max: 1.5, step: 0.02, dec: 2, suffix: ' m',
+      help: 'Sube o baja el punto de vista sin tocar la posición del jugador.' },
+    camShiftX: { g: 'cam', label: 'Posición horizontal', min: -0.6, max: 0.6, step: 0.01, dec: 2, suffix: ' m',
+      help: 'Corre la cámara a izquierda/derecha sobre su eje local.' },
+    camShiftY: { g: 'cam', label: 'Posición vertical', min: -0.6, max: 0.6, step: 0.01, dec: 2, suffix: ' m',
+      help: 'Corre la cámara arriba/abajo sobre su eje local.' },
+    camPitch: { g: 'cam', label: 'Inclinación', min: -20, max: 20, step: 0.5, dec: 1, suffix: '°',
+      help: 'Inclina la vista arriba/abajo. Es un ajuste fijo: todavía no hay head tracking.' },
+
+    ipd: { g: 'stereo', label: 'IPD virtual', min: 50, max: 75, step: 1, dec: 0, suffix: ' mm',
+      help: 'Separación entre los dos ojos virtuales. 64 mm es el promedio adulto.' },
+    depth: { g: 'stereo', label: 'Intensidad 3D', min: 0, max: 2, step: 0.01, dec: 2, suffix: '×',
+      help: 'Multiplica la separación estéreo y la convergencia. 0 deja una imagen plana.' },
+    convergence: { g: 'stereo', label: 'Convergencia', min: 0.5, max: 10, step: 0.1, dec: 1, suffix: ' m',
+      help: 'Distancia donde las dos vistas coinciden (disparidad cero).' },
+
+    eyeOffXL: { g: 'left', label: 'Desplazamiento horizontal', min: -25, max: 25, step: 0.5, dec: 1, suffix: ' %',
+      help: 'Mueve solo la vista izquierda dentro de su área.' },
+    eyeOffYL: { g: 'left', label: 'Desplazamiento vertical', min: -25, max: 25, step: 0.5, dec: 1, suffix: ' %',
+      help: 'Sube o baja solo la vista izquierda.' },
+    eyeScaleL: { g: 'left', label: 'Escala de la vista', min: 0.6, max: 1.2, step: 0.01, dec: 2, suffix: '×',
+      help: 'Tamaño independiente de la imagen izquierda.' },
+    cropL: { g: 'left', label: 'Recorte de bordes', min: 0, max: 0.25, step: 0.005, dec: 1, suffix: ' %', mul: 100,
+      help: 'Recorta los bordes de la vista izquierda. Útil si la lente tapa una franja.' },
+
+    eyeOffXR: { g: 'right', label: 'Desplazamiento horizontal', min: -25, max: 25, step: 0.5, dec: 1, suffix: ' %',
+      help: 'Mueve solo la vista derecha dentro de su área.' },
+    eyeOffYR: { g: 'right', label: 'Desplazamiento vertical', min: -25, max: 25, step: 0.5, dec: 1, suffix: ' %',
+      help: 'Sube o baja solo la vista derecha.' },
+    eyeScaleR: { g: 'right', label: 'Escala de la vista', min: 0.6, max: 1.2, step: 0.01, dec: 2, suffix: '×',
+      help: 'Tamaño independiente de la imagen derecha.' },
+    cropR: { g: 'right', label: 'Recorte de bordes', min: 0, max: 0.25, step: 0.005, dec: 1, suffix: ' %', mul: 100,
+      help: 'Recorta los bordes de la vista derecha. Útil si la lente tapa una franja.' },
+
+    zoom: { g: 'screen', label: 'Tamaño de las dos imágenes', min: 0.5, max: 1, step: 0.01, dec: 0, suffix: ' %', mul: 100,
+      help: 'Porcentaje de cada mitad que ocupa la imagen. Menos tamaño deja más aire para las lentes.' },
+    gap: { g: 'screen', label: 'Margen central', min: 0, max: 0.1, step: 0.005, dec: 1, suffix: ' %', mul: 100,
+      help: 'Franja negra extra en el medio, para que no se junten las dos imágenes.' },
+    stageX: { g: 'screen', label: 'Desplazamiento horizontal del conjunto', min: -25, max: 25, step: 0.5, dec: 1, suffix: ' %',
+      help: 'Mueve las dos vistas juntas a izquierda/derecha.' },
+    stageY: { g: 'screen', label: 'Desplazamiento vertical del conjunto', min: -25, max: 25, step: 0.5, dec: 1, suffix: ' %',
+      help: 'Mueve las dos vistas juntas arriba/abajo.' },
+    aspect: { g: 'screen', label: 'Relación de aspecto', min: 0, max: 3, step: 0.01, dec: 2, suffix: '',
+      help: '0 = automática (la del perfil). Un valor fuerza el marco, por ejemplo 2,00 para 2:1.' },
+    distortion: { g: 'screen', label: 'Distorsión de lente', min: 0, max: 0.3, step: 0.01, dec: 0, suffix: ' %', mul: 100,
+      help: 'Aproximación radial de la lente de las VR Box. Es una corrección, no una medición exacta.' },
+
+    brightness: { g: 'image', label: 'Brillo', min: 0.5, max: 1.8, step: 0.01, dec: 2, suffix: '×',
+      help: 'Multiplica el brillo. 1,00 = neutro.' },
+    contrast: { g: 'image', label: 'Contraste', min: 0.5, max: 1.8, step: 0.01, dec: 2, suffix: '×',
+      help: 'Separa claros y oscuros. 1,00 = neutro.' },
+    saturation: { g: 'image', label: 'Saturación', min: 0, max: 2, step: 0.01, dec: 2, suffix: '×',
+      help: '0 = blanco y negro; 1,00 = color original.' },
+    gamma: { g: 'image', label: 'Gamma', min: 0.5, max: 2.2, step: 0.01, dec: 2, suffix: '',
+      help: 'Corrige los tonos medios. Más de 1 aclara las sombras sin quemar los blancos.' },
+    sharpness: { g: 'image', label: 'Nitidez', min: 0, max: 1, step: 0.01, dec: 2, suffix: '',
+      help: 'Realce suave de bordes. Valores altos generan halos; 0,15–0,35 suele alcanzar.' }
+  };
+
+  var GROUPS = {
+    cam: { label: 'Cámara', keys: ['fov', 'camZoom', 'camDist', 'camHeight', 'camShiftX', 'camShiftY', 'camPitch'] },
+    stereo: { label: '3D', keys: ['ipd', 'depth', 'convergence'] },
+    left: { label: 'Lente izquierda', keys: ['eyeOffXL', 'eyeOffYL', 'eyeScaleL', 'cropL'] },
+    right: { label: 'Lente derecha', keys: ['eyeOffXR', 'eyeOffYR', 'eyeScaleR', 'cropR'] },
+    screen: { label: 'Pantalla', keys: ['profile', 'customW', 'customH', 'zoom', 'gap', 'stageX', 'stageY',
+      'aspect', 'distortion', 'hudMode', 'guides', 'vignette'] },
+    image: { label: 'Imagen', keys: ['brightness', 'contrast', 'saturation', 'gamma', 'sharpness'] },
+    profiles: { label: 'Perfiles', keys: [] }
+  };
+
+  var TABS = [
+    ['cam', 'Cámara'], ['stereo', '3D'], ['left', 'Lente izq.'], ['right', 'Lente der.'],
+    ['screen', 'Pantalla'], ['image', 'Imagen'], ['profiles', 'Perfiles']
+  ];
+
+  /* IDs historicos que usan las pruebas y la documentacion. */
+  var IDS = {
+    ipd: 'vr-ipd', fov: 'vr-fov', zoom: 'vr-zoom', gap: 'vr-gap',
+    convergence: 'vr-conv', distortion: 'vr-dist',
+    profile: 'vr-profile', customW: 'vr-cw', customH: 'vr-ch',
+    hudMode: 'vr-hud-mode', guides: 'vr-guides', vignette: 'vr-vig'
+  };
+
+  function has(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+  function num(v, d) { var n = Number(v); return isFinite(n) ? n : d; }
+  function idOf(key) { return IDS[key] || ('vr-' + key); }
+  function fmt(key, v) {
+    var c = CTL[key];
+    if (!c) return String(v);
+    if (key === 'aspect') return v < 0.01 ? 'Auto' : v.toFixed(2).replace('.', ',') + ':1';
+    var m = c.mul || 1;
+    var s = (v * m).toFixed(c.dec || 0);
+    if ((c.dec || 0) > 0) s = s.replace('.', ',');
+    return s + (c.suffix || '');
+  }
+
   /* ---------------- preferencias ---------------- */
   function readStore(key) {
     try {
@@ -84,61 +259,51 @@
   }
 
   function loadSettings() {
-    var s = {};
-    for (var k in DEFAULTS) if (Object.prototype.hasOwnProperty.call(DEFAULTS, k)) s[k] = DEFAULTS[k];
     var saved = readStore(STORE_KEY);
     var legacy = saved ? null : readStore(LEGACY_KEY);
-    if (saved) {
-      for (var q in DEFAULTS) {
-        if (Object.prototype.hasOwnProperty.call(saved, q) && typeof saved[q] === typeof DEFAULTS[q]) {
-          s[q] = saved[q];
-        }
-      }
-    } else if (legacy) {
+    if (saved) return sanitize(saved);
+    if (legacy) {
       /* v1 guardaba `hud` como booleano. Se conserva la eleccion del usuario. */
-      for (var r in DEFAULTS) {
-        if (r === 'hudMode') continue;
-        if (Object.prototype.hasOwnProperty.call(legacy, r) && typeof legacy[r] === typeof DEFAULTS[r]) {
-          s[r] = legacy[r];
-        }
-      }
-      if (legacy.hud === false) s.hudMode = 'off';
-      else if (legacy.hud === true) s.hudMode = 'flat';
+      var s = {};
+      for (var r in DEFAULTS) if (has(DEFAULTS, r)) s[r] = legacy[r] !== undefined ? legacy[r] : DEFAULTS[r];
+      s.hudMode = legacy.hud === false ? 'off' : (legacy.hud === true ? 'flat' : DEFAULTS.hudMode);
+      return sanitize(s);
     }
-    return sanitize(s);
+    return sanitize({});
   }
 
-  function sanitize(s) {
-    s.ipd = clamp(Number(s.ipd) || DEFAULTS.ipd, 50, 75);
-    s.convergence = clamp(Number(s.convergence) || DEFAULTS.convergence, 0.5, 10);
-    s.fov = clamp(Number(s.fov) || DEFAULTS.fov, 40, 100);
-    s.zoom = clamp(Number(s.zoom) || DEFAULTS.zoom, 0.5, 1);
-    s.gap = clamp(Number(s.gap) || 0, 0, 0.1);
-    s.distortion = clamp(Number(s.distortion) || 0, 0, 0.3);
-    if (!PROFILES[s.profile]) s.profile = DEFAULTS.profile;
-    s.customW = Math.round(clamp(Number(s.customW) || DEFAULTS.customW, 320, 4096));
-    s.customH = Math.round(clamp(Number(s.customH) || DEFAULTS.customH, 320, 4096));
-    s.guides = !!s.guides;
-    s.hudMode = (s.hudMode === 'per-eye' || s.hudMode === 'flat' || s.hudMode === 'off')
-      ? s.hudMode : DEFAULTS.hudMode;
-    s.vignette = !!s.vignette;
+  function sanitize(src) {
+    var s = {}, k;
+    for (k in DEFAULTS) if (has(DEFAULTS, k)) s[k] = DEFAULTS[k];
+    if (src && typeof src === 'object') {
+      for (k in SPEC) {
+        if (has(SPEC, k) && src[k] !== undefined) {
+          s[k] = clamp(num(src[k], DEFAULTS[k]), SPEC[k][0], SPEC[k][1]);
+        }
+      }
+      if (has(PROFILES, src.profile)) s.profile = src.profile;
+      s.customW = Math.round(clamp(num(src.customW, DEFAULTS.customW), 320, 4096));
+      s.customH = Math.round(clamp(num(src.customH, DEFAULTS.customH), 320, 4096));
+      s.guides = !!src.guides;
+      s.vignette = !!src.vignette;
+      s.testMode = !!src.testMode;
+      if (src.hudMode === 'per-eye' || src.hudMode === 'flat' || src.hudMode === 'off') s.hudMode = src.hudMode;
+    }
     return s;
   }
 
   var settings = loadSettings();
   var active = false;
   var ui = {};
-  var stats = { frames: 0, sceneDraws: 0, blits: 0, rtFrames: 0, lastMs: 0, avgMs: 0 };
-  var last = { eyes: [], base: null, stage: null, path: 'direct' };
-  var rt = null;
+  var stats = { frames: 0, sceneDraws: 0, blits: 0, rtFrames: 0, postFrames: 0, lastMs: 0, avgMs: 0 };
+  var last = { eyes: [], base: null, stage: null, path: 'direct', test: false };
+  var rts = [null, null];
   var quad = null;
   var quadMat = null;
   var quadCam = null;
   var quadScene = null;
-  var quadBase = null;
-  var quadUV = null;
-  var quadAspect = 0;
-  var quadK = -1;
+  var testScene = null;
+  var testCam = null;
 
   /* Copias por ojo del HUD y de los menus. Se crean recien cuando el juego
      ya construyo el original, para que document.getElementById siga
@@ -148,7 +313,6 @@
   var layoutTimer = 0;
   var rotateDismissed = false;
 
-  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
   function save() {
     try {
       if (window.localStorage) localStorage.setItem(STORE_KEY, JSON.stringify(settings));
@@ -174,13 +338,34 @@
       sh = Math.round(sw / aspect);
       if (sh > H) { sh = H; sw = Math.round(sh * aspect); }
     }
-    return {
-      x: Math.floor((W - sw) / 2),
-      y: Math.floor((H - sh) / 2),
-      w: sw,
-      h: sh,
-      aspect: sw / sh
-    };
+    /* Relacion de aspecto forzada (0 = automatica). */
+    if (settings.aspect > 0.01) {
+      var a = clamp(settings.aspect, 0.2, 3);
+      if (Math.round(sh * a) <= W) sw = Math.round(sh * a);
+      else { sw = W; sh = Math.round(W / a); }
+    }
+    /* Desplazamiento del conjunto, con tope para no perder la imagen. */
+    var ox = Math.round(W * settings.stageX / 100);
+    var oy = Math.round(H * settings.stageY / 100);
+    var x = Math.floor((W - sw) / 2) + ox;
+    var y = Math.floor((H - sh) / 2) + oy;
+    x = clamp(x, Math.round(-sw * 0.75), Math.round(W - sw * 0.25));
+    y = clamp(y, Math.round(-sh * 0.75), Math.round(H - sh * 0.25));
+    return { x: x, y: y, w: sw, h: sh, aspect: sw / sh };
+  }
+
+  function applyEye(e, scale, offX, offY) {
+    if (Math.abs(scale - 1) > 1e-4) {
+      var cx = e.x + e.w / 2, cy = e.y + e.h / 2;
+      e.w = Math.max(16, Math.round(e.w * scale));
+      e.h = Math.max(16, Math.round(e.h * scale));
+      e.x = Math.round(cx - e.w / 2);
+      e.y = Math.round(cy - e.h / 2);
+    }
+    if (offX) e.x += Math.round(e.w * offX / 100);
+    if (offY) e.y += Math.round(e.h * offY / 100);
+    e.aspect = e.w / e.h;
+    return e;
   }
 
   function computeEyes(stage) {
@@ -193,18 +378,31 @@
     var lx = stage.x + Math.round((halfW - ew) / 2 - gapPx / 2);
     var rx = stage.x + halfW + Math.round((halfW - ew) / 2 + gapPx / 2);
     return [
-      { side: 'left', x: lx, y: ey, w: ew, h: eh, aspect: ew / eh },
-      { side: 'right', x: rx, y: ey, w: ew, h: eh, aspect: ew / eh }
+      applyEye({ side: 'left', x: lx, y: ey, w: ew, h: eh, aspect: ew / eh },
+        settings.eyeScaleL, settings.eyeOffXL, settings.eyeOffYL),
+      applyEye({ side: 'right', x: rx, y: ey, w: ew, h: eh, aspect: ew / eh },
+        settings.eyeScaleR, settings.eyeOffXR, settings.eyeOffYR)
     ];
   }
 
-  /* ---------------- render estereo ---------------- */
+  /* ---------------- postproceso (RT + shader) ---------------- */
   var origRender = renderer.render;
 
-  function ensureRT(w, h) {
-    if (rt && rt.width === w && rt.height === h) return;
-    if (rt) rt.dispose();
-    rt = new THREE.WebGLRenderTarget(w, h, {
+  function needsRT() {
+    return settings.distortion > 0.001 ||
+      settings.cropL > 0.001 || settings.cropR > 0.001 ||
+      Math.abs(settings.brightness - 1) > 0.001 ||
+      Math.abs(settings.contrast - 1) > 0.001 ||
+      Math.abs(settings.saturation - 1) > 0.001 ||
+      Math.abs(settings.gamma - 1) > 0.001 ||
+      settings.sharpness > 0.001;
+  }
+
+  function ensureRT(i, w, h) {
+    var t = rts[i];
+    if (t && t.width === w && t.height === h) return t;
+    if (t) t.dispose();
+    t = new THREE.WebGLRenderTarget(w, h, {
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
       format: THREE.RGBAFormat,
@@ -212,53 +410,221 @@
       depthBuffer: true,
       stencilBuffer: false
     });
-    rt.texture.wrapS = THREE.ClampToEdgeWrapping;
-    rt.texture.wrapT = THREE.ClampToEdgeWrapping;
-    rt.texture.generateMipmaps = false;
-    if (quadMat) {
-      quadMat.map = rt.texture;
-      quadMat.needsUpdate = true;
-    }
+    t.texture.wrapS = THREE.ClampToEdgeWrapping;
+    t.texture.wrapT = THREE.ClampToEdgeWrapping;
+    t.texture.generateMipmaps = false;
+    rts[i] = t;
+    return t;
   }
+
+  var VERT = [
+    'varying vec2 vUv;',
+    'void main() {',
+    '  vUv = uv;',
+    '  gl_Position = vec4(position.xy, 0.0, 1.0);',
+    '}'
+  ].join('\n');
+
+  /* Distorsion radial + recorte + brillo/contraste/saturacion/gamma/nitidez.
+     Se aplica por ojo, sobre la imagen ya renderizada en el render target. */
+  var FRAG = [
+    'precision highp float;',
+    'uniform sampler2D tDiffuse;',
+    'uniform vec2 uTexel;',
+    'uniform float uAspect;',
+    'uniform float uK;',
+    'uniform float uCrop;',
+    'uniform float uBright;',
+    'uniform float uContrast;',
+    'uniform float uSat;',
+    'uniform float uGamma;',
+    'uniform float uSharp;',
+    'varying vec2 vUv;',
+    'vec3 adjust(vec3 c) {',
+    '  c *= uBright;',
+    '  c = (c - 0.5) * uContrast + 0.5;',
+    '  float l = dot(c, vec3(0.299, 0.587, 0.114));',
+    '  c = mix(vec3(l), c, uSat);',
+    '  c = pow(max(c, vec3(0.0)), vec3(1.0 / max(uGamma, 0.01)));',
+    '  return clamp(c, 0.0, 1.0);',
+    '}',
+    'void main() {',
+    '  vec2 uv = vUv;',
+    '  uv.x = uCrop + uv.x * (1.0 - 2.0 * uCrop);',
+    '  vec2 c = uv - 0.5;',
+    '  c.x *= uAspect;',
+    '  float r2 = dot(c, c);',
+    '  float s = 1.0 + uK * r2;',
+    '  vec2 duv = vec2(0.5 + (c.x / uAspect) * s, 0.5 + c.y * s);',
+    '  duv = clamp(duv, vec2(0.001), vec2(0.999));',
+    '  vec3 col = texture2D(tDiffuse, duv).rgb;',
+    '  if (uSharp > 0.001) {',
+    '    vec3 blur = texture2D(tDiffuse, duv + vec2(uTexel.x, 0.0)).rgb;',
+    '    blur += texture2D(tDiffuse, duv - vec2(uTexel.x, 0.0)).rgb;',
+    '    blur += texture2D(tDiffuse, duv + vec2(0.0, uTexel.y)).rgb;',
+    '    blur += texture2D(tDiffuse, duv - vec2(0.0, uTexel.y)).rgb;',
+    '    blur *= 0.25;',
+    '    col += (col - blur) * uSharp * 1.5;',
+    '  }',
+    '  gl_FragColor = vec4(adjust(col), 1.0);',
+    '}'
+  ].join('\n');
 
   function buildQuad() {
-    quadBase = new THREE.PlaneGeometry(2, 2, 48, 48);
-    quadUV = quadBase.attributes.uv;
-    quadMat = new THREE.MeshBasicMaterial({
-      map: null, depthTest: false, depthWrite: false
+    quadMat = new THREE.ShaderMaterial({
+      uniforms: {
+        tDiffuse: { value: null },
+        uTexel: { value: new THREE.Vector2(1 / 512, 1 / 512) },
+        uAspect: { value: 1 },
+        uK: { value: 0 },
+        uCrop: { value: 0 },
+        uBright: { value: 1 },
+        uContrast: { value: 1 },
+        uSat: { value: 1 },
+        uGamma: { value: 1 },
+        uSharp: { value: 0 }
+      },
+      vertexShader: VERT,
+      fragmentShader: FRAG,
+      depthTest: false,
+      depthWrite: false
     });
-    quad = new THREE.Mesh(quadBase, quadMat);
+    quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), quadMat);
     quad.frustumCulled = false;
-    quad.position.z = -1;
     quadScene = new THREE.Scene();
     quadScene.add(quad);
-    quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2);
+    quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   }
 
-  /* UVs con distorsion radial: el centro queda igual y los bordes se
-     estiran hacia afuera (aproximacion de la lente de las VR Box). */
-  function updateQuad(aspect, k) {
-    if (!quadUV) return;
-    if (Math.abs(aspect - quadAspect) < 1e-6 && Math.abs(k - quadK) < 1e-6) return;
-    quadAspect = aspect;
-    quadK = k;
-    for (var i = 0; i < quadBase.attributes.position.count; i++) {
-      var px = quadBase.attributes.position.getX(i);
-      var py = quadBase.attributes.position.getY(i);
-      var nx = px * aspect;
-      var r2 = nx * nx + py * py;
-      var s = 1 + k * r2;
-      quadUV.setXY(i, 0.5 + px * 0.5 * s, 0.5 + py * 0.5 * s);
+  function updateQuad(tex, e, crop) {
+    var u = quadMat.uniforms;
+    u.tDiffuse.value = tex;
+    u.uTexel.value.set(1 / Math.max(1, e.w), 1 / Math.max(1, e.h));
+    u.uAspect.value = e.aspect;
+    u.uK.value = settings.distortion;
+    u.uCrop.value = crop;
+    u.uBright.value = settings.brightness;
+    u.uContrast.value = settings.contrast;
+    u.uSat.value = settings.saturation;
+    u.uGamma.value = settings.gamma;
+    u.uSharp.value = settings.sharpness;
+  }
+
+  /* ---------------- escena de prueba ---------------- */
+  function makeLabel(text, color) {
+    var c = document.createElement('canvas');
+    c.width = 256; c.height = 64;
+    var q = c.getContext('2d');
+    q.clearRect(0, 0, 256, 64);
+    q.font = '700 30px system-ui, -apple-system, "Segoe UI", sans-serif';
+    q.textAlign = 'center';
+    q.textBaseline = 'middle';
+    q.fillStyle = color || '#bfe0ff';
+    q.fillText(text, 128, 32);
+    var tex = new THREE.CanvasTexture(c);
+    var spr = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: tex, transparent: true, depthTest: false, depthWrite: false, fog: false
+    }));
+    spr.scale.set(0.7, 0.175, 1);
+    spr.renderOrder = 20;
+    return spr;
+  }
+
+  function buildTestScene() {
+    testScene = new THREE.Scene();
+    testScene.background = new THREE.Color(0x050a14);
+    testCam = new THREE.PerspectiveCamera(62, 1, 0.05, 200);
+    testCam.position.set(0, 0, 0);
+    testCam.rotation.set(0, 0, 0);
+
+    var root = new THREE.Group();
+    testScene.add(root);
+    var mGrid = new THREE.LineBasicMaterial({ color: 0x3f9bff, transparent: true, opacity: 0.85 });
+    var mSoft = new THREE.LineBasicMaterial({ color: 0x2a6bb5, transparent: true, opacity: 0.45 });
+    var mWarm = new THREE.LineBasicMaterial({ color: 0xffc266, transparent: true, opacity: 0.95 });
+
+    function line(a, b, mat) {
+      root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), mat));
     }
-    quadUV.needsUpdate = true;
+    function grid(z, hw, hh, st, mat) {
+      var x, y;
+      for (x = -hw; x <= hw + 1e-6; x += st) line(new THREE.Vector3(x, -hh, z), new THREE.Vector3(x, hh, z), mat);
+      for (y = -hh; y <= hh + 1e-6; y += st) line(new THREE.Vector3(-hw, y, z), new THREE.Vector3(hw, y, z), mat);
+    }
+    function ring(r, z, mat) {
+      var pts = [], i;
+      for (i = 0; i <= 48; i++) {
+        var a = i / 48 * Math.PI * 2;
+        pts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, z));
+      }
+      root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat));
+    }
+
+    /* Cuadricula frontal (2,5 m) y otra lejana (5 m). */
+    grid(-2.5, 2.2, 1.35, 0.22, mGrid);
+    grid(-5.0, 3.2, 1.9, 0.4, mSoft);
+    /* Ejes centrales: referencia de simetria. */
+    line(new THREE.Vector3(0, -1.35, -2.49), new THREE.Vector3(0, 1.35, -2.49), mWarm);
+    line(new THREE.Vector3(-2.2, 0, -2.49), new THREE.Vector3(2.2, 0, -2.49), mWarm);
+    ring(0.5, -2.48, mWarm);
+    ring(1.0, -2.47, mWarm);
+
+    /* Piso en perspectiva. */
+    var z, x;
+    for (x = -3; x <= 3 + 1e-6; x += 0.5) line(new THREE.Vector3(x, -1.35, -0.6), new THREE.Vector3(x, -1.35, -8), mSoft);
+    for (z = -0.6; z >= -8 - 1e-6; z -= 0.5) line(new THREE.Vector3(-3, -1.35, z), new THREE.Vector3(3, -1.35, z), mSoft);
+
+    /* Objetos a distintas profundidades: el parallax se nota de inmediato. */
+    var objs = [
+      [-1.1, -0.55, -1.2, 0xff5c5c, '1 m'],
+      [1.1, -0.55, -1.8, 0x5cff9d, '1,8 m'],
+      [-1.5, 0.45, -3.2, 0x5ca8ff, '3,2 m'],
+      [1.5, 0.45, -4.2, 0xffe45c, '4,2 m'],
+      [0, 0.95, -6.0, 0xff5ce1, '6 m']
+    ];
+    var geo = new THREE.BoxGeometry(0.24, 0.24, 0.24);
+    objs.forEach(function (o) {
+      var mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: o[3] }));
+      mesh.position.set(o[0], o[1], o[2]);
+      mesh.rotation.y = 0.5;
+      root.add(mesh);
+      var lab = makeLabel(o[4], '#dcecff');
+      lab.position.set(o[0], o[1] + 0.28, o[2]);
+      root.add(lab);
+    });
+
+    /* Marcas de borde: si se deforman o se recortan, se ven enseguida. */
+    var edgeMat = new THREE.MeshBasicMaterial({ color: 0xff8a4a });
+    [[-2.1, 1.25], [2.1, 1.25], [-2.1, -1.25], [2.1, -1.25]].forEach(function (p) {
+      var m = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), edgeMat);
+      m.position.set(p[0], p[1], -2.5);
+      root.add(m);
+    });
+
+    /* Centro exacto de la vista (cada lente lo ve en su propio centro). */
+    var center = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 12),
+      new THREE.MeshBasicMaterial({ color: 0xff3b3b }));
+    center.position.set(0, 0, -1.0);
+    root.add(center);
+    var cl = makeLabel('CENTRO', '#ffb3b3');
+    cl.position.set(0, 0.2, -1.0);
+    root.add(cl);
+
+    return testScene;
   }
 
-  function renderStereo(scene, camera) {
+  /* ---------------- render estereo ---------------- */
+  function renderStereo(sceneArg, cameraArg) {
     var t0 = (window.performance || Date).now();
     var canvas = renderer.domElement;
     var W = canvas.width, H = canvas.height;
-    if (!W || !H) return origRender.call(renderer, scene, camera);
+    if (!W || !H) return origRender.call(renderer, sceneArg, cameraArg);
     var pr = renderer.getPixelRatio() || 1;
+
+    var useTest = !!settings.testMode;
+    if (useTest && !testScene) buildTestScene();
+    var scene = useTest ? testScene : sceneArg;
+    var camera = useTest ? testCam : cameraArg;
 
     var stage = computeStage(W, H);
     var eyes = computeEyes(stage);
@@ -286,15 +652,31 @@
     renderer.autoClear = true;
     renderer.clear(true, true, true);
 
-    var fovY = settings.fov;
-    var ipd = settings.ipd / 1000;
+    var fovY = clamp(settings.fov / Math.max(0.2, settings.camZoom), 20, 120);
+    var ipdM = (settings.ipd / 1000) * settings.depth;
     var conv = Math.max(0.2, settings.convergence);
-    var right = new THREE.Vector3(1, 0, 0).applyQuaternion(camQuat);
-    var useRT = settings.distortion > 0.001;
+    var useRT = needsRT();
     var near = camera.near, far = camera.far;
     var topN = near * Math.tan(fovY * Math.PI / 360);
-    var shift = (ipd / 2) * near / conv;
+    var shift = (ipdM / 2) * near / conv;
     var drawn = [];
+
+    /* Inclinacion extra fija (no es head tracking). */
+    var camQuatEff = camQuat.clone();
+    if (Math.abs(settings.camPitch) > 1e-4) {
+      var q = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(1, 0, 0), settings.camPitch * Math.PI / 180);
+      camQuatEff.multiply(q);
+    }
+    var rightV = new THREE.Vector3(1, 0, 0).applyQuaternion(camQuatEff);
+    var upV = new THREE.Vector3(0, 1, 0).applyQuaternion(camQuatEff);
+    var fwdV = new THREE.Vector3(0, 0, -1).applyQuaternion(camQuatEff);
+
+    var basePos = camPos.clone();
+    if (settings.camDist) basePos.addScaledVector(fwdV, -settings.camDist);
+    if (settings.camShiftX) basePos.addScaledVector(rightV, settings.camShiftX);
+    if (settings.camShiftY) basePos.addScaledVector(upV, settings.camShiftY);
+    if (settings.camHeight) basePos.y += settings.camHeight;
 
     if (useRT && !quad) buildQuad();
 
@@ -304,7 +686,8 @@
 
       /* Ojo desplazado sobre el eje derecho de la camara, sin girarla
          (off-axis): las dos vistas miran en la misma direccion. */
-      camera.position.copy(camPos).addScaledVector(right, sign * ipd / 2);
+      camera.position.copy(basePos).addScaledVector(rightV, sign * ipdM / 2);
+      camera.quaternion.copy(camQuatEff);
       var rightN = topN * e.aspect;
       camera.projectionMatrix.makePerspective(
         -rightN - sign * shift, rightN - sign * shift,
@@ -319,8 +702,8 @@
       renderer.setScissor(vx, vy, vw, vh);
 
       if (useRT) {
-        ensureRT(e.w, e.h);
-        renderer.setRenderTarget(rt);
+        var target = ensureRT(i, e.w, e.h);
+        renderer.setRenderTarget(target);
         renderer.setScissorTest(false);
         renderer.setClearColor(0x000000, 1);
         renderer.autoClear = true;
@@ -330,10 +713,11 @@
         renderer.setScissorTest(true);
         renderer.setViewport(vx, vy, vw, vh);
         renderer.setScissor(vx, vy, vw, vh);
-        updateQuad(e.aspect, settings.distortion);
+        updateQuad(target.texture, e, i === 0 ? settings.cropL : settings.cropR);
         origRender.call(renderer, quadScene, quadCam);
         stats.blits++;
         stats.rtFrames++;
+        stats.postFrames++;
       } else {
         renderer.setRenderTarget(null);
         origRender.call(renderer, scene, camera);
@@ -370,7 +754,8 @@
       eyes: drawn,
       base: [camPos.x, camPos.y, camPos.z],
       stage: { x: stage.x, y: stage.y, w: stage.w, h: stage.h, aspect: stage.aspect },
-      path: useRT ? 'rt' : 'direct'
+      path: useRT ? 'rt' : 'direct',
+      test: useTest
     };
 
     /* Barato (una linea de texto) y evita que el panel se quede en
@@ -385,62 +770,141 @@
   };
 
   /* ---------------- interfaz ---------------- */
+  function controlHTML(key) {
+    var c = CTL[key];
+    var id = idOf(key), out = id + '-o';
+    return '<div class="vr-ctl" data-ctl="' + key + '">' +
+      '<div class="vr-ctl-h"><span>' + c.label + '</span><output id="' + out + '">' + fmt(key, settings[key]) + '</output></div>' +
+      '<div class="vr-ctl-r">' +
+        '<button type="button" class="vr-step" data-dec="' + key + '" aria-label="Disminuir ' + c.label + '">−</button>' +
+        '<input id="' + id + '" type="range" min="' + c.min + '" max="' + c.max + '" step="' + c.step + '" value="' + settings[key] + '">' +
+        '<button type="button" class="vr-step" data-inc="' + key + '" aria-label="Aumentar ' + c.label + '">+</button>' +
+      '</div>' +
+      '<small class="vr-help">' + c.help + '</small>' +
+    '</div>';
+  }
+
+  function resetBtn(group, label) {
+    return '<button type="button" class="vr-reset" data-reset="' + group + '">Restaurar ' + label + '</button>';
+  }
+
+  function screenHTML() {
+    return '<section class="vr-tab-panel" data-panel="screen">' +
+      '<label class="vr-field">Perfil de pantalla<select id="vr-profile"></select></label>' +
+      '<div class="vr-custom" id="vr-custom">' +
+        '<label class="vr-field">Ancho (px)<input id="vr-cw" type="number" min="320" max="4096" step="10"></label>' +
+        '<label class="vr-field">Alto (px)<input id="vr-ch" type="number" min="320" max="4096" step="10"></label>' +
+      '</div>' +
+      controlHTML('zoom') + controlHTML('gap') +
+      controlHTML('stageX') + controlHTML('stageY') +
+      controlHTML('aspect') + controlHTML('distortion') +
+      '<label class="vr-field">HUD' +
+        '<select id="vr-hud-mode">' +
+          '<option value="per-eye">Por ojo (VR real)</option>' +
+          '<option value="flat">Plano (una sola vez)</option>' +
+          '<option value="off">Oculto</option>' +
+        '</select></label>' +
+      '<div class="vr-checks">' +
+        '<label><input type="checkbox" id="vr-guides"> Guías (marco y zona segura)</label>' +
+        '<label><input type="checkbox" id="vr-vig"> Viñeta de lentes</label>' +
+      '</div>' +
+      resetBtn('screen', 'Pantalla') +
+    '</section>';
+  }
+
+  function profilesHTML() {
+    return '<section class="vr-tab-panel" data-panel="profiles">' +
+      '<div class="vr-card">' +
+        '<p class="vr-preset">Perfil activo: <b id="vr-preset-now">Predeterminado</b></p>' +
+        '<button type="button" id="vr-preset-default" class="vr-reset">Volver al predeterminado</button>' +
+        '<p class="vr-help">Los perfiles guardan todos los valores de calibración en el teléfono. ' +
+          'Podés tener uno por cada VR Box o por cada persona.</p>' +
+      '</div>' +
+      '<div class="vr-card">' +
+        '<label class="vr-field">Nombre del perfil' +
+          '<input id="vr-cfg-name" type="text" maxlength="24" placeholder="Ej.: VR Box de casa"></label>' +
+        '<button type="button" id="vr-cfg-save" class="vr-primary">Guardar perfil</button>' +
+        '<label class="vr-field">Perfiles guardados<select id="vr-cfg-list"></select></label>' +
+        '<div class="vr-actions">' +
+          '<button type="button" id="vr-cfg-load">Cargar</button>' +
+          '<button type="button" id="vr-cfg-del">Borrar</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="vr-card">' +
+        '<p class="vr-help">Exportar copia el JSON al portapapeles (si el navegador lo permite) y también lo muestra abajo. ' +
+          'Importar acepta ese mismo texto.</p>' +
+        '<div class="vr-actions">' +
+          '<button type="button" id="vr-cfg-export">Exportar</button>' +
+          '<button type="button" id="vr-cfg-import">Importar</button>' +
+        '</div>' +
+        '<textarea id="vr-cfg-text" rows="4" spellcheck="false" placeholder="Pegá aquí el JSON de calibración..."></textarea>' +
+        '<p class="vr-cfg-status" id="vr-cfg-status"></p>' +
+      '</div>' +
+      '<p class="vr-note">La calibración se guarda sola en <b>localStorage</b> (' + STORE_KEY + '). ' +
+        'El head tracking todavía no está implementado: la orientación sigue viniendo del mando Bluetooth.</p>' +
+    '</section>';
+  }
+
   function buildUI() {
     var launch = document.createElement('button');
     launch.id = 'vr-launch';
     launch.type = 'button';
-    launch.title = 'Abrir VR BOX PREVIEW (tecla V)';
+    launch.title = 'Abrir calibración VR (tecla V)';
     launch.innerHTML = '<span>VR</span> BOX';
-    launch.setAttribute('aria-label', 'Abrir VR BOX PREVIEW');
+    launch.setAttribute('aria-label', 'Abrir calibración VR');
     document.body.appendChild(launch);
     ui.launch = launch;
+
+    var tabs = TABS.map(function (t, i) {
+      return '<button type="button" data-tab="' + t[0] + '"' + (i === 0 ? ' class="on"' : '') + '>' + t[1] + '</button>';
+    }).join('');
 
     var panel = document.createElement('div');
     panel.id = 'vr-panel';
     panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', 'VR BOX PREVIEW');
+    panel.setAttribute('aria-label', 'Calibración VR');
     panel.innerHTML =
-      '<header><b>VR BOX <span>PREVIEW</span></b><i id="vr-ver"></i>' +
+      '<header><b>VR <span>CALIBRACIÓN</span></b><i id="vr-ver"></i>' +
         '<button id="vr-close" type="button" aria-label="Cerrar el panel">✕</button></header>' +
+      '<div class="vr-quick">' +
+        '<label class="vr-switch"><input type="checkbox" id="vr-test"><span>Modo prueba</span></label>' +
+        '<button id="vr-exit" type="button" class="vr-danger">Salir (Esc)</button>' +
+      '</div>' +
+      '<nav class="vr-tabs" id="vr-tabs" aria-label="Categorías">' + tabs + '</nav>' +
       '<div class="vr-body">' +
-        '<label class="vr-field">Perfil de pantalla' +
-          '<select id="vr-profile"></select></label>' +
-        '<div class="vr-custom" id="vr-custom">' +
-          '<label class="vr-field">Ancho (px)<input id="vr-cw" type="number" min="320" max="4096" step="10"></label>' +
-          '<label class="vr-field">Alto (px)<input id="vr-ch" type="number" min="320" max="4096" step="10"></label>' +
-        '</div>' +
-        '<label class="vr-field">IPD <output id="vr-ipd-o"></output>' +
-          '<input id="vr-ipd" type="range" min="50" max="75" step="1"></label>' +
-        '<label class="vr-field">Convergencia <output id="vr-conv-o"></output>' +
-          '<input id="vr-conv" type="range" min="0.5" max="10" step="0.1"></label>' +
-        '<label class="vr-field">Campo de visión <output id="vr-fov-o"></output>' +
-          '<input id="vr-fov" type="range" min="40" max="100" step="1"></label>' +
-        '<label class="vr-field">Tamaño de imagen <output id="vr-zoom-o"></output>' +
-          '<input id="vr-zoom" type="range" min="0.5" max="1" step="0.01"></label>' +
-        '<label class="vr-field">Separación central <output id="vr-gap-o"></output>' +
-          '<input id="vr-gap" type="range" min="0" max="0.1" step="0.005"></label>' +
-        '<label class="vr-field">Distorsión de lente <output id="vr-dist-o"></output>' +
-          '<input id="vr-dist" type="range" min="0" max="0.3" step="0.01"></label>' +
-        '<label class="vr-field">HUD' +
-          '<select id="vr-hud-mode">' +
-            '<option value="per-eye">Por ojo (VR real)</option>' +
-            '<option value="flat">Plano (una sola vez)</option>' +
-            '<option value="off">Oculto</option>' +
-          '</select></label>' +
-        '<div class="vr-checks">' +
-          '<label><input type="checkbox" id="vr-guides"> Guías (marco y safe area)</label>' +
-          '<label><input type="checkbox" id="vr-vig"> Viñeta de lentes</label>' +
-        '</div>' +
+        '<section class="vr-tab-panel on" data-panel="cam">' +
+          GROUPS.cam.keys.map(controlHTML).join('') + resetBtn('cam', 'Cámara') +
+        '</section>' +
+        '<section class="vr-tab-panel" data-panel="stereo">' +
+          GROUPS.stereo.keys.map(controlHTML).join('') + resetBtn('stereo', '3D') +
+          '<p class="vr-note">La convergencia define dónde coinciden las dos imágenes. ' +
+            'La intensidad 3D multiplica el efecto; 0 deja una vista plana.</p>' +
+        '</section>' +
+        '<section class="vr-tab-panel" data-panel="left">' +
+          GROUPS.left.keys.map(controlHTML).join('') + resetBtn('left', 'lente izquierda') +
+        '</section>' +
+        '<section class="vr-tab-panel" data-panel="right">' +
+          GROUPS.right.keys.map(controlHTML).join('') + resetBtn('right', 'lente derecha') +
+        '</section>' +
+        screenHTML() +
+        '<section class="vr-tab-panel" data-panel="image">' +
+          GROUPS.image.keys.map(controlHTML).join('') + resetBtn('image', 'Imagen') +
+          '<p class="vr-note">Los ajustes de imagen activan el postproceso. Con todo en neutro ' +
+            'el modo VR vuelve al camino directo, sin costo extra.</p>' +
+        '</section>' +
+        profilesHTML() +
+      '</div>' +
+      '<div class="vr-foot">' +
         '<button id="vr-toggle" class="vr-primary" type="button">Activar VR</button>' +
         '<div class="vr-actions">' +
           '<button id="vr-fs" type="button">Pantalla completa</button>' +
           '<button id="vr-hide" type="button">Ocultar panel (H)</button>' +
-          '<button id="vr-exit" type="button">Salir (Esc)</button>' +
+          '<button id="vr-reset-all" type="button" class="vr-danger">Restablecer todo</button>' +
         '</div>' +
         '<p class="vr-info" id="vr-info"></p>' +
-        '<p class="vr-note">Estéreo real: dos frustums asimétricos (off-axis) sobre la cámara del juego. ' +
-          'El HUD y los menús se dibujan una vez por ojo: cada lente ve la interfaz completa. ' +
-          'Con mando conectado se ocultan los controles táctiles; si se desconecta, vuelven.</p>' +
+        '<p class="vr-note">Estéreo real con frustums asimétricos. El HUD y los menús se dibujan ' +
+          'una vez por ojo. El movimiento y la cámara siguen saliendo del mando Bluetooth: ' +
+          'no hay seguimiento de cabeza en esta versión.</p>' +
       '</div>';
     document.body.appendChild(panel);
     ui.panel = panel;
@@ -464,6 +928,19 @@
     ui.vigL = vl;
     ui.vigR = vr;
 
+    /* Referencias del modo prueba: centro de cada lente y simetria. */
+    var test = document.createElement('div');
+    test.id = 'vr-test-overlay';
+    test.innerHTML =
+      '<div class="vr-test-eye" id="vr-test-eye-l"><i></i><b>IZQ</b></div>' +
+      '<div class="vr-test-eye" id="vr-test-eye-r"><i></i><b>DER</b></div>' +
+      '<div class="vr-test-sym" id="vr-test-sym"></div>';
+    document.body.appendChild(test);
+    ui.testOverlay = test;
+    ui.testEyeL = test.querySelector('#vr-test-eye-l');
+    ui.testEyeR = test.querySelector('#vr-test-eye-r');
+    ui.testSym = test.querySelector('#vr-test-sym');
+
     /* Aviso de orientacion: dentro de las VR Box el telefono va horizontal. */
     var rot = document.createElement('div');
     rot.id = 'vr-rotate';
@@ -482,7 +959,7 @@
 
     var sel = panel.querySelector('#vr-profile');
     for (var key in PROFILES) {
-      if (!Object.prototype.hasOwnProperty.call(PROFILES, key)) continue;
+      if (!has(PROFILES, key)) continue;
       var o = document.createElement('option');
       o.value = key;
       o.textContent = PROFILES[key].label;
@@ -493,12 +970,6 @@
     ui.custom = panel.querySelector('#vr-custom');
     ui.cw = panel.querySelector('#vr-cw');
     ui.ch = panel.querySelector('#vr-ch');
-    ui.ipd = panel.querySelector('#vr-ipd');
-    ui.conv = panel.querySelector('#vr-conv');
-    ui.fov = panel.querySelector('#vr-fov');
-    ui.zoom = panel.querySelector('#vr-zoom');
-    ui.gap = panel.querySelector('#vr-gap');
-    ui.dist = panel.querySelector('#vr-dist');
     ui.guidesChk = panel.querySelector('#vr-guides');
     ui.hudMode = panel.querySelector('#vr-hud-mode');
     ui.vigChk = panel.querySelector('#vr-vig');
@@ -506,6 +977,25 @@
     ui.info = panel.querySelector('#vr-info');
     ui.ver = panel.querySelector('#vr-ver');
     ui.ver.textContent = VERSION;
+    ui.testChk = panel.querySelector('#vr-test');
+    ui.presetNow = panel.querySelector('#vr-preset-now');
+    ui.cfgName = panel.querySelector('#vr-cfg-name');
+    ui.cfgList = panel.querySelector('#vr-cfg-list');
+    ui.cfgText = panel.querySelector('#vr-cfg-text');
+    ui.cfgStatus = panel.querySelector('#vr-cfg-status');
+    ui.tabs = panel.querySelector('#vr-tabs');
+
+    /* Todos los sliders y sus botones de precision. */
+    Object.keys(CTL).forEach(function (k) {
+      var input = panel.querySelector('#' + idOf(k));
+      if (input) {
+        input.addEventListener('input', function () { set(k, Number(input.value)); });
+      }
+      var dec = panel.querySelector('[data-dec="' + k + '"]');
+      var inc = panel.querySelector('[data-inc="' + k + '"]');
+      if (dec) dec.addEventListener('click', function () { step(k, -1); });
+      if (inc) inc.addEventListener('click', function () { step(k, 1); });
+    });
 
     launch.addEventListener('click', function (e) {
       e.preventDefault();
@@ -529,69 +1019,167 @@
       e.preventDefault();
       toggleFullscreen();
     });
+    panel.querySelector('#vr-reset-all').addEventListener('click', function (e) {
+      e.preventDefault();
+      reset();
+      setStatus('Se restauraron todos los valores.');
+    });
+    panel.querySelector('#vr-preset-default').addEventListener('click', function (e) {
+      e.preventDefault();
+      reset();
+      setStatus('Perfil predeterminado restaurado.');
+    });
 
     sel.addEventListener('change', function () { set('profile', sel.value); });
     ui.cw.addEventListener('input', function () { set('customW', ui.cw.value); });
     ui.ch.addEventListener('input', function () { set('customH', ui.ch.value); });
-    bindRange(ui.ipd, 'ipd');
-    bindRange(ui.conv, 'convergence');
-    bindRange(ui.fov, 'fov');
-    bindRange(ui.zoom, 'zoom');
-    bindRange(ui.gap, 'gap');
-    bindRange(ui.dist, 'distortion');
     ui.guidesChk.addEventListener('change', function () { set('guides', ui.guidesChk.checked); });
     ui.hudMode.addEventListener('change', function () { set('hudMode', ui.hudMode.value); });
     ui.vigChk.addEventListener('change', function () { set('vignette', ui.vigChk.checked); });
+    ui.testChk.addEventListener('change', function () { set('testMode', ui.testChk.checked); });
     ui.toggle.addEventListener('click', function (e) {
       e.preventDefault();
       if (active) disable(); else enable();
+    });
+
+    /* Pestañas. */
+    ui.tabs.addEventListener('click', function (e) {
+      var b = e.target && e.target.closest ? e.target.closest('[data-tab]') : null;
+      if (!b) return;
+      e.preventDefault();
+      showTab(b.getAttribute('data-tab'));
+    });
+
+    /* Restaurar por categoria. */
+    panel.querySelectorAll('[data-reset]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.preventDefault();
+        var g = b.getAttribute('data-reset');
+        resetGroup(g);
+        setStatus('Se restauró ' + (GROUPS[g] ? GROUPS[g].label : g) + '.');
+      });
+    });
+
+    /* Perfiles guardados. */
+    panel.querySelector('#vr-cfg-save').addEventListener('click', function (e) {
+      e.preventDefault();
+      var name = ui.cfgName.value;
+      if (!saveConfig(name)) { setStatus('Escribí un nombre para guardar.', true); return; }
+      ui.cfgName.value = '';
+      syncConfigList(name.trim());
+      setStatus('Perfil “' + name.trim() + '” guardado.');
+    });
+    panel.querySelector('#vr-cfg-load').addEventListener('click', function (e) {
+      e.preventDefault();
+      var name = ui.cfgList.value;
+      if (!name) { setStatus('Elegí un perfil guardado.', true); return; }
+      if (loadConfig(name)) setStatus('Perfil “' + name + '” cargado.');
+      else setStatus('No se pudo cargar ese perfil.', true);
+    });
+    panel.querySelector('#vr-cfg-del').addEventListener('click', function (e) {
+      e.preventDefault();
+      var name = ui.cfgList.value;
+      if (!name) { setStatus('Elegí un perfil guardado.', true); return; }
+      deleteConfig(name);
+      syncConfigList();
+      setStatus('Perfil “' + name + '” borrado.');
+    });
+    panel.querySelector('#vr-cfg-export').addEventListener('click', function (e) {
+      e.preventDefault();
+      var text = exportConfig();
+      ui.cfgText.value = text;
+      var done = function () { setStatus('Configuración exportada.'); };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, done);
+          return;
+        }
+      } catch (err) { /* sin portapapeles */ }
+      done();
+    });
+    panel.querySelector('#vr-cfg-import').addEventListener('click', function (e) {
+      e.preventDefault();
+      if (importConfig(ui.cfgText.value)) setStatus('Configuración importada.');
+      else setStatus('El texto no es una configuración válida.', true);
     });
 
     /* Los controles del panel no deben mover al personaje. */
     panel.addEventListener('keydown', function (e) { e.stopPropagation(); });
     panel.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
 
-    /* El boton VR esta disponible tambien en iPhone: es la via de entrada
-       al modo y, con el telefono dentro de las VR Box, la salida segura. */
     syncUI();
+    syncConfigList();
     addPauseEntry();
   }
 
-  function bindRange(input, key) {
-    input.addEventListener('input', function () { set(key, Number(input.value)); });
+  function showTab(name) {
+    if (!ui.panel) return;
+    var tabs = ui.panel.querySelectorAll('[data-tab]');
+    var panels = ui.panel.querySelectorAll('[data-panel]');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].getAttribute('data-tab') === name);
+    for (var j = 0; j < panels.length; j++) panels[j].classList.toggle('on', panels[j].getAttribute('data-panel') === name);
+    ui.panel.scrollTop = 0;
+  }
+
+  function setStatus(text, bad) {
+    if (!ui.cfgStatus) return;
+    ui.cfgStatus.textContent = text || '';
+    ui.cfgStatus.classList.toggle('bad', !!bad);
+  }
+
+  function step(key, dir) {
+    var c = CTL[key];
+    if (!c) return;
+    var v = Number(settings[key]) + dir * c.step;
+    set(key, Math.round(v / c.step) * c.step);
   }
 
   function syncUI() {
     if (!ui.panel) return;
+    Object.keys(CTL).forEach(function (k) {
+      var input = ui.panel.querySelector('#' + idOf(k));
+      var out = ui.panel.querySelector('#' + idOf(k) + '-o');
+      if (input) input.value = settings[k];
+      if (out) out.textContent = fmt(k, settings[k]);
+    });
     ui.profile.value = settings.profile;
     ui.custom.style.display = settings.profile === 'custom' ? '' : 'none';
     ui.cw.value = settings.customW;
     ui.ch.value = settings.customH;
-    ui.ipd.value = settings.ipd;
-    ui.conv.value = settings.convergence;
-    ui.fov.value = settings.fov;
-    ui.zoom.value = settings.zoom;
-    ui.gap.value = settings.gap;
-    ui.dist.value = settings.distortion;
     ui.guidesChk.checked = settings.guides;
     ui.hudMode.value = settings.hudMode;
     ui.vigChk.checked = settings.vignette;
-    ui.panel.querySelector('#vr-ipd-o').textContent = Math.round(settings.ipd) + ' mm';
-    ui.panel.querySelector('#vr-conv-o').textContent = settings.convergence.toFixed(1) + ' m';
-    ui.panel.querySelector('#vr-fov-o').textContent = Math.round(settings.fov) + '°';
-    ui.panel.querySelector('#vr-zoom-o').textContent = Math.round(settings.zoom * 100) + ' %';
-    ui.panel.querySelector('#vr-gap-o').textContent = Math.round(settings.gap * 100) + ' %';
-    ui.panel.querySelector('#vr-dist-o').textContent = Math.round(settings.distortion * 100) + ' %';
+    ui.testChk.checked = settings.testMode;
     ui.toggle.textContent = active ? 'Salir de VR' : 'Activar VR';
     ui.toggle.classList.toggle('on', active);
     document.body.classList.toggle('vr-hud-off', active && settings.hudMode === 'off');
-    document.body.classList.toggle('vr-hud-mirror', active && settings.hudMode === 'per-eye');
+    document.body.classList.toggle('vr-hud-mirror', active && settings.hudMode === 'per-eye' && !settings.testMode);
     document.body.classList.toggle('vr-vignette', active && settings.vignette);
-    ui.guides.classList.toggle('on', active && settings.guides);
+    document.body.classList.toggle('vr-test', active && settings.testMode);
+    ui.guides.classList.toggle('on', active && (settings.guides || settings.testMode));
+    updatePresetLabel();
     if (active) {
       updateInfo();
       requestAnimationFrame(layoutOverlays);
     }
+  }
+
+  function changedCount() {
+    var n = 0, k;
+    for (k in DEFAULTS) {
+      if (!has(DEFAULTS, k)) continue;
+      if (k === 'testMode' || k === 'guides' || k === 'vignette') continue;
+      if (typeof DEFAULTS[k] === 'number') {
+        if (Math.abs(settings[k] - DEFAULTS[k]) > 1e-9) n++;
+      } else if (settings[k] !== DEFAULTS[k]) n++;
+    }
+    return n;
+  }
+
+  function updatePresetLabel() {
+    if (!ui.presetNow) return;
+    var n = changedCount();
+    ui.presetNow.textContent = n ? 'Personalizado (' + n + ' cambio' + (n === 1 ? '' : 's') + ')' : 'Predeterminado';
   }
 
   function updateInfo() {
@@ -603,8 +1191,9 @@
       'Ojos: ' + Math.round(e.w) + '×' + Math.round(e.h) + ' px · ' +
       'etapa ' + Math.round(st.w) + '×' + Math.round(st.h) + ' · ' +
       'IPD ' + Math.round(settings.ipd) + ' mm · conv ' + settings.convergence.toFixed(1) + ' m · ' +
-      'FOV ' + Math.round(settings.fov) + '° · ' +
-      (last.path === 'rt' ? 'distorsión activa' : 'sin distorsión');
+      'FOV ' + Math.round(settings.fov / Math.max(0.2, settings.camZoom)) + '° · ' +
+      (settings.testMode ? 'modo prueba · ' : '') +
+      (last.path === 'rt' ? 'postproceso activo' : 'paso directo');
   }
 
   function layoutOverlays() {
@@ -633,7 +1222,19 @@
       v[i].style.height = (eyes[i].h / pr) + 'px';
     }
 
-    var perEye = settings.hudMode === 'per-eye';
+    /* Modo prueba: centro de cada lente y eje de simetria. */
+    var tEyes = [ui.testEyeL, ui.testEyeR];
+    for (var t = 0; t < 2; t++) {
+      tEyes[t].style.left = (eyes[t].x / pr) + 'px';
+      tEyes[t].style.top = (eyes[t].y / pr) + 'px';
+      tEyes[t].style.width = (eyes[t].w / pr) + 'px';
+      tEyes[t].style.height = (eyes[t].h / pr) + 'px';
+    }
+    ui.testSym.style.left = (stage.x + stage.w / 2) / pr + 'px';
+    ui.testSym.style.top = sy + 'px';
+    ui.testSym.style.height = sh + 'px';
+
+    var perEye = settings.hudMode === 'per-eye' && !settings.testMode;
     var hud = document.getElementById('rg-hud');
     var pause = document.getElementById('ras-pause');
     var end = document.getElementById('rg-end');
@@ -641,7 +1242,7 @@
     syncMirror('pause', pause, !!(pause && !pause.hidden), stage, eyes, pr);
     syncMirror('end', end, !!(end && end.classList.contains('on')), stage, eyes, pr);
 
-    placeOverlays(sx, sy, sw, sh, W / pr, H / pr, !perEye);
+    placeOverlays(sx, sy, sw, sh, W / pr, H / pr, !perEye && !settings.testMode);
 
     /* El boton VR se mueve dentro del ojo izquierdo cuando el modo esta
        activo: es la salida segura y debe verse entero en una lente. */
@@ -652,8 +1253,8 @@
       ui.launch.style.bottom = 'auto';
     }
     if (ui.panel) {
-      ui.panel.style.maxWidth = Math.max(220, Math.min(340, sw - 24)) + 'px';
-      ui.panel.style.maxHeight = Math.max(160, sh - 24) + 'px';
+      ui.panel.style.maxWidth = Math.max(260, Math.min(380, sw - 24)) + 'px';
+      ui.panel.style.maxHeight = Math.max(180, sh - 24) + 'px';
       ui.panel.style.top = (sy + 12) + 'px';
       ui.panel.style.right = ((W / pr) - (stage.x + stage.w) / pr + 12) + 'px';
     }
@@ -870,6 +1471,7 @@
     document.body.classList.remove('vr-hud-off');
     document.body.classList.remove('vr-hud-mirror');
     document.body.classList.remove('vr-vignette');
+    document.body.classList.remove('vr-test');
     ui.panel.classList.remove('on');
     ui.guides.classList.remove('on');
     if (ui.launch) ui.launch.classList.remove('on');
@@ -894,6 +1496,7 @@
     ui.panel.classList.add('on');
     if (ui.launch) ui.launch.classList.add('on');
     syncUI();
+    syncConfigList();
   }
 
   function hidePanel() {
@@ -913,7 +1516,8 @@
       key = 'hudMode';
       value = value === false ? 'off' : 'flat';
     }
-    if (!Object.prototype.hasOwnProperty.call(DEFAULTS, key)) return false;
+    if (!has(DEFAULTS, key)) return false;
+    if (key === 'testMode' || key === 'guides' || key === 'vignette') value = !!value;
     settings[key] = value;
     settings = sanitize(settings);
     save();
@@ -928,6 +1532,106 @@
     save();
     syncUI();
     return true;
+  }
+
+  function resetGroup(name) {
+    var g = GROUPS[name];
+    if (!g || !g.keys.length) return false;
+    for (var i = 0; i < g.keys.length; i++) {
+      var k = g.keys[i];
+      if (has(DEFAULTS, k)) settings[k] = DEFAULTS[k];
+    }
+    settings = sanitize(settings);
+    save();
+    syncUI();
+    return true;
+  }
+
+  /* ---------------- perfiles de calibracion ---------------- */
+  function readConfigs() {
+    var o = readStore(CFG_KEY);
+    return o && typeof o === 'object' && !Array.isArray(o) ? o : {};
+  }
+
+  function writeConfigs(o) {
+    try {
+      if (window.localStorage) localStorage.setItem(CFG_KEY, JSON.stringify(o));
+    } catch (e) { /* sin persistencia */ }
+  }
+
+  function listConfigs() {
+    var o = readConfigs();
+    return Object.keys(o).sort(function (a, b) { return a.localeCompare(b); });
+  }
+
+  function syncConfigList(selectName) {
+    if (!ui.cfgList) return;
+    var names = listConfigs();
+    var cur = selectName !== undefined ? selectName : ui.cfgList.value;
+    ui.cfgList.innerHTML = '';
+    var o = document.createElement('option');
+    o.value = '';
+    o.textContent = names.length ? '— Elegí un perfil —' : '— No hay perfiles guardados —';
+    ui.cfgList.appendChild(o);
+    names.forEach(function (n) {
+      var opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n;
+      ui.cfgList.appendChild(opt);
+    });
+    if (cur && names.indexOf(cur) >= 0) ui.cfgList.value = cur;
+  }
+
+  function saveConfig(name) {
+    name = String(name || '').trim().slice(0, 24);
+    if (!name) return false;
+    var o = readConfigs();
+    o[name] = JSON.parse(JSON.stringify(settings));
+    writeConfigs(o);
+    syncConfigList(name);
+    return true;
+  }
+
+  function loadConfig(name) {
+    var o = readConfigs();
+    if (!name || !o[name]) return false;
+    settings = sanitize(o[name]);
+    save();
+    syncUI();
+    return true;
+  }
+
+  function deleteConfig(name) {
+    var o = readConfigs();
+    if (!name || !has(o, name)) return false;
+    delete o[name];
+    writeConfigs(o);
+    syncConfigList();
+    return true;
+  }
+
+  function exportConfig() {
+    return JSON.stringify({
+      app: 'RASMATIC Lugar 3D',
+      kind: 'vr-calibration',
+      version: VERSION,
+      saved: new Date().toISOString(),
+      settings: settings
+    }, null, 2);
+  }
+
+  function importConfig(text) {
+    try {
+      var d = JSON.parse(String(text || ''));
+      var src = d && d.settings ? d.settings : d;
+      if (!src || typeof src !== 'object') return false;
+      settings = sanitize(src);
+      save();
+      syncUI();
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   function toggleFullscreen() {
@@ -970,6 +1674,11 @@
       togglePanel();
       return;
     }
+    if ((key === 't' || key === 'T') && !isFormTarget(e.target)) {
+      e.preventDefault();
+      set('testMode', !settings.testMode);
+      return;
+    }
     if (key === ' ' || key === 'Spacebar') {
       if (isFormTarget(e.target)) return;
       e.preventDefault();
@@ -997,6 +1706,13 @@
     profile: profile,
     set: set,
     reset: reset,
+    resetGroup: resetGroup,
+    saveConfig: saveConfig,
+    loadConfig: loadConfig,
+    deleteConfig: deleteConfig,
+    listConfigs: listConfigs,
+    exportConfig: exportConfig,
+    importConfig: importConfig,
     toggleFullscreen: toggleFullscreen,
     panel: function (open) {
       if (open === undefined) return togglePanel();
@@ -1013,11 +1729,15 @@
         mobile: MOBILE,
         forced: FORCE,
         settings: JSON.parse(JSON.stringify(settings)),
+        preset: changedCount() ? 'custom' : 'default',
+        changes: changedCount(),
+        configs: listConfigs(),
         canvas: { width: canvas.width, height: canvas.height, cssW: canvas.width / pr, cssH: canvas.height / pr, pixelRatio: pr },
         stage: last.stage,
         eyes: last.eyes,
         base: last.base,
         path: last.path,
+        test: last.test,
         stats: JSON.parse(JSON.stringify(stats)),
         panelOpen: !!(ui.panel && ui.panel.classList.contains('on')),
         hud: settings.hudMode !== 'off',
