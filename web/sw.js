@@ -1,6 +1,6 @@
 /* Generado por tools/build-ios.js - no editar a mano.
-   Build: f9aa34db15e6f60a */
-const CACHE = 'rasmatic-f9aa34db15e6f60a';
+   Build: f4d67cf99fdeb382 */
+const CACHE = 'rasmatic-f4d67cf99fdeb382';
 const PRECACHE = [
   "./",
   "./index.html",
@@ -15,6 +15,8 @@ const PRECACHE = [
   "./ios/ios-bridge.js",
   "./vr/vr-preview.css",
   "./vr/vr-preview.js",
+  "./net/vr-link.css",
+  "./net/vr-link.js",
   "./fonts/fonts.css",
   "./fonts/google-fonts.css",
   "./icons/icon-180.png",

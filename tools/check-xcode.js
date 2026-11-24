@@ -287,6 +287,11 @@ check(/rel="manifest"/.test(indexHtml), 'enlace al manifest');
 check(/ios\/ios-bridge\.js/.test(indexHtml), 'puente iOS incluido');
 check(/vr\/vr-preview\.js/.test(indexHtml), 'modo VR BOX incluido');
 check(/vr\/vr-preview\.css/.test(indexHtml), 'estilos del modo VR incluidos');
+check(/net\/vr-link\.js/.test(indexHtml), 'enlace con el calibrador de Windows incluido');
+check(/net\/vr-link\.css/.test(indexHtml), 'estilos del enlace con Windows incluidos');
+check(indexHtml.indexOf('vr/vr-preview.js') > 0 &&
+  indexHtml.indexOf('net/vr-link.js') > indexHtml.indexOf('vr/vr-preview.js'),
+  'orden de scripts: modo VR antes del enlace con Windows');
 check(indexHtml.indexOf('ios/ios-bridge.js') > 0 &&
   indexHtml.indexOf('vr/vr-preview.js') > indexHtml.indexOf('ios/ios-bridge.js'),
   'orden de scripts: puente iOS antes del modo VR');

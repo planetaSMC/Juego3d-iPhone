@@ -28,7 +28,7 @@ la recarga **sin conexión** y guarda capturas en `docs/evidencias/`.
 ### Resultado
 
 ```
-21/21 casos superados.
+23/23 casos superados.
 Consola sin errores.
 Prueba sin conexion:
   ok   la app carga sin conexion desde el service worker
@@ -58,6 +58,8 @@ Prueba sin conexion:
 | T19 | Metadatos iOS | `viewport-fit=cover`, `maximum-scale`, manifest, icono Apple, cero rutas `android/` | ok |
 | T20 | Sin botón “Salir” inútil | el botón de salir del menú de pausa está oculto | ok |
 | T21 | Service worker | registrado y activo bajo http | ok |
+| T22 | Dificultad del bot (API) | `setDifficulty('facil')` aplica 12 s / 0,75× y persiste en `localStorage` | ok |
+| T23 | Panel de opciones | el botón ⚙ abre el panel, hay 3 niveles, se marca el elegido y «LISTO» lo cierra | ok |
 | — | Sin conexión | con la red cortada, la página recarga y el juego arranca desde la caché | ok |
 | — | Horizontal | a 844×390 el canvas ocupa la ventana y no hay scroll en ningún eje | ok |
 
@@ -88,6 +90,11 @@ mouse con eventos reales, la entrada directa `?vr=1` y guarda capturas.
   ok   el modo VR arranca solo con ?vr=1
 Consola sin errores.
 ```
+
+El script espera a que el juego termine `boot()` (`window.RasmaticArena`) y
+corta con error si Chrome cierra la conexión CDP, en vez de quedar colgado.
+Cada caso se imprime (`[vr] ok/FAIL`) a medida que corre, así un cuelgue se
+puede ubicar en el caso exacto.
 
 Cubre: activar/desactivar, dos vistas con parallax real (43,5 % de píxeles
 distintos), separación ocular de 64 mm, frustums off-axis opuestos, IPD 50–75

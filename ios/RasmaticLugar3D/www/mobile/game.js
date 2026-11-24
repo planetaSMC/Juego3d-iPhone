@@ -18,13 +18,28 @@
   /* ---------------- Configuración ajustable ---------------- */
   const CFG = {
     duration: 180,      // duración de la partida (s)
-    botInterval: 6,     // espera entre ciclos del bot (s)
-    botFirst: 2.5,      // primer ciclo del bot (s)
+    botInterval: 9,     // espera entre ciclos del bot (s)
+    botFirst: 3.5,      // primer ciclo del bot (s)
+    botSpeed: 1,        // multiplicador de velocidad del bot
     stock: 8,           // unidades por color y por lado
     pickup: 2.4,        // radio para recoger un medicamento
     deliver: 3.4,       // radio para entregar en el mostrador
     talk: 7.5           // radio para hablar con el encargado
   };
+
+  /* Dificultad del bot: intervalo entre clientes, primer ciclo y
+     velocidad de los movimientos. «Normal» ya es más lento que el
+     valor histórico (6 s) para que la partida sea más justa. */
+  const DIFF_KEY = 'rasmatic.botDifficulty';
+  const DIFFICULTY = {
+    facil: { label: 'Fácil', interval: 12, first: 4.0, speed: 0.75,
+      note: 'El bot atiende cada 12 s y se mueve más lento.' },
+    normal: { label: 'Normal', interval: 9, first: 3.5, speed: 1,
+      note: 'El bot atiende cada 9 s.' },
+    dificil: { label: 'Difícil', interval: 6, first: 2.5, speed: 1.25,
+      note: 'El bot atiende cada 6 s y se mueve más rápido.' }
+  };
+  let difficulty = 'normal';
 
   const COLORS = [
     { id: 'rojo',     name: 'ROJO',     css: '#e8453c', hex: 0xe8453c },
@@ -86,6 +101,57 @@
   const ease = function (u) { u = clamp01(u); return u * u * (3 - 2 * u); };
   const lerp = function (a, b, u) { return a + (b - a) * u; };
   const dist = function (ax, az, bx, bz) { return Math.hypot(ax - bx, az - bz); };
+
+  /* ---------------- Dificultad del bot ---------------- */
+  function botTime(sec) { return sec / (CFG.botSpeed || 1); }
+
+  function paintDifficulty() {
+    if (!nodes.opts) return;
+    const d = DIFFICULTY[difficulty];
+    const btns = nodes.opts.querySelectorAll('[data-diff]');
+    for (let i = 0; i < btns.length; i++) {
+      const on = btns[i].dataset.diff === difficulty;
+      btns[i].classList.toggle('on', on);
+      btns[i].setAttribute('aria-checked', on ? 'true' : 'false');
+    }
+    if (nodes.diffNote) nodes.diffNote.textContent = d.note;
+  }
+
+  function applyDifficulty(id, save) {
+    const key = Object.prototype.hasOwnProperty.call(DIFFICULTY, id) ? id : 'normal';
+    const d = DIFFICULTY[key];
+    difficulty = key;
+    CFG.botInterval = d.interval;
+    CFG.botFirst = d.first;
+    CFG.botSpeed = d.speed;
+    if (save) {
+      try { localStorage.setItem(DIFF_KEY, key); } catch (e) { /* modo privado */ }
+    }
+    paintDifficulty();
+    return key;
+  }
+
+  function loadDifficulty() {
+    let id = 'normal';
+    try { id = localStorage.getItem(DIFF_KEY) || 'normal'; } catch (e) { /* nada */ }
+    applyDifficulty(id, false);
+  }
+
+  function setOptsVisible() {
+    if (!nodes.optsBtn) return;
+    nodes.optsBtn.hidden = state !== 'idle';
+    if (state !== 'idle' && nodes.opts) nodes.opts.classList.remove('on');
+  }
+
+  function openOpts() {
+    if (!nodes.opts) return;
+    paintDifficulty();
+    nodes.opts.classList.add('on');
+  }
+
+  function closeOpts() {
+    if (nodes.opts) nodes.opts.classList.remove('on');
+  }
 
   /* ---------------- Etiquetas 3D ---------------- */
   function makeTag(w, h) {
@@ -455,6 +521,56 @@
     });
     document.body.appendChild(act);
 
+    const optsBtn = document.createElement('button');
+    optsBtn.id = 'rg-opts-btn';
+    optsBtn.type = 'button';
+    optsBtn.title = 'Opciones';
+    optsBtn.setAttribute('aria-label', 'Opciones de dificultad');
+    optsBtn.setAttribute('aria-haspopup', 'dialog');
+    optsBtn.textContent = '⚙';
+    optsBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      if (nodes.opts && nodes.opts.classList.contains('on')) closeOpts();
+      else openOpts();
+    });
+    document.body.appendChild(optsBtn);
+
+    const opts = document.createElement('div');
+    opts.id = 'rg-opts';
+    opts.setAttribute('role', 'dialog');
+    opts.setAttribute('aria-label', 'Dificultad del bot');
+    opts.innerHTML =
+      '<div class="rg-opts-card">' +
+        '<h2>DIFICULTAD DEL BOT</h2>' +
+        '<p class="rg-opts-sub">El bot atiende clientes solo. Elegí qué tan rápido juega.</p>' +
+        '<div class="rg-diff" role="radiogroup" aria-label="Dificultad">' +
+          '<button type="button" role="radio" data-diff="facil">' +
+            '<b>Fácil</b><small>Lento</small>' +
+          '</button>' +
+          '<button type="button" role="radio" data-diff="normal">' +
+            '<b>Normal</b><small>Equilibrado</small>' +
+          '</button>' +
+          '<button type="button" role="radio" data-diff="dificil">' +
+            '<b>Difícil</b><small>Rápido</small>' +
+          '</button>' +
+        '</div>' +
+        '<p class="rg-opts-note" id="rg-diff-note"></p>' +
+        '<button type="button" class="rg-opts-ok" id="rg-opts-ok">LISTO</button>' +
+      '</div>';
+    document.body.appendChild(opts);
+    opts.addEventListener('click', function (e) {
+      const b = e.target.closest('[data-diff]');
+      if (b) {
+        applyDifficulty(b.dataset.diff, true);
+        return;
+      }
+      if (e.target === opts) closeOpts();
+    });
+    opts.querySelector('#rg-opts-ok').addEventListener('click', function (e) {
+      e.preventDefault();
+      closeOpts();
+    });
+
     const end = document.createElement('div');
     end.id = 'rg-end';
     end.setAttribute('role', 'dialog');
@@ -478,6 +594,9 @@
 
     nodes.hud = hud;
     nodes.act = act;
+    nodes.optsBtn = optsBtn;
+    nodes.opts = opts;
+    nodes.diffNote = document.getElementById('rg-diff-note');
     nodes.end = end;
     nodes.endTitle = document.getElementById('rg-end-title');
     nodes.endSub = document.getElementById('rg-end-sub');
@@ -694,6 +813,7 @@
     document.body.classList.add('ras-arena');
     document.body.classList.remove('rg-over');
     if (nodes.end) nodes.end.classList.remove('on');
+    setOptsVisible();
     toast('¡A atender clientes!', 'ok');
   }
 
@@ -728,6 +848,7 @@
     nodes.endP.textContent = scoreP;
     nodes.endB.textContent = scoreB;
     nodes.end.classList.add('on');
+    setOptsVisible();
   }
 
   function restart() {
@@ -764,6 +885,7 @@
     if (nodes.end) nodes.end.classList.remove('on');
     setHint('Acércate al encargado para empezar');
     setAction(null, '');
+    setOptsVisible();
   }
 
   /* ---------------- Acción contextual ---------------- */
@@ -823,6 +945,11 @@
     if (st && stockP[st.def.c] > 0) {
       setHint(null);
       setAction('RECOGER', 'take');
+    } else if (Math.abs(G.player.z) < 7 && Math.abs(G.player.x) < 11.5) {
+      /* El emblema RASMATIC ocupa el centro del vestíbulo: es sólido y hay
+         que bordearlo para entrar al pasillo de góndolas. */
+      setHint('Rodeá el logo por el costado');
+      setAction(null, '');
     } else {
       setHint(null);
       setAction(null, '');
@@ -839,7 +966,7 @@
     requestB = c;
     const col = COLORS[c];
     bot = {
-      phase: 'press', t0: now(), dur: 0.8, color: c, box: box, spec: box.spec,
+      phase: 'press', t0: now(), dur: botTime(0.8), color: c, box: box, spec: box.spec,
       fromX: cnc.x, fromY: cnc.y, toX: 0, toY: 0,
       dropFrom: null, dropTo: null, flyFrom: null, flyTo: null
     };
@@ -874,9 +1001,9 @@
           bot.fromY = cnc.y;
           bot.toX = bot.spec.x;
           bot.toY = G.boxY(bot.spec);
-          bot.dur = Math.max(0.7, Math.min(2.2,
+          bot.dur = botTime(Math.max(0.7, Math.min(2.2,
             0.55 + Math.abs(bot.toX - bot.fromX) / 4 +
-            Math.abs(bot.toY - bot.fromY) / 3));
+            Math.abs(bot.toY - bot.fromY) / 3)));
         }
         break;
 
@@ -884,13 +1011,13 @@
         cnc.x = lerp(bot.fromX, bot.toX, ease(u));
         cnc.y = lerp(bot.fromY, bot.toY, ease(u));
         applyCnc();
-        if (u >= 1) { bot.phase = 'extend'; bot.t0 = t; bot.dur = 0.45; }
+        if (u >= 1) { bot.phase = 'extend'; bot.t0 = t; bot.dur = botTime(0.45); }
         break;
 
       case 'extend':
         cnc.e = ease(u);
         applyCnc();
-        if (u >= 1) { bot.phase = 'grab'; bot.t0 = t; bot.dur = 0.28; }
+        if (u >= 1) { bot.phase = 'grab'; bot.t0 = t; bot.dur = botTime(0.28); }
         break;
 
       case 'grab':
@@ -898,7 +1025,7 @@
         cnc.box = bot.box.mesh;
         cnc.spec = bot.spec;
         applyCnc();
-        if (u >= 1) { bot.phase = 'retract'; bot.t0 = t; bot.dur = 0.45; }
+        if (u >= 1) { bot.phase = 'retract'; bot.t0 = t; bot.dur = botTime(0.45); }
         break;
 
       case 'retract':
@@ -907,7 +1034,7 @@
         if (u >= 1) {
           bot.phase = 'toHome';
           bot.t0 = t;
-          bot.dur = 1.1;
+          bot.dur = botTime(1.1);
           bot.fromX = cnc.x;
           bot.fromY = cnc.y;
         }
@@ -920,7 +1047,7 @@
         if (u >= 1) {
           bot.phase = 'drop';
           bot.t0 = t;
-          bot.dur = 0.55;
+          bot.dur = botTime(0.55);
           bot.dropFrom = bot.box.mesh.position.clone();
           bot.dropTo = new T.Vector3(
             G.home.x,
@@ -938,7 +1065,7 @@
           cnc.spec = null;
           bot.phase = 'fly';
           bot.t0 = t;
-          bot.dur = 0.9;
+          bot.dur = botTime(0.9);
           bot.flyFrom = bot.box.mesh.position.clone();
           bot.flyTo = new T.Vector3(
             SPOT.bot.x,
@@ -965,7 +1092,7 @@
           toast('El bot atendió un cliente', 'bad');
           bot.phase = 'done';
           bot.t0 = t;
-          bot.dur = 0.9;
+          bot.dur = botTime(0.9);
         }
         break;
 
@@ -1075,6 +1202,9 @@
       G.camera.updateProjectionMatrix();
       window.RasmaticCNC = true;
       window.RasmaticArena = true;
+      /* El logo del vestibulo no se usa en la partida: ocultarlo ya en el
+         arranque (no depender de que corra el primer cuadro). */
+      if (G.logo && G.logo.set) G.logo.set(false);
 
       parkMachine();
       buildNpc();
@@ -1086,6 +1216,7 @@
       buildHand();
       hideLegacy();
       buildUI();
+      loadDifficulty();
 
       resetStocks();
       updateStationSigns();
@@ -1095,6 +1226,7 @@
 
       document.body.classList.add('ras-arena', 'dockmin');
       state = 'idle';
+      setOptsVisible();
       console.log('[juego] listo · ' + COLORS.length + ' medicamentos · ' +
         CFG.duration + ' s');
     } catch (e) {
@@ -1135,7 +1267,8 @@
       customer: !!(S.customer && S.customer.group.visible),
       botCustomer: !!(S.botCustomer && S.botCustomer.group.visible),
       ui: { action: promptLabel, hint: nodes.hint ? nodes.hint._t : null },
-      config: { duration: CFG.duration, botInterval: CFG.botInterval }
+      config: { duration: CFG.duration, botInterval: CFG.botInterval,
+        botFirst: CFG.botFirst, botSpeed: CFG.botSpeed, difficulty: difficulty }
     };
   }
 
@@ -1146,6 +1279,11 @@
     onBack: onBack,
     restart: restart,
     debug: debug,
+    setDifficulty: function (id) { return applyDifficulty(id, true); },
+    getDifficulty: function () {
+      return { id: difficulty, label: DIFFICULTY[difficulty].label,
+        interval: CFG.botInterval, first: CFG.botFirst, speed: CFG.botSpeed };
+    },
     /* Solo para pruebas automatizadas por CDP. */
     _test: {
       teleport: function (x, z) {
@@ -1171,7 +1309,10 @@
       },
       config: function (o) {
         if (!o) return CFG;
+        if (typeof o.difficulty === 'string') applyDifficulty(o.difficulty, true);
         if (typeof o.botInterval === 'number') CFG.botInterval = o.botInterval;
+        if (typeof o.botFirst === 'number') CFG.botFirst = o.botFirst;
+        if (typeof o.botSpeed === 'number' && o.botSpeed > 0) CFG.botSpeed = o.botSpeed;
         if (typeof o.duration === 'number') CFG.duration = o.duration;
         return CFG;
       }

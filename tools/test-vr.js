@@ -78,6 +78,14 @@ class CDP {
         for (const fn of this.handlers.get(msg.method) || []) fn(msg.params);
       }
     });
+    /* Si el navegador se cierra o cae, no dejar promesas colgadas para
+       siempre: fallar rapido y con un mensaje util. */
+    ws.addEventListener('close', () => {
+      const pend = [...this.pending.values()];
+      this.pending.clear();
+      for (const { reject } of pend) reject(new Error('el navegador cerro la conexion CDP'));
+      this.closed = true;
+    });
   }
 
   static async connect(url) {
@@ -89,11 +97,19 @@ class CDP {
     return new CDP(ws);
   }
 
-  send(method, params = {}) {
+  send(method, params = {}, timeoutMs = 0) {
     const id = ++this.id;
+    if (this.closed) return Promise.reject(new Error('CDP ya cerrado'));
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify({ id, method, params }));
+      const timer = timeoutMs ? setTimeout(() => {
+        if (!this.pending.has(id)) return;
+        this.pending.delete(id);
+        reject(new Error(method + ': sin respuesta en ' + timeoutMs + ' ms'));
+      }, timeoutMs) : null;
+      const done = (fn) => (v) => { if (timer) clearTimeout(timer); fn(v); };
+      this.pending.set(id, { resolve: done(resolve), reject: done(reject) });
+      try { this.ws.send(JSON.stringify({ id, method, params })); }
+      catch (e) { this.pending.delete(id); if (timer) clearTimeout(timer); reject(e); }
     });
   }
 
@@ -134,6 +150,7 @@ async function main() {
   let browser = null;
   let cdp = null;
   let exitCode = 0;
+  let shuttingDown = false;
 
   try {
     await waitFor(async () => {
@@ -145,6 +162,9 @@ async function main() {
     browser.stderr.on('data', (d) => {
       const text = String(d);
       if (/ERROR|FATAL/i.test(text)) process.stderr.write('[chrome] ' + text);
+    });
+    browser.on('exit', (code, signal) => {
+      if (!shuttingDown) process.stderr.write('[chrome] el navegador termino (code=' + code + ', signal=' + signal + ')\n');
     });
 
     const target = await waitFor(async () => {
@@ -163,7 +183,9 @@ async function main() {
       consoleErrors.push((d.exception && d.exception.description) || d.text);
     });
     cdp.on('Runtime.consoleAPICalled', (p) => {
-      if (p.type === 'error') consoleErrors.push(p.args.map((a) => a.value || a.description || '').join(' '));
+      const text = p.args.map((a) => a.value || a.description || '').join(' ');
+      if (p.type === 'error') consoleErrors.push(text);
+      if (text.startsWith('[vr]')) console.log('  · ' + text.slice(5));
     });
     cdp.on('Log.entryAdded', (p) => {
       if (p.entry.level === 'error') consoleErrors.push(p.entry.text);
@@ -179,6 +201,11 @@ async function main() {
 
     const base = 'http://127.0.0.1:' + port + '/index.html';
     const url = base + '?vr=0';
+    /* El juego se engancha al nucleo en boot(): RasmaticArena se pone a true
+       recien ahi. Esperar solo __ready deja una carrera en la que el logo
+       todavia no se oculto. */
+    const READY = 'window.__ready === true && !!window.RasmaticGame && ' +
+      '!!window.RasmaticVR && window.RasmaticArena === true';
 
     async function evaluate(expr) {
       const r = await cdp.send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true });
@@ -194,9 +221,7 @@ async function main() {
 
     await cdp.send('Page.navigate', { url });
     console.log('Esperando la escena...');
-    await waitFor(async () => evaluate(
-      'window.__ready === true && !!window.RasmaticGame && !!window.RasmaticVR'
-    ), 60000, 'window.__ready + RasmaticVR');
+    await waitFor(async () => evaluate(READY), 60000, 'window.__ready + RasmaticVR');
 
     console.log('Ejecutando la suite VR (puede tardar ~1 min)...\n');
     const expression = fs.readFileSync(suitePath, 'utf8');
@@ -241,7 +266,7 @@ async function main() {
     fs.mkdirSync(shotsDir, { recursive: true });
     console.log('\nEvidencias:');
     await cdp.send('Page.navigate', { url });
-    await waitFor(async () => evaluate('window.__ready === true && !!window.RasmaticGame'), 60000, 'recarga');
+    await waitFor(async () => evaluate(READY), 60000, 'recarga');
     await sleep(1200);
 
     /* Partida en curso. La captura se toma en el centro del pasillo para que
@@ -328,7 +353,7 @@ async function main() {
     /* ---------------- Acceso directo ?vr=1 ---------------- */
     console.log('\nAcceso directo con ?vr=1:');
     await cdp.send('Page.navigate', { url: base + '?vr=1' });
-    await waitFor(async () => evaluate('window.__ready === true && !!window.RasmaticVR'), 60000, 'recarga ?vr=1');
+    await waitFor(async () => evaluate(READY), 60000, 'recarga ?vr=1');
     await sleep(1200);
     const autoOn = await evaluate('window.RasmaticVR.isActive() === true && document.body.classList.contains("vr-on")');
     console.log((autoOn ? '  ok   ' : '  FAIL ') + 'el modo VR arranca solo con ?vr=1');
@@ -344,6 +369,7 @@ async function main() {
 
     if (report.fails > 0) exitCode = 1;
   } finally {
+    shuttingDown = true;
     if (cdp) cdp.close();
     if (browser) {
       if (keep) console.log('\nNavegador y servidor siguen abiertos (--keep).');

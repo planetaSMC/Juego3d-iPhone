@@ -43,6 +43,9 @@
   var CFG_KEY = 'rasmatic.vr.profiles.v1';
   var LEGACY_KEY = 'rasmatic.vr.settings.v1';
   var FORCE = /[?&]vr=1\b/.test(location.search);
+  /* El calibrador de Windows carga el juego con ?embed=1: usa la API y su
+     propio panel, sin el boton flotante ni el panel VR del telefono. */
+  var EMBED = /[?&]embed=1\b/.test(location.search);
   /* Movil = iPhone/iPad/Android o cualquier pantalla tactil. En la app iOS
      el modo VR debe estar disponible; antes solo se mostraba en escritorio. */
   var MOBILE = navigator.maxTouchPoints > 0 ||
@@ -305,6 +308,14 @@
   var testScene = null;
   var testCam = null;
 
+  /* Vista central / diagnostico para el calibrador de Windows. Es un camino
+     de render aparte: no activa el estereo ni toca las camaras del telefono. */
+  var mono = false;
+  var monoView = 'center';           /* center | left | right | sbs */
+  var MONO_VIEWS = ['center', 'left', 'right', 'sbs'];
+  var locked = false;                /* calibracion bloqueada desde la PC */
+  var changeListeners = [];
+
   /* Copias por ojo del HUD y de los menus. Se crean recien cuando el juego
      ya construyo el original, para que document.getElementById siga
      devolviendo el nodo real (el primero del documento). */
@@ -392,6 +403,16 @@
     return settings.distortion > 0.001 ||
       settings.cropL > 0.001 || settings.cropR > 0.001 ||
       Math.abs(settings.brightness - 1) > 0.001 ||
+      Math.abs(settings.contrast - 1) > 0.001 ||
+      Math.abs(settings.saturation - 1) > 0.001 ||
+      Math.abs(settings.gamma - 1) > 0.001 ||
+      settings.sharpness > 0.001;
+  }
+
+  /* La vista central es un monitor normal: no lleva distorsion de lente ni
+     recorte, solo los ajustes de imagen. */
+  function imageNeedsRT() {
+    return Math.abs(settings.brightness - 1) > 0.001 ||
       Math.abs(settings.contrast - 1) > 0.001 ||
       Math.abs(settings.saturation - 1) > 0.001 ||
       Math.abs(settings.gamma - 1) > 0.001 ||
@@ -496,13 +517,13 @@
     quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   }
 
-  function updateQuad(tex, e, crop) {
+  function updateQuad(tex, e, crop, k) {
     var u = quadMat.uniforms;
     u.tDiffuse.value = tex;
     u.uTexel.value.set(1 / Math.max(1, e.w), 1 / Math.max(1, e.h));
     u.uAspect.value = e.aspect;
-    u.uK.value = settings.distortion;
-    u.uCrop.value = crop;
+    u.uK.value = k === undefined ? settings.distortion : k;
+    u.uCrop.value = crop || 0;
     u.uBright.value = settings.brightness;
     u.uContrast.value = settings.contrast;
     u.uSat.value = settings.saturation;
@@ -764,8 +785,179 @@
     return undefined;
   }
 
+  /* ---------------- vista central / diagnostico ---------------- */
+  /* Rectangulo fiel para un ojo suelto: conserva la relacion de aspecto que
+     tiene esa vista en el telefono y la centra con barras negras. */
+  function monoEyeRect(W, H, side) {
+    var stage = computeStage(W, H);
+    var eyes = computeEyes(stage);
+    var e = eyes[side === 'right' ? 1 : 0];
+    var a = e.w / e.h;
+    var w = W, h = Math.round(W / a);
+    if (h > H) { h = H; w = Math.round(H * a); }
+    return {
+      x: Math.floor((W - w) / 2),
+      y: Math.floor((H - h) / 2),
+      w: Math.max(16, w), h: Math.max(16, h),
+      aspect: w / h, side: side
+    };
+  }
+
+  function renderMono(sceneArg, cameraArg) {
+    var t0 = (window.performance || Date).now();
+    var canvas = renderer.domElement;
+    var W = canvas.width, H = canvas.height;
+    if (!W || !H) return origRender.call(renderer, sceneArg, cameraArg);
+    var pr = renderer.getPixelRatio() || 1;
+
+    var useTest = !!settings.testMode;
+    if (useTest && !testScene) buildTestScene();
+    var scene = useTest ? testScene : sceneArg;
+    var camera = useTest ? testCam : cameraArg;
+
+    var camPos = camera.position.clone();
+    var camQuat = camera.quaternion.clone();
+    var camProj = camera.projectionMatrix.clone();
+    var camProjInv = camera.projectionMatrixInverse.clone();
+
+    var prevRT = renderer.getRenderTarget();
+    var prevView = renderer.getViewport(new THREE.Vector4());
+    var prevScissor = renderer.getScissor(new THREE.Vector4());
+    var prevScissorTest = renderer.getScissorTest();
+    var prevAutoClear = renderer.autoClear;
+    var prevClear = renderer.getClearColor(new THREE.Color());
+    var prevAlpha = renderer.getClearAlpha();
+
+    renderer.setRenderTarget(null);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, W / pr, H / pr);
+    renderer.setClearColor(0x000000, 1);
+    renderer.autoClear = true;
+    renderer.clear(true, true, true);
+
+    var fovY = clamp(settings.fov / Math.max(0.2, settings.camZoom), 20, 120);
+    var ipdM = (settings.ipd / 1000) * settings.depth;
+    var conv = Math.max(0.2, settings.convergence);
+    var useRT = monoView === 'center' ? imageNeedsRT() : needsRT();
+    var near = camera.near, far = camera.far;
+    var topN = near * Math.tan(fovY * Math.PI / 360);
+    var shift = (ipdM / 2) * near / conv;
+
+    var camQuatEff = camQuat.clone();
+    if (Math.abs(settings.camPitch) > 1e-4) {
+      var q = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(1, 0, 0), settings.camPitch * Math.PI / 180);
+      camQuatEff.multiply(q);
+    }
+    var rightV = new THREE.Vector3(1, 0, 0).applyQuaternion(camQuatEff);
+    var upV = new THREE.Vector3(0, 1, 0).applyQuaternion(camQuatEff);
+    var fwdV = new THREE.Vector3(0, 0, -1).applyQuaternion(camQuatEff);
+
+    var basePos = camPos.clone();
+    if (settings.camDist) basePos.addScaledVector(fwdV, -settings.camDist);
+    if (settings.camShiftX) basePos.addScaledVector(rightV, settings.camShiftX);
+    if (settings.camShiftY) basePos.addScaledVector(upV, settings.camShiftY);
+    if (settings.camHeight) basePos.y += settings.camHeight;
+
+    if (useRT && !quad) buildQuad();
+
+    var views;
+    if (monoView === 'sbs') {
+      var stage = computeStage(W, H);
+      var eyes = computeEyes(stage);
+      views = [{ e: eyes[0], sign: -1 }, { e: eyes[1], sign: 1 }];
+    } else if (monoView === 'left' || monoView === 'right') {
+      views = [{ e: monoEyeRect(W, H, monoView), sign: monoView === 'left' ? -1 : 1 }];
+    } else {
+      views = [{ e: { x: 0, y: 0, w: W, h: H, aspect: W / H, side: 'center' }, sign: 0 }];
+    }
+
+    var drawn = [];
+    for (var i = 0; i < views.length; i++) {
+      var e = views[i].e, sign = views[i].sign;
+
+      camera.position.copy(basePos).addScaledVector(rightV, sign * ipdM / 2);
+      camera.quaternion.copy(camQuatEff);
+      var rightN = topN * e.aspect;
+      camera.projectionMatrix.makePerspective(
+        -rightN - sign * shift, rightN - sign * shift,
+        topN, -topN, near, far
+      );
+      camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+      camera.updateMatrixWorld(true);
+
+      var vx = e.x / pr, vy = e.y / pr, vw = e.w / pr, vh = e.h / pr;
+      renderer.setScissorTest(true);
+      renderer.setViewport(vx, vy, vw, vh);
+      renderer.setScissor(vx, vy, vw, vh);
+
+      if (useRT) {
+        var target = ensureRT(i, e.w, e.h);
+        renderer.setRenderTarget(target);
+        renderer.setScissorTest(false);
+        renderer.setClearColor(0x000000, 1);
+        renderer.autoClear = true;
+        origRender.call(renderer, scene, camera);
+
+        renderer.setRenderTarget(null);
+        renderer.setScissorTest(true);
+        renderer.setViewport(vx, vy, vw, vh);
+        renderer.setScissor(vx, vy, vw, vh);
+        if (monoView === 'center') updateQuad(target.texture, e, 0, 0);
+        else updateQuad(target.texture, e,
+          monoView === 'sbs' ? (i === 0 ? settings.cropL : settings.cropR) :
+            (monoView === 'left' ? settings.cropL : settings.cropR));
+        origRender.call(renderer, quadScene, quadCam);
+        stats.blits++;
+        stats.rtFrames++;
+        stats.postFrames++;
+      } else {
+        renderer.setRenderTarget(null);
+        origRender.call(renderer, scene, camera);
+      }
+
+      stats.sceneDraws++;
+      drawn.push({
+        side: e.side,
+        x: e.x, y: e.y, w: e.w, h: e.h, aspect: e.aspect,
+        position: [camera.position.x, camera.position.y, camera.position.z],
+        quaternion: [camera.quaternion.x, camera.quaternion.y, camera.quaternion.z, camera.quaternion.w],
+        projection: Array.prototype.slice.call(camera.projectionMatrix.elements)
+      });
+    }
+
+    renderer.setRenderTarget(prevRT || null);
+    renderer.setScissorTest(prevScissorTest);
+    renderer.setViewport(prevView.x, prevView.y, prevView.z, prevView.w);
+    renderer.setScissor(prevScissor.x, prevScissor.y, prevScissor.z, prevScissor.w);
+    renderer.autoClear = prevAutoClear;
+    renderer.setClearColor(prevClear, prevAlpha);
+    camera.position.copy(camPos);
+    camera.quaternion.copy(camQuat);
+    camera.projectionMatrix.copy(camProj);
+    camera.projectionMatrixInverse.copy(camProjInv);
+    camera.updateMatrixWorld(true);
+
+    stats.frames++;
+    var ms = (window.performance || Date).now() - t0;
+    stats.lastMs = ms;
+    stats.avgMs = stats.avgMs ? stats.avgMs * 0.9 + ms * 0.1 : ms;
+    last = {
+      eyes: drawn,
+      base: [camPos.x, camPos.y, camPos.z],
+      stage: { x: 0, y: 0, w: W, h: H, aspect: W / H },
+      path: useRT ? 'rt' : 'direct',
+      test: useTest,
+      mono: monoView
+    };
+    updateInfo();
+    return undefined;
+  }
+
   renderer.render = function (scene, camera) {
-    if (!active || arguments.length > 2) return origRender.apply(this, arguments);
+    if (arguments.length > 2) return origRender.apply(this, arguments);
+    if (mono) return renderMono(scene, camera);
+    if (!active) return origRender.apply(this, arguments);
     return renderStereo(scene, camera);
   };
 
@@ -866,6 +1058,7 @@
     panel.innerHTML =
       '<header><b>VR <span>CALIBRACIÓN</span></b><i id="vr-ver"></i>' +
         '<button id="vr-close" type="button" aria-label="Cerrar el panel">✕</button></header>' +
+      '<div id="vr-lock-note" role="status">🔒 Calibración bloqueada desde la PC</div>' +
       '<div class="vr-quick">' +
         '<label class="vr-switch"><input type="checkbox" id="vr-test"><span>Modo prueba</span></label>' +
         '<button id="vr-exit" type="button" class="vr-danger">Salir (Esc)</button>' +
@@ -1449,6 +1642,7 @@
 
   /* ---------------- activar / desactivar ---------------- */
   function enable() {
+    if (mono) disableMono();
     if (active) { showPanel(); return true; }
     active = true;
     document.body.classList.add('vr-on');
@@ -1491,6 +1685,118 @@
 
   function toggle() { return active ? disable() : enable(); }
 
+  /* ---------------- vista central (calibrador de Windows) ---------------- */
+  function restoreViewport() {
+    var canvas = renderer.domElement;
+    var pr = renderer.getPixelRatio() || 1;
+    renderer.setRenderTarget(null);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, canvas.width / pr, canvas.height / pr);
+    renderer.setScissor(0, 0, canvas.width / pr, canvas.height / pr);
+    renderer.autoClear = true;
+  }
+
+  function setMonoView(view) {
+    if (MONO_VIEWS.indexOf(view) < 0) return false;
+    monoView = view;
+    return true;
+  }
+
+  function enableMono(view) {
+    if (view !== undefined && !setMonoView(view)) return false;
+    if (active) disable();
+    mono = true;
+    document.body.classList.add('vr-mono');
+    return true;
+  }
+
+  function disableMono() {
+    if (!mono) return false;
+    mono = false;
+    document.body.classList.remove('vr-mono');
+    restoreViewport();
+    return true;
+  }
+
+  function setLocked(v) {
+    locked = !!v;
+    document.body.classList.toggle('vr-locked', locked);
+    return locked;
+  }
+
+  function canWrite() { return !locked; }
+
+  function onChange(fn) {
+    if (typeof fn !== 'function') return false;
+    changeListeners.push(fn);
+    return function () {
+      var i = changeListeners.indexOf(fn);
+      if (i >= 0) changeListeners.splice(i, 1);
+    };
+  }
+
+  function notifyChange(origin, keys) {
+    if (!changeListeners.length) return;
+    var ev = {
+      origin: origin || 'ui',
+      keys: keys ? keys.slice() : null,
+      settings: JSON.parse(JSON.stringify(settings))
+    };
+    for (var i = 0; i < changeListeners.length; i++) {
+      try { changeListeners[i](ev); } catch (e) { /* un listener roto no frena el juego */ }
+    }
+  }
+
+  /* Aplica un bloque de valores ya validados por el servidor. No vuelve a
+     notificar como cambio local: evita el eco Windows -> iPhone -> Windows. */
+  function applyCal(values, origin) {
+    if (!values || typeof values !== 'object') return false;
+    var keys = [], k;
+    for (k in values) {
+      if (!has(DEFAULTS, k)) continue;
+      var v = values[k];
+      if (has(SPEC, k)) {
+        if (typeof v !== 'number' || !isFinite(v)) continue;
+        settings[k] = clamp(v, SPEC[k][0], SPEC[k][1]);
+        keys.push(k);
+      } else if (k === 'profile') {
+        if (!has(PROFILES, v)) continue;
+        settings.profile = v;
+        keys.push(k);
+      } else if (k === 'hudMode') {
+        if (v !== 'per-eye' && v !== 'flat' && v !== 'off') continue;
+        settings.hudMode = v;
+        keys.push(k);
+      } else if (k === 'customW' || k === 'customH') {
+        if (typeof v !== 'number' || !isFinite(v)) continue;
+        settings[k] = Math.round(clamp(v, 320, 4096));
+        keys.push(k);
+      } else if (k === 'guides' || k === 'vignette' || k === 'testMode') {
+        if (typeof v !== 'boolean') continue;
+        settings[k] = v;
+        keys.push(k);
+      }
+    }
+    if (!keys.length) return false;
+    settings = sanitize(settings);
+    save();
+    syncUI();
+    notifyChange(origin || 'remote', keys);
+    return true;
+  }
+
+  function spec() {
+    return JSON.parse(JSON.stringify({
+      version: VERSION,
+      defaults: DEFAULTS,
+      spec: SPEC,
+      controls: CTL,
+      groups: GROUPS,
+      tabs: TABS,
+      profiles: PROFILES
+    }));
+  }
+
   function showPanel() {
     if (!ui.panel) return;
     ui.panel.classList.add('on');
@@ -1517,24 +1823,29 @@
       value = value === false ? 'off' : 'flat';
     }
     if (!has(DEFAULTS, key)) return false;
+    if (!canWrite()) return false;
     if (key === 'testMode' || key === 'guides' || key === 'vignette') value = !!value;
     settings[key] = value;
     settings = sanitize(settings);
     save();
     syncUI();
+    notifyChange('ui', [key]);
     return true;
   }
 
   function profile(name) { return set('profile', name); }
 
   function reset() {
+    if (!canWrite()) return false;
     settings = sanitize({});
     save();
     syncUI();
+    notifyChange('ui', null);
     return true;
   }
 
   function resetGroup(name) {
+    if (!canWrite()) return false;
     var g = GROUPS[name];
     if (!g || !g.keys.length) return false;
     for (var i = 0; i < g.keys.length; i++) {
@@ -1544,6 +1855,7 @@
     settings = sanitize(settings);
     save();
     syncUI();
+    notifyChange('ui', g.keys);
     return true;
   }
 
@@ -1593,11 +1905,13 @@
   }
 
   function loadConfig(name) {
+    if (!canWrite()) return false;
     var o = readConfigs();
     if (!name || !o[name]) return false;
     settings = sanitize(o[name]);
     save();
     syncUI();
+    notifyChange('ui', null);
     return true;
   }
 
@@ -1621,6 +1935,7 @@
   }
 
   function importConfig(text) {
+    if (!canWrite()) return false;
     try {
       var d = JSON.parse(String(text || ''));
       var src = d && d.settings ? d.settings : d;
@@ -1628,6 +1943,7 @@
       settings = sanitize(src);
       save();
       syncUI();
+      notifyChange('ui', null);
       return true;
     } catch (e) {
       return false;
@@ -1653,7 +1969,7 @@
   }
 
   window.addEventListener('keydown', function (e) {
-    if (e.defaultPrevented) return;
+    if (EMBED || e.defaultPrevented) return;
     var key = e.key;
     if (key === 'Escape' && active) {
       e.preventDefault();
@@ -1703,6 +2019,18 @@
     isActive: function () { return active; },
     isDesktop: function () { return DESKTOP; },
     isMobile: function () { return MOBILE; },
+    /* Vista central / diagnostico para el calibrador de Windows. */
+    enableMono: enableMono,
+    disableMono: disableMono,
+    isMono: function () { return mono; },
+    setView: setMonoView,
+    view: function () { return monoView; },
+    spec: spec,
+    applyCal: applyCal,
+    setMany: applyCal,
+    setLocked: setLocked,
+    isLocked: function () { return locked; },
+    onChange: onChange,
     profile: profile,
     set: set,
     reset: reset,
@@ -1725,6 +2053,9 @@
       return {
         version: VERSION,
         active: active,
+        mono: mono,
+        monoView: monoView,
+        locked: locked,
         desktop: DESKTOP,
         mobile: MOBILE,
         forced: FORCE,
@@ -1758,6 +2089,7 @@
   };
 
   /* ---------------- arranque ---------------- */
+  if (EMBED) document.body.classList.add('ras-embed');
   buildUI();
   if (FORCE) enable();
 })();

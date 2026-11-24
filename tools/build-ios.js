@@ -34,7 +34,7 @@ const iosWww = path.join(root, 'ios', 'RasmaticLugar3D', 'www');
 
 /* El modo VR es una capa propia del proyecto (no viene del APK Android):
    se edita en web/vr/ y el build la referencia y la espeja al bundle iOS. */
-const vrFiles = ['vr/vr-preview.js', 'vr/vr-preview.css'];
+const vrFiles = ['vr/vr-preview.js', 'vr/vr-preview.css', 'net/vr-link.js', 'net/vr-link.css'];
 for (const rel of vrFiles) {
   if (!fs.existsSync(path.join(web, rel))) fail('falta el archivo del modo VR: web/' + rel);
 }
@@ -142,7 +142,7 @@ replaceOnce(
 replaceOnce(
   'css game -> mobile + capa iOS',
   '<link rel="stylesheet" href="android/android-game.css">',
-  '<link rel="stylesheet" href="mobile/android-game.css">\n<link rel="stylesheet" href="ios/ios.css">\n<link rel="stylesheet" href="vr/vr-preview.css">'
+  '<link rel="stylesheet" href="mobile/android-game.css">\n<link rel="stylesheet" href="ios/ios.css">\n<link rel="stylesheet" href="vr/vr-preview.css">\n<link rel="stylesheet" href="net/vr-link.css">'
 );
 
 // 2.4 Carpeta android/ -> mobile/ (3 scripts) + puente iOS + service worker.
@@ -162,10 +162,14 @@ replaceOnce(
   `<script src="mobile/game.js"></script>
 <script src="ios/ios-bridge.js"></script>
 <script src="vr/vr-preview.js"></script>
+<script src="net/vr-link.js"></script>
 <script>
 /* [iOS] Service worker solo bajo http/https (Safari y PWA instalada).
-   En la app WKWebView el esquema es rasmatic:// y no existe: se omite. */
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+   En la app WKWebView el esquema es rasmatic:// y no existe: se omite.
+   En el calibrador de Windows (?embed=1) tambien se omite: el servidor
+   local ya entrega los archivos y no queremos cache vieja. */
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) &&
+    !/[?&]embed=1\\b/.test(location.search)) {
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('sw.js').catch(function () {});
   });
@@ -232,6 +236,8 @@ const precache = [
   './ios/ios-bridge.js',
   './vr/vr-preview.css',
   './vr/vr-preview.js',
+  './net/vr-link.css',
+  './net/vr-link.js',
   './fonts/fonts.css',
   './fonts/google-fonts.css',
   './icons/icon-180.png',

@@ -25,6 +25,24 @@ build gratis en GitHub Actions + AltStore/Sideloadly, TestFlight, o la PWA como
 Las dos usan el mismo contenido: `web/` y `ios/RasmaticLugar3D/www/` son
 idénticos byte a byte (lo verifica `tools/check-xcode.js`).
 
+### Dificultad del bot
+
+El bot que atiende clientes juega más lento que antes (un cliente cada 9 s en
+**Normal**). En el vestíbulo, antes de empezar, el botón **⚙** abre
+**Dificultad del bot**:
+
+| Nivel | Cliente cada | Velocidad del CNC |
+|---|---|---|
+| Fácil | 12 s | 0,75× (más lento) |
+| Normal | 9 s | 1× |
+| Difícil | 6 s | 1,25× (más rápido) |
+
+La elección se guarda en el iPhone (`localStorage`, clave
+`rasmatic.botDifficulty`) y se aplica sin reiniciar la escena. También se puede
+cambiar por código con `RasmaticGame.setDifficulty('facil'|'normal'|'dificil')`
+y consultar con `RasmaticGame.getDifficulty()`. El juego sigue siendo el mismo:
+solo cambian los tiempos del bot, no las reglas ni el control Bluetooth.
+
 ---
 
 ## A. Instalar la app en el iPhone
@@ -255,13 +273,13 @@ node tools/test-web.js
 ```
 
 Abre un Chromium real simulando un iPhone (390×844, táctil, DPR 1 para las
-pruebas), juega la partida y verifica **21 casos** (arranque, HUD, cliente,
+pruebas), juega la partida y verifica **23 casos** (arranque, HUD, cliente,
 recoger/entregar, entrega incorrecta, CNC, fin de partida, revancha, joystick,
-cámara, pausa en segundo plano, mando, safe areas, metadatos y service worker),
-más una recarga **sin conexión** y una comprobación en **horizontal**.
-Además guarda capturas en `docs/evidencias/`.
+cámara, pausa en segundo plano, mando, safe areas, metadatos, service worker y
+dificultad del bot), más una recarga **sin conexión** y una comprobación en
+**horizontal**. Además guarda capturas en `docs/evidencias/`.
 
-Resultado de la última ejecución: **21/21 + offline**, consola sin errores.
+Resultado de la última ejecución: **23/23 + offline**, consola sin errores.
 
 El modo VR tiene su propia suite de escritorio:
 
@@ -269,7 +287,7 @@ El modo VR tiene su propia suite de escritorio:
 node tools/test-vr.js
 ```
 
-**21/21 casos** (estéreo real, IPD, convergencia, perfiles, HUD por ojo y plano,
+**32/32 casos** (estéreo real, IPD, convergencia, perfiles, HUD por ojo y plano,
 distorsión, WASD/Shift/Espacio/Escape, restauración al salir y no regresión del
 juego), más mouse con eventos reales y arranque con `?vr=1`.
 
@@ -318,10 +336,10 @@ node tools/verify-ipa.js dist/RasmaticLugar3D-unsigned.ipa
 | | |
 |---|---|
 | Juego copiado del APK Android | 6 archivos + 13 fuentes, SHA-256 idéntico |
-| `web/index.html` generado | 264.739 B · `C429FA93410065F3F3E7D46629D230568368CE35AAA415859999E131EB17346D` |
-| Verificación del proyecto iOS | 118/118 comprobaciones |
-| Pruebas funcionales (Chromium) | 21/21 + offline + horizontal |
-| Pruebas del modo VR (escritorio) | 21/21 + mouse + `?vr=1` |
+| `web/index.html` generado | 266.174 B · `F4D67CF99FDEB3822F7C98A8F688613343EF923B7702BF393FBCF3FC87EB69C2` |
+| Verificación del proyecto iOS | 123/123 comprobaciones |
+| Pruebas funcionales (Chromium) | 23/23 + offline + horizontal |
+| Pruebas del modo VR (escritorio) | 32/32 + mouse + `?vr=1` |
 | Pruebas de mando nativo y VR móvil (iPhone simulado) | 21/21 |
 | Verificador de `.ipa` | probado con un IPA sintético (estructura, Mach-O, bundle id y juego completo) |
 | ZIP para llevar a la Mac | `dist/RASMATIC-Lugar3D-iPhone-<fecha>.zip` · hash en `dist/<zip>.sha256` |

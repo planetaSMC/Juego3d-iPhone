@@ -16,8 +16,14 @@
   const R = () => G().renderer;
   const D = () => window.RasmaticGame.debug();
   const out = [];
-  const ok = (name, cond, data) => out.push({ name, pass: !!cond, data });
-  const info = (name, data) => out.push({ name, pass: true, data, nota: true });
+  const ok = (name, cond, data) => {
+    console.log('[vr] ' + (cond ? 'ok   ' : 'FAIL ') + name);
+    out.push({ name, pass: !!cond, data });
+  };
+  const info = (name, data) => {
+    console.log('[vr] info ' + name);
+    out.push({ name, pass: true, data, nota: true });
+  };
 
   const until = async (pred, ms) => {
     const t0 = Date.now();

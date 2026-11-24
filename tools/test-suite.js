@@ -322,6 +322,39 @@
   ok('T21 service worker para uso sin conexion', !swSupported || swState === 'activo',
     { soportado: swSupported, estado: swState, protocolo: location.protocol });
 
+  /* T22: dificultad del bot por API y persistencia. */
+  const diffBefore = localStorage.getItem('rasmatic.botDifficulty');
+  const dset = window.RasmaticGame.setDifficulty('facil');
+  const dfacil = window.RasmaticGame.getDifficulty();
+  const dsaved = localStorage.getItem('rasmatic.botDifficulty');
+  ok('T22 dificultad del bot por API y persistencia',
+    dset === 'facil' && dfacil.id === 'facil' && dfacil.interval === 12 &&
+    dfacil.speed === 0.75 && dsaved === 'facil',
+    { devuelto: dset, estado: dfacil, guardado: dsaved });
+
+  /* T23: panel de opciones real (botón, tres niveles, selección y cierre). */
+  const optsBtn = document.getElementById('rg-opts-btn');
+  const optsPanel = document.getElementById('rg-opts');
+  const diffBtns = optsPanel ? optsPanel.querySelectorAll('[data-diff]') : [];
+  if (optsBtn) optsBtn.click();
+  const opened = !!(optsPanel && optsPanel.classList.contains('on'));
+  const hardBtn = optsPanel && optsPanel.querySelector('[data-diff="dificil"]');
+  if (hardBtn) hardBtn.click();
+  const dhard = window.RasmaticGame.getDifficulty();
+  const marked = !!(hardBtn && hardBtn.classList.contains('on'));
+  const okBtn = document.getElementById('rg-opts-ok');
+  if (okBtn) okBtn.click();
+  const closed = !(optsPanel && optsPanel.classList.contains('on'));
+  ok('T23 panel de opciones de dificultad',
+    !!optsBtn && diffBtns.length === 3 && opened && dhard.id === 'dificil' &&
+    marked && closed,
+    { boton: !!optsBtn, opciones: diffBtns.length, abierto: opened,
+      elegido: dhard.id, marcado: marked, cerrado: closed });
+
+  /* Restaura la preferencia previa del equipo de prueba. */
+  if (diffBefore) window.RasmaticGame.setDifficulty(diffBefore);
+  else { window.RasmaticGame.setDifficulty('normal'); localStorage.removeItem('rasmatic.botDifficulty'); }
+
   } catch (e) {
     ok('suite interrumpida', false, { error: String(e && e.message), stack: String(e && e.stack).split('\n').slice(0, 4) });
   }

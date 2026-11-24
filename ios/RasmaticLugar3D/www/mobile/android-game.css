@@ -226,6 +226,129 @@ html.ras-android body.ras-arena #loading { display: none; }
 #rg-act.take { color: #08203f; }
 #rg-act.give { color: #08203f; background: linear-gradient(160deg, #ffe9a8, #ffc247); }
 
+/* ---------- opciones / dificultad del bot ---------- */
+#rg-opts-btn {
+  position: fixed;
+  right: calc(14px + env(safe-area-inset-right, 0px));
+  top: calc(66px + env(safe-area-inset-top, 0px));
+  z-index: 9;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 14px;
+  font-size: 22px;
+  line-height: 1;
+  color: #eaf2ff;
+  background: rgba(8, 22, 46, .82);
+  box-shadow: 0 10px 26px rgba(4, 14, 34, .35);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+#rg-opts-btn[hidden] { display: none; }
+#rg-opts-btn:active { transform: scale(.95); }
+
+#rg-opts {
+  position: fixed;
+  inset: 0;
+  z-index: 31;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: radial-gradient(ellipse at center, rgba(10, 26, 58, .78), rgba(6, 16, 36, .94));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+#rg-opts.on { display: flex; }
+#rg-opts .rg-opts-card {
+  width: min(430px, 100%);
+  padding: 24px 22px 20px;
+  border-radius: 22px;
+  color: #eaf2ff;
+  background: rgba(10, 26, 58, .94);
+  border: 1px solid rgba(255, 255, 255, .22);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .5);
+}
+#rg-opts h2 {
+  margin: 0 0 6px;
+  font-family: "Exo 2", system-ui, sans-serif;
+  font-size: 21px;
+  letter-spacing: .06em;
+  text-align: center;
+}
+#rg-opts .rg-opts-sub {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+  opacity: .74;
+}
+#rg-opts .rg-diff {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+#rg-opts .rg-diff button {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 13px 6px 11px;
+  border-radius: 14px;
+  text-align: center;
+  color: #cfe0f7;
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(255, 255, 255, .16);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+#rg-opts .rg-diff button b {
+  font-family: "Exo 2", system-ui, sans-serif;
+  font-size: 15px;
+  letter-spacing: .02em;
+}
+#rg-opts .rg-diff button small { font-size: 11px; opacity: .66; letter-spacing: .04em; }
+#rg-opts .rg-diff button.on {
+  color: #08203f;
+  background: linear-gradient(160deg, #ffffff, #cfe3ff);
+  border-color: rgba(255, 255, 255, .8);
+  box-shadow: 0 8px 20px rgba(4, 14, 34, .35);
+}
+#rg-opts .rg-opts-note {
+  min-height: 34px;
+  margin: 14px 2px 16px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-align: center;
+  opacity: .78;
+}
+#rg-opts .rg-opts-ok {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 14px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: .06em;
+  color: #08203f;
+  background: linear-gradient(160deg, #ffffff, #cfe3ff);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+#rg-opts .rg-opts-ok:active { transform: scale(.985); }
+
 /* ---------- final de partida ---------- */
 #rg-end {
   position: fixed;

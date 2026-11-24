@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="mobile/android-game.css">
 <link rel="stylesheet" href="ios/ios.css">
 <link rel="stylesheet" href="vr/vr-preview.css">
+<link rel="stylesheet" href="net/vr-link.css">
 <style>
 :root{
   --bar:rgba(255,255,255,.88);--ink:#0f2a55;--line:rgba(15,42,85,.18);--blue:#1f5fd0;--green:#16603e;
@@ -310,7 +311,7 @@ body.intro #intro{opacity:1;pointer-events:auto}
 </div>
 
 <div id="brand" class="hud"><b>RASMATIC</b><i>Tu espacio, nuestro control.</i></div>
-<div id="zone" class="hud">Vestíbulo · Recepción</div>
+<div id="zone" class="hud">Vestíbulo · Logo Rasmatic</div>
 <canvas id="map" class="hud" aria-label="Minimapa"></canvas>
 <div id="cap" role="status" aria-live="polite"></div>
 <div id="dock"><button data-v="frente">Inicio</button><button data-v="consulta">← Consulta</button><button data-v="enfermeria">Enfermería →</button><button data-v="pasillo">Pasillo</button><button data-v="maquina">Máquina</button><button data-v="aerea">Vista aérea</button><span class="sep"></span><button id="guide" class="pri">▶ Recorrido guiado</button><button id="full" aria-label="Pantalla completa">⛶</button><button id="anim">Animación</button></div>
@@ -871,6 +872,7 @@ function updateModel(dt){
   if(autoSpin) userRy+=dt*0.45;
   setRot(userRy,userRx);
   emblem.visible=emblemRefl.visible=true;
+  if(logoBubble)logoBubble.visible=true;
   camera.position.set(0,0.4,dist); camera.lookAt(0,0,0);
   scene.fog.near=90; scene.fog.far=200;
   blueL.position.set(-8,2,10); greenL.position.set(8,-2,10);
@@ -1271,7 +1273,6 @@ function addBubble(x,y,z,t1,t2){
   const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:bubbleTex(t1,t2),transparent:true,fog:false,depthWrite:false}));
   spr.center.set(0.5,0.02);spr.position.set(x,y,z);spr.scale.set(W,H,1);spr.renderOrder=12;
   PLG[0].add(spr);BUB.push({spr,x,y,z,w:W,h:H});
-  return spr;
 }
 addBubble(36.8,FLOOR+10.7,31.6,'Médico','“Cada hora cuenta.”');
 addBubble(-7.2,FLOOR+10.7,31.6,'Farmacéutica','“¿Sabés cuánto tiempo perdemos?”');
@@ -1570,10 +1571,14 @@ window.RasmaticCore={
 <script src="mobile/game.js"></script>
 <script src="ios/ios-bridge.js"></script>
 <script src="vr/vr-preview.js"></script>
+<script src="net/vr-link.js"></script>
 <script>
 /* [iOS] Service worker solo bajo http/https (Safari y PWA instalada).
-   En la app WKWebView el esquema es rasmatic:// y no existe: se omite. */
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+   En la app WKWebView el esquema es rasmatic:// y no existe: se omite.
+   En el calibrador de Windows (?embed=1) tambien se omite: el servidor
+   local ya entrega los archivos y no queremos cache vieja. */
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) &&
+    !/[?&]embed=1\b/.test(location.search)) {
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('sw.js').catch(function () {});
   });

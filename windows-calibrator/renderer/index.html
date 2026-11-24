@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>RASMATIC · VR Calibrator</title>
+  <link rel="stylesheet" href="/app/app.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="brand">
+        <div class="logo">RASMATIC</div>
+        <div class="sub">VR CALIBRATOR <span>·</span> LUGAR 3D</div>
+      </div>
+      <div class="top-status">
+        <button id="conn-pill" class="pill" type="button" title="Abrir conexión">
+          <span class="dot"></span><span id="conn-text">Sin iPhone</span>
+        </button>
+        <button id="expo-pill" class="pill expo" type="button" title="Modo Expo">
+          <span class="dot"></span>EXPO
+        </button>
+        <button id="lock-pill" class="pill lock" type="button" title="Estado de calibración">
+          <span class="dot"></span><span id="lock-text">CALIBRACIÓN DESBLOQUEADA</span>
+        </button>
+      </div>
+      <div class="top-actions">
+        <button id="btn-security" class="icon-btn" type="button" title="Panel de seguridad">🛡</button>
+        <button id="btn-expand" class="icon-btn" type="button" title="Vista grande (Esc para volver)">⛶</button>
+        <button id="btn-quit" class="icon-btn danger" type="button" title="Salir">⏻</button>
+      </div>
+    </header>
+
+    <main id="main">
+      <section id="stage" aria-label="Vista previa del juego">
+        <iframe id="game" src="/game/index.html?embed=1" title="Vista previa 3D del juego"></iframe>
+        <div id="stage-top">
+          <div id="view-switch" role="group" aria-label="Vista de diagnóstico">
+            <button type="button" data-view="center" class="on">Central</button>
+            <button type="button" data-view="left">Ojo izq.</button>
+            <button type="button" data-view="right">Ojo der.</button>
+            <button type="button" data-view="sbs">SBS</button>
+          </div>
+          <div id="stage-actions">
+            <button type="button" id="btn-hud" title="Mostrar u ocultar el HUD del juego">HUD</button>
+            <button type="button" id="btn-pause" title="Pausar la vista previa (no afecta al iPhone)">Pausar</button>
+            <button type="button" id="btn-capture" title="Guardar una captura PNG">Captura</button>
+            <button type="button" id="btn-fullscreen" title="Pantalla completa (F11)">⛶</button>
+          </div>
+        </div>
+        <div id="stage-bottom">
+          <span id="stage-badge">CENTRAL</span>
+          <span id="stage-fps">—</span>
+          <span id="stage-res">—</span>
+          <span id="stage-telemetry">Sin telemetría del iPhone</span>
+        </div>
+        <div id="preview-hint">
+          La vista previa ejecuta el mismo juego en la PC. La posición del jugador se sincroniza desde el iPhone.
+        </div>
+      </section>
+
+      <aside id="sidebar" aria-label="Panel de control">
+        <nav id="tabs" role="tablist">
+          <button type="button" data-tab="cal" class="on" role="tab">Calibración</button>
+          <button type="button" data-tab="profiles" role="tab">Perfiles</button>
+          <button type="button" data-tab="security" role="tab">Seguridad</button>
+          <button type="button" data-tab="connect" role="tab">Conexión</button>
+        </nav>
+        <div id="panels">
+          <section class="panel on" data-panel="cal" role="tabpanel">
+            <div id="lock-banner" class="banner lock-banner" hidden>
+              <b>🔒 CALIBRACIÓN BLOQUEADA</b>
+              <span>Los valores actuales siguen aplicados. Solo el administrador de Windows puede desbloquear.</span>
+            </div>
+            <div id="groups"></div>
+            <button id="btn-reset-all" class="wide danger-soft" type="button">Restaurar toda la calibración</button>
+            <p class="fine">Los parámetros, límites y valores predeterminados son exactamente los del menú VR del juego.</p>
+          </section>
+          <section class="panel" data-panel="profiles" role="tabpanel" id="panel-profiles"></section>
+          <section class="panel" data-panel="security" role="tabpanel" id="panel-security"></section>
+          <section class="panel" data-panel="connect" role="tabpanel" id="panel-connect"></section>
+        </div>
+      </aside>
+    </main>
+
+    <footer id="statusbar">
+      <span id="status-text">Iniciando…</span>
+      <span id="status-right"></span>
+    </footer>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h2 id="modal-title">Confirmar</h2>
+      <p id="modal-text"></p>
+      <label id="modal-field" hidden>
+        <span id="modal-field-label">PIN de administración</span>
+        <input id="modal-input" type="password" inputmode="numeric" autocomplete="off" maxlength="32">
+      </label>
+      <div class="modal-actions">
+        <button id="modal-cancel" type="button">Cancelar</button>
+        <button id="modal-ok" type="button" class="pri">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app/app.js"></script>
+</body>
+</html>
