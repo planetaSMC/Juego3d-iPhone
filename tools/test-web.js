@@ -252,6 +252,8 @@ async function main() {
     await evaluate('(function(){var g=window.RasmaticCore.game;' +
       'g.player.x=0;g.player.z=24.6;return true;})()');
     await waitFor(async () => (await evaluate('window.RasmaticGame.debug().ui.action')) === 'JUGAR', 20000, 'aviso JUGAR');
+    await sleep(500);
+    await shot('ui-01-jugar.png');
     await evaluate('window.RasmaticGame.interact()');
     await waitFor(async () => (await evaluate('window.RasmaticGame.debug().state')) === 'playing', 20000, 'partida');
     /* Espera al primer cliente: la captura muestra la partida en curso. */
@@ -277,25 +279,53 @@ async function main() {
     await shot('ios-03-final.png');
 
     /* Rotacion: Android usa fullSensor, iOS admite las cuatro orientaciones.
-       Se comprueba que en horizontal la escena sigue a pantalla completa. */
+       Se comprueba que en horizontal la escena sigue a pantalla completa y
+       que JUGAR queda centrado, comodo y sin tapar el joystick. */
     await cdp.send('Emulation.setDeviceMetricsOverride', {
       width: 844, height: 390, deviceScaleFactor: 2, mobile: true,
       screenWidth: 844, screenHeight: 390
     });
     await cdp.send('Page.navigate', { url });
     await waitFor(async () => evaluate('window.__ready === true'), 60000, 'horizontal');
-    await sleep(2000);
+    await sleep(1500);
+    await evaluate('(function(){var g=window.RasmaticCore.game;' +
+      'g.player.x=0;g.player.z=24.6;return true;})()');
+    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().ui.action')) === 'JUGAR', 20000, 'JUGAR horizontal');
+    await sleep(500);
     const land = await evaluate(`(function(){
       var de = document.documentElement, cv = document.querySelector('canvas');
       var r = cv.getBoundingClientRect();
+      var a = document.getElementById('rg-act').getBoundingClientRect();
+      var s = document.getElementById('ras-stick').getBoundingClientRect();
+      var sc = document.getElementById('rg-score').getBoundingClientRect();
+      var ti = document.getElementById('rg-time').getBoundingClientRect();
       return { ox: de.scrollWidth - de.clientWidth, oy: de.scrollHeight - de.clientHeight,
                w: Math.round(r.width), h: Math.round(r.height),
-               iw: innerWidth, ih: innerHeight };
+               iw: innerWidth, ih: innerHeight,
+               act: { left: a.left, top: a.top, right: a.right, bottom: a.bottom,
+                      w: a.width, h: a.height, cx: a.left + a.width / 2 },
+               stick: { left: s.left, top: s.top, right: s.right, bottom: s.bottom,
+                        visible: getComputedStyle(document.getElementById('ras-stick')).display !== 'none' },
+               hud: { scoreLeft: sc.left, scoreRight: sc.right,
+                      timeLeft: ti.left, timeRight: ti.right } };
     })()`);
     const landOk = land && land.ox <= 1 && land.oy <= 1 &&
       Math.abs(land.w - land.iw) <= 1 && Math.abs(land.h - land.ih) <= 1;
     console.log((landOk ? '  ok   ' : '  FAIL ') + 'horizontal a pantalla completa ' + JSON.stringify(land));
-    if (!landOk) exitCode = 1;
+    const actLandOk = land && Math.abs(land.act.cx - land.iw / 2) <= 1.5 &&
+      land.act.left >= 8 && land.act.right <= land.iw - 8 &&
+      land.act.top >= 8 && land.act.bottom <= land.ih - 8 &&
+      land.act.w >= 120 && land.act.h >= 50;
+    const stickGap = !land || !land.stick.visible ||
+      !(land.act.right > land.stick.left && land.act.left < land.stick.right &&
+        land.act.bottom > land.stick.top && land.act.top < land.stick.bottom);
+    const hudLandOk = land && land.hud.scoreLeft >= 8 &&
+      land.hud.timeRight <= land.iw - 8 &&
+      land.hud.timeLeft > land.hud.scoreRight;
+    console.log((actLandOk && stickGap && hudLandOk ? '  ok   ' : '  FAIL ') +
+      'JUGAR centrado y HUD sin solapes en horizontal ' +
+      JSON.stringify({ act: land && land.act, stick: land && land.stick, hud: land && land.hud }));
+    if (!landOk || !actLandOk || !stickGap || !hudLandOk) exitCode = 1;
     await shot('ios-04-horizontal.png');
 
     if (consoleErrors.length) {

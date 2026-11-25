@@ -600,9 +600,18 @@ body.vr-hud-off #ras-pause-btn { display: none !important; }
    copia que vive dentro de .vr-mirror. */
 body.vr-mirror-hud > #rg-hud,
 body.vr-mirror-pause > #ras-pause,
-body.vr-mirror-end > #rg-end {
+body.vr-mirror-end > #rg-end,
+body.vr-mirror-act > #rg-act {
   opacity: 0 !important;
   pointer-events: none !important;
+}
+
+/* Las copias se pueden tocar: el toque se reenvia al boton real (el juego
+   sigue ejecutandose en el original, que esta a opacity 0). */
+.vr-mirror[data-kind="act"] > #rg-act,
+.vr-mirror #rg-again,
+.vr-mirror #ras-pause button {
+  pointer-events: auto;
 }
 
 /* En VR con mando no hacen falta los controles tactiles. Si el mando se

@@ -1520,7 +1520,7 @@ const fontsReady=Promise.race([
   Promise.all([document.fonts.load('900 120px Orbitron'),document.fonts.load('italic 400 60px "Exo 2"')]),
   new Promise(r=>setTimeout(r,2500))
 ]);
-const start=()=>{buildText();updateFilm(0);document.getElementById('loading').classList.add('off');last=performance.now();window.__ready=true;setMode('place');if(window.RasmaticGame&&window.RasmaticGame.boot)window.RasmaticGame.boot();requestAnimationFrame(frame);};
+const start=()=>{buildText();updateFilm(0);document.getElementById('loading').classList.add('off');last=performance.now();window.__ready=true;setMode('place');if(window.RasmaticArena)setLogo(false);if(window.RasmaticGame&&window.RasmaticGame.boot)window.RasmaticGame.boot();requestAnimationFrame(frame);};
 fontsReady.then(start).catch(start);
 
 /* ===== [Android] Puente de integracion =====

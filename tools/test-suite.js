@@ -351,6 +351,65 @@
     { boton: !!optsBtn, opciones: diffBtns.length, abierto: opened,
       elegido: dhard.id, marcado: marked, cerrado: closed });
 
+  /* T24: JUGAR centrado, comodo y sin tapar el joystick en retrato. */
+  const reqNow = D().request;
+  const stNow = reqNow >= 0 ? STA[reqNow] : STA[0];
+  tp(stNow.x * 0.9, stNow.z);
+  const nearAct = await until(
+    () => ['RECOGER', 'ENTREGAR', 'JUGAR'].indexOf(D().ui.action) >= 0, 12000);
+  await sleep(500);
+  /* El mando falso de T17 ya no existe: el joystick tactil debe volver. */
+  window.dispatchEvent(new Event('touchstart'));
+  await sleep(1000);
+  const actEl = document.getElementById('rg-act');
+  const actRect = actEl.getBoundingClientRect();
+  const actCx = actRect.left + actRect.width / 2;
+  const stickEl = document.getElementById('ras-stick');
+  const stickRect = stickEl.getBoundingClientRect();
+  const stickVisible = getComputedStyle(stickEl).display !== 'none';
+  const overlapsStick = stickVisible &&
+    !(actRect.right <= stickRect.left || actRect.left >= stickRect.right ||
+      actRect.bottom <= stickRect.top || actRect.top >= stickRect.bottom);
+  const centered = Math.abs(actCx - innerWidth / 2) <= 1.5;
+  const actSafe = actRect.left >= 8 && actRect.right <= innerWidth - 8 &&
+    actRect.top >= 8 && actRect.bottom <= innerHeight - 8;
+  const touchable = actRect.width >= 120 && actRect.height >= 50;
+  ok('T24 JUGAR centrado, con area tactil y sin tapar el joystick',
+    nearAct && actEl.classList.contains('on') && centered && actSafe &&
+    touchable && !overlapsStick,
+    { aviso: D().ui.action, centro: +actCx.toFixed(1), ventana: innerWidth,
+      caja: [Math.round(actRect.left), Math.round(actRect.top),
+             Math.round(actRect.width), Math.round(actRect.height)],
+      joystick_visible: stickVisible, solape: overlapsStick });
+
+  /* T25: jerarquia y legibilidad del HUD dentro del area segura. */
+  const hudIds = ['rg-score', 'rg-time', 'rg-req', 'rg-carry', 'rg-toast', 'rg-hint'];
+  const rectById = (id) => {
+    const el = document.getElementById(id);
+    return el ? el.getBoundingClientRect() : null;
+  };
+  const inView = (r, m) => !!r && r.left >= m && r.top >= m &&
+    r.right <= innerWidth - m && r.bottom <= innerHeight - m;
+  const panelsIn = hudIds.every((id) => {
+    const el = document.getElementById(id);
+    if (!el) return false;
+    if (getComputedStyle(el).display === 'none') return true;
+    return inView(rectById(id), 6);
+  });
+  const scoreB = document.querySelector('#rg-score .rg-team b');
+  const reqB = document.querySelector('#rg-req .rg-req-txt b');
+  const timeEl = document.getElementById('rg-time');
+  const hintEl = document.getElementById('rg-hint');
+  const fontPx = (el) => el ? parseFloat(getComputedStyle(el).fontSize) : 0;
+  const noClip = (el) => !el || el.scrollWidth <= el.clientWidth + 1;
+  const leftCol = document.getElementById('rg-left');
+  ok('T25 textos legibles y sin desbordes en el area segura',
+    !!leftCol && panelsIn && fontPx(scoreB) >= 28 && fontPx(timeEl) >= 26 &&
+    fontPx(reqB) >= 20 && noClip(hintEl) && noClip(reqB),
+    { paneles: panelsIn, columna: !!leftCol,
+      fuentes: { marcador: fontPx(scoreB), reloj: fontPx(timeEl), pedido: fontPx(reqB) },
+      pista_sin_corte: noClip(hintEl) });
+
   /* Restaura la preferencia previa del equipo de prueba. */
   if (diffBefore) window.RasmaticGame.setDifficulty(diffBefore);
   else { window.RasmaticGame.setDifficulty('normal'); localStorage.removeItem('rasmatic.botDifficulty'); }

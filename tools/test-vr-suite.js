@@ -279,10 +279,10 @@
     VR.set('zoom', 1);
     VR.set('gap', 0);
 
-    /* El HUD y los menus deben quedar dentro del marco de la pantalla
-       simulada. Con `per-eye` hay una copia completa en cada ojo y el
-       original queda invisible (pero sigue siendo el nodo que actualiza el
-       juego). */
+    /* El HUD debe ocupar el rectangulo completo de cada ojo (1:1, sin
+       escalar a la mitad) y quedar dentro del marco de la pantalla simulada.
+       Con `per-eye` hay una copia completa en cada ojo y el original queda
+       invisible (pero sigue siendo el nodo que actualiza el juego). */
     VR.set('profile', 'iphone-15-landscape');
     await frames(2);
     await sleep(450);
@@ -296,22 +296,66 @@
     const mr = mirrorR ? mirrorR.getBoundingClientRect() : null;
     const sx8c = s8c.stage.x / pr8c, sy8c = s8c.stage.y / pr8c;
     const sw8c = s8c.stage.w / pr8c, sh8c = s8c.stage.h / pr8c;
+    const eyeL = s8c.eyes[0], eyeR = s8c.eyes[1];
     const copies = !!(mirrorL && mirrorL.querySelector('#rg-time') &&
-      mirrorL.querySelector('#rg-score') &&
+      mirrorL.querySelector('#rg-score') && mirrorL.querySelector('#rg-left') &&
       mirrorR && mirrorR.querySelector('#rg-time'));
-    const inside = !!(ml && mr &&
-      ml.width > 10 && Math.abs(ml.width - mr.width) <= 1 &&
-      ml.left >= sx8c - 2 && ml.right <= mr.left + 1 &&
-      mr.right <= sx8c + sw8c + 2 &&
-      ml.top >= sy8c - 2 && ml.bottom <= sy8c + sh8c + 2);
-    ok('V08c HUD por ojo dentro del marco de la pantalla simulada',
+    const eyeBox = (r, e) => !!r &&
+      Math.abs(r.left - e.x / pr8c) <= 2 && Math.abs(r.top - e.y / pr8c) <= 2 &&
+      Math.abs(r.width - e.w / pr8c) <= 2 && Math.abs(r.height - e.h / pr8c) <= 2;
+    const boxed = eyeBox(ml, eyeL) && eyeBox(mr, eyeR);
+    const insideEye = (r, box, margin) => !!r && !!box &&
+      r.left >= box.left + margin && r.right <= box.right - margin &&
+      r.top >= box.top + margin && r.bottom <= box.bottom - margin;
+    const scoreR = mirrorL && mirrorL.querySelector('#rg-score').getBoundingClientRect();
+    const timeR = mirrorL && mirrorL.querySelector('#rg-time').getBoundingClientRect();
+    const safeInside = insideEye(scoreR, ml, 6) && insideEye(timeR, ml, 6);
+    const fontOf = (el) => el ? parseFloat(getComputedStyle(el).fontSize) : 0;
+    const scoreFont = fontOf(mirrorL && mirrorL.querySelector('.rg-team b'));
+    const timeFont = fontOf(mirrorL && mirrorL.querySelector('#rg-time'));
+    ok('V08c HUD por ojo 1:1 dentro del area segura',
       s8c.hudMode === 'per-eye' && s8c.mirrors.hud === true && realHidden &&
-      copies && inside,
+      copies && boxed && safeInside && scoreFont >= 32 && timeFont >= 30,
       { modo: s8c.hudMode, espejos: s8c.mirrors, original_oculto: realHidden,
-        copias: copies,
+        copias: copies, caja_por_ojo: boxed, area_segura: safeInside,
+        fuentes: { marcador: scoreFont, reloj: timeFont },
         ojo_izq: ml && [Math.round(ml.left), Math.round(ml.top), Math.round(ml.width), Math.round(ml.height)],
         ojo_der: mr && [Math.round(mr.left), Math.round(mr.top), Math.round(mr.width), Math.round(mr.height)],
         marco: [Math.round(sx8c), Math.round(sy8c), Math.round(sw8c), Math.round(sh8c)] });
+
+    /* JUGAR (y RECOGER/ENTREGAR) tambien debe existir por ojo: centrado en
+       cada ojo y dentro de su area segura, no solo en un borde. */
+    tp(2.0, 27.0);
+    const near8e = await until(() => D().ui.action === 'JUGAR', 12000);
+    await sleep(700);
+    const s8e = VR.state();
+    const actL = document.getElementById('vr-mirror-act-l');
+    const actR = document.getElementById('vr-mirror-act-r');
+    const realAct = document.getElementById('rg-act');
+    const copyL = actL && actL.querySelector('#rg-act');
+    const copyR = actR && actR.querySelector('#rg-act');
+    const al = copyL ? copyL.getBoundingClientRect() : null;
+    const ar = copyR ? copyR.getBoundingClientRect() : null;
+    const pr8e = s8e.canvas.pixelRatio;
+    const eyeCL = (s8e.eyes[0].x + s8e.eyes[0].w / 2) / pr8e;
+    const eyeCR = (s8e.eyes[1].x + s8e.eyes[1].w / 2) / pr8e;
+    const centered = !!al && !!ar &&
+      Math.abs((al.left + al.width / 2) - eyeCL) <= 2 &&
+      Math.abs((ar.left + ar.width / 2) - eyeCR) <= 2;
+    const lowerHalf = !!al && !!ar && !!ml && !!mr &&
+      al.top > ml.top + ml.height * 0.5 && ar.top > mr.top + mr.height * 0.5;
+    const actSafe = insideEye(al, ml, 6) && insideEye(ar, mr, 6);
+    const actHidden = realAct && getComputedStyle(realAct).opacity === '0';
+    ok('V08e JUGAR espejado, centrado y dentro del area segura de cada ojo',
+      near8e && s8e.mirrors.act === true && centered && lowerHalf && actSafe &&
+      actHidden && !!copyL && copyL.textContent === 'JUGAR',
+      { aviso: D().ui.action, espejos: s8e.mirrors, centrado: centered,
+        mitad_inferior: lowerHalf, area_segura: actSafe,
+        original_oculto: actHidden,
+        boton_izq: al && [Math.round(al.left), Math.round(al.top), Math.round(al.width), Math.round(al.height)],
+        boton_der: ar && [Math.round(ar.left), Math.round(ar.top), Math.round(ar.width), Math.round(ar.height)] });
+    tp(0, -20);
+    await until(() => D().ui.action === '', 8000);
 
     /* El modo plano sigue disponible para la vista previa de escritorio. */
     VR.set('hudMode', 'flat');

@@ -248,7 +248,7 @@ encendida (o de servirla por https), y no es una app instalada como tal.
 
 Este proyecto se preparó en Windows: **no hay macOS ni iPhone acá**, así que no
 se pudo ejecutar `xcodebuild`, ni firmar, ni abrir la app en un dispositivo. Lo
-que sí está verificado: la estructura del proyecto (118 comprobaciones), el
+que sí está verificado: la estructura del proyecto (123 comprobaciones), el
 contenido embebido byte a byte contra el APK Android, el juego completo en un
 navegador con viewport de iPhone (21 casos + offline + horizontal) y el mando/
 VR móvil simulados (21 casos). Ver `docs/pruebas.md`.

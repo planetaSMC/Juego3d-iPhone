@@ -319,8 +319,8 @@
   /* Copias por ojo del HUD y de los menus. Se crean recien cuando el juego
      ya construyo el original, para que document.getElementById siga
      devolviendo el nodo real (el primero del documento). */
-  var mirrors = { hud: null, pause: null, end: null };
-  var mirrorSig = { hud: '', pause: '', end: '' };
+  var mirrors = { hud: null, pause: null, end: null, act: null };
+  var mirrorSig = { hud: '', pause: '', end: '', act: '' };
   var layoutTimer = 0;
   var rotateDismissed = false;
 
@@ -1431,9 +1431,13 @@
     var hud = document.getElementById('rg-hud');
     var pause = document.getElementById('ras-pause');
     var end = document.getElementById('rg-end');
-    syncMirror('hud', hud, perEye, stage, eyes, pr);
-    syncMirror('pause', pause, !!(pause && !pause.hidden), stage, eyes, pr);
-    syncMirror('end', end, !!(end && end.classList.contains('on')), stage, eyes, pr);
+    var act = document.getElementById('rg-act');
+    syncMirror('hud', hud, perEye, stage, eyes, pr, 'eye');
+    syncMirror('pause', pause, !!(pause && !pause.hidden), stage, eyes, pr, 'scaled');
+    syncMirror('end', end, !!(end && end.classList.contains('on')), stage, eyes, pr, 'eye');
+    /* JUGAR / RECOGER / ENTREGAR tambien se dibuja en cada ojo: si queda
+       solo el original, aparece unicamente en el borde de un ojo. */
+    syncMirror('act', act, !!(act && act.classList.contains('on')), stage, eyes, pr, 'eye');
 
     placeOverlays(sx, sy, sw, sh, W / pr, H / pr, !perEye && !settings.testMode);
 
@@ -1456,6 +1460,28 @@
 
   /* ---------------- copias por ojo (HUD y menus) ---------------- */
 
+  /* Reenvia un toque hecho sobre una copia al boton real. Las copias existen
+     solo para dibujar: el original sigue siendo el nodo que ejecuta el
+     juego, asi que se reutiliza su .click(). */
+  function forwardTap(e) {
+    var t = e.target;
+    var btn = t && t.closest ? t.closest('button, [data-act]') : null;
+    if (!btn) return;
+    var id = btn.id || '';
+    var act = btn.getAttribute ? btn.getAttribute('data-act') : '';
+    var orig = id ? document.getElementById(id) : null;
+    if (!orig || orig === btn) {
+      orig = act
+        ? document.querySelector('#ras-pause [data-act="' + act + '"], body > [data-act="' + act + '"]')
+        : null;
+    }
+    if (orig && orig !== btn) {
+      e.preventDefault();
+      e.stopPropagation();
+      orig.click();
+    }
+  }
+
   function mirrorPair(kind) {
     if (mirrors[kind]) return mirrors[kind];
     var pair = {};
@@ -1466,6 +1492,7 @@
       box.id = 'vr-mirror-' + kind + '-' + side;
       box.setAttribute('data-kind', kind);
       box.setAttribute('aria-hidden', 'true');
+      box.addEventListener('click', forwardTap);
       document.body.appendChild(box);
       pair[side] = box;
     }
@@ -1478,13 +1505,30 @@
     return el.getAttribute('data-act') || el.id || '';
   }
 
+  /* El clon no debe heredar la geometria inline que placeOverlays le puso al
+     original en el modo plano: el contenedor del ojo ya define el marco. */
+  function stripBoxStyle(el) {
+    el.style.left = '';
+    el.style.top = '';
+    el.style.right = '';
+    el.style.bottom = '';
+    el.style.width = '';
+    el.style.height = '';
+    el.style.transform = '';
+    el.style.removeProperty('--rg-dx');
+    el.style.removeProperty('--rg-dy');
+  }
+
   /* Copia un overlay real dentro de cada ojo. Se clona el nodo completo para
      que las reglas CSS del juego sigan valiendo. El contenedor tiene
      `transform`, y un transform convierte al contenedor en el bloque de
      referencia de los hijos position:fixed: cada copia ocupa exactamente su
      ojo. El original queda invisible pero sigue recibiendo el foco del mando
-     y las llamadas .click(). */
-  function syncMirror(kind, src, on, stage, eyes, pr) {
+     y las llamadas .click().
+     `mode`:
+       'eye'    -> el marco de la copia es el rectangulo del ojo, a 1:1.
+       'scaled' -> comportamiento anterior para el menu de pausa. */
+  function syncMirror(kind, src, on, stage, eyes, pr, mode) {
     var show = !!(active && on && src);
     if (!show) {
       var old = mirrors[kind];
@@ -1501,7 +1545,7 @@
     /* Se crea recien cuando el original existe: asi el original queda antes
        en el documento y document.getElementById sigue devolviendolo a el. */
     var pair = mirrorPair(kind);
-    var sig = src.innerHTML + '|' + src.className + '|' +
+    var sig = src.innerHTML + '|' + (src.textContent || '') + '|' + src.className + '|' +
       (src.hasAttribute('hidden') ? '1' : '0') + '|' +
       (src.classList.contains('on') ? '1' : '0');
     if (sig !== mirrorSig[kind]) {
@@ -1509,7 +1553,9 @@
       for (var i = 0; i < 2; i++) {
         var box = i === 0 ? pair.l : pair.r;
         box.innerHTML = '';
-        box.appendChild(src.cloneNode(true));
+        var copy = src.cloneNode(true);
+        stripBoxStyle(copy);
+        box.appendChild(copy);
       }
     }
     /* Resaltar el mismo boton que tiene el foco en el original. */
@@ -1528,9 +1574,17 @@
       var e = eyes[q];
       box2.style.left = (e.x / pr) + 'px';
       box2.style.top = (e.y / pr) + 'px';
-      box2.style.width = (stage.w / pr) + 'px';
-      box2.style.height = (stage.h / pr) + 'px';
-      box2.style.transform = 'scale(' + s + ')';
+      if (mode === 'eye') {
+        box2.style.width = (e.w / pr) + 'px';
+        box2.style.height = (e.h / pr) + 'px';
+        /* scale(1) (y no `none`) mantiene el bloque de referencia de los
+           hijos position:fixed dentro del ojo. */
+        box2.style.transform = 'scale(1)';
+      } else {
+        box2.style.width = (stage.w / pr) + 'px';
+        box2.style.height = (stage.h / pr) + 'px';
+        box2.style.transform = 'scale(' + s + ')';
+      }
     }
     document.body.classList.add('vr-mirror-' + kind);
     return true;
@@ -1589,12 +1643,14 @@
       hud.style.right = 'auto';
       hud.style.bottom = 'auto';
     }
-    /* Esquinas: el botón está anclado a right/bottom de la ventana; se
-       desplaza lo que sobra entre la ventana y el marco. */
-    var dx = sx + sw - vw;
+    /* JUGAR ahora esta centrado: se desplaza el centro del marco, no la
+       esquina derecha. Se usan variables CSS para no pisar el centrado ni
+       el estado :active del boton. */
+    var dx = sx + sw / 2 - vw / 2;
     var dy = sy + sh - vh;
     if (overlayEls.act) {
-      overlayEls.act.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+      overlayEls.act.style.setProperty('--rg-dx', dx + 'px');
+      overlayEls.act.style.setProperty('--rg-dy', dy + 'px');
     }
     if (overlayEls.stick) {
       overlayEls.stick.style.transform = 'translate(' + sx + 'px,' + dy + 'px)';
@@ -1612,10 +1668,13 @@
         hud.style.right = '';
         hud.style.bottom = '';
       }
-      if (overlayEls.act) overlayEls.act.style.transform = '';
+      if (overlayEls.act) {
+        overlayEls.act.style.removeProperty('--rg-dx');
+        overlayEls.act.style.removeProperty('--rg-dy');
+      }
       if (overlayEls.stick) overlayEls.stick.style.transform = '';
     }
-    ['hud', 'pause', 'end'].forEach(function (kind) {
+    ['hud', 'pause', 'end', 'act'].forEach(function (kind) {
       var pair = mirrors[kind];
       if (pair) {
         pair.l.classList.remove('on');
@@ -2076,7 +2135,8 @@
         mirrors: {
           hud: !!(mirrors.hud && mirrors.hud.l.classList.contains('on')),
           pause: !!(mirrors.pause && mirrors.pause.l.classList.contains('on')),
-          end: !!(mirrors.end && mirrors.end.l.classList.contains('on'))
+          end: !!(mirrors.end && mirrors.end.l.classList.contains('on')),
+          act: !!(mirrors.act && mirrors.act.l.classList.contains('on'))
         },
         landscape: window.innerWidth >= window.innerHeight,
         rotateWarning: !!(ui.rotate && ui.rotate.classList.contains('on')),

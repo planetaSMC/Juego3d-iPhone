@@ -60,7 +60,7 @@ cuenta Apple.
 El flujo `.github/workflows/ios-ipa.yml` hace:
 
 1. `xcodebuild -version` (deja constancia de la versión real).
-2. `node tools/check-xcode.js` (118 comprobaciones del proyecto).
+2. `node tools/check-xcode.js` (123 comprobaciones del proyecto).
 3. `./tools/build-ipa.sh` (compila sin firma y arma el `.ipa`).
 4. `node tools/verify-ipa.js` (estructura, Mach-O, bundle id y juego completo).
 5. Sube `dist/*.ipa` como artefacto `RasmaticLugar3D-ipa`.

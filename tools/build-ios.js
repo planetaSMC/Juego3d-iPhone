@@ -220,7 +220,15 @@ const manifest = {
 writeFile(path.join(web, 'manifest.webmanifest'), JSON.stringify(manifest, null, 2) + '\n');
 
 /* ---------- 6. sw.js (cache versionada) ---------- */
-const buildId = crypto.createHash('sha256').update(html).digest('hex').slice(0, 16);
+/* La version incluye el HTML y los archivos de juego/VR: si solo cambia un
+   CSS o un JS, la PWA instalada tambien descarta la cache vieja. */
+const buildId = crypto.createHash('sha256')
+  .update(html)
+  .update(fs.readFileSync(path.join(web, 'mobile', 'game.js')))
+  .update(fs.readFileSync(path.join(web, 'mobile', 'android-game.css')))
+  .update(fs.readFileSync(path.join(web, 'vr', 'vr-preview.js')))
+  .update(fs.readFileSync(path.join(web, 'vr', 'vr-preview.css')))
+  .digest('hex').slice(0, 16);
 
 const precache = [
   './',

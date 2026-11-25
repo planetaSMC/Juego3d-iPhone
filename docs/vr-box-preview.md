@@ -240,14 +240,25 @@ centradas, si los bordes se recortan y si el parallax se siente correcto.
   imagen no neutros, cada ojo se dibuja en un `WebGLRenderTarget` y se copia a
   pantalla con un shader que aplica distorsión radial, recorte, brillo,
   contraste, saturación, gamma y nitidez. Con todo neutro el camino es directo.
-- **HUD y menús por ojo.** El HUD (`#rg-hud`), el menú de pausa (`#ras-pause`) y
-  el panel de resultado (`#rg-end`) se clonan dentro de dos contenedores
-  (`.vr-mirror`, uno por ojo). El contenedor tiene `transform`, y un transform
-  lo convierte en el bloque de referencia de los hijos `position: fixed`: cada
-  copia ocupa exactamente su ojo. El original queda con `opacity: 0` pero
-  **conserva el foco y los `.click()`** que usa el mando, así que las acciones
-  siguen funcionando. El selector CSS apunta al hijo directo de `body` para no
-  ocultar las copias.
+- **HUD, JUGAR y menús por ojo.** El HUD (`#rg-hud`), el botón de interacción
+  (`#rg-act`), el menú de pausa (`#ras-pause`) y el panel de resultado
+  (`#rg-end`) se clonan dentro de dos contenedores (`.vr-mirror`, uno por ojo).
+  El contenedor tiene `transform`, y un transform lo convierte en el bloque de
+  referencia de los hijos `position: fixed`: cada copia ocupa exactamente su
+  ojo. El original queda con `opacity: 0` pero **conserva el foco y los
+  `.click()`** que usa el mando; los toques sobre las copias se reenvían al
+  original, así que las acciones siguen funcionando. El selector CSS apunta al
+  hijo directo de `body` para no ocultar las copias.
+- **HUD 1:1, no a la mitad.** Las copias de HUD, JUGAR y resultado usan
+  `transform: scale(1)` con el ancho/alto del ojo: ocupan el ojo completo. Antes
+  se escalaban con `scale(eyes[0].w / stage.w)` y quedaban en la mitad superior
+  de cada ojo. El menú de pausa conserva el escalado anterior porque es
+  configuración, no gameplay.
+- **Safe areas por ojo.** Las copias usan las mismas variables CSS del HUD
+  (`--rg-x`, `--rg-y`, `--rg-boost`), con `--rg-boost: 1.28` para compensar que
+  cada ojo mide la mitad del ancho. Los márgenes seguros laterales se anulan en
+  el borde interior y se aplican solo en el borde exterior de cada ojo; el reloj
+  se corre 52 px hacia adentro para no chocar con el ⚙.
 - **Layout vivo.** Mientras VR está activo, un intervalo de 250 ms recoloca las
   copias, el botón VR, el panel, las guías y el aviso de rotación. Así los
   cambios de tamaño, orientación o texto del HUD no desalinean las lentes.
@@ -290,10 +301,10 @@ Levanta el servidor, abre Edge/Chrome headless en ventana de escritorio
 (1280×720, DPR 1, sin emulación táctil), ejecuta la suite y guarda capturas en
 `docs/evidencias/`.
 
-Resultado de la última corrida (19 de noviembre de 2026):
+Resultado de la última corrida (25 de noviembre de 2026):
 
 ```
-32/32 casos superados.
+33/33 casos superados.
   ok   mouse gira la camara (yaw 0.000 -> -0.800)
   ok   el modo VR arranca solo con ?vr=1
 Consola sin errores.
@@ -312,8 +323,9 @@ Consola sin errores.
 | V07 | Perfiles ventana, iPhone H/V y personalizado | ok | proporciones exactas |
 | V08 | Tamaño de imagen y separación central | ok | 80 % / 5 % |
 | V08b | El control del panel actualiza el ajuste | ok | IPD 70 mm |
-| V08c | HUD por ojo dentro del marco | ok | copias en los dos ojos |
+| V08c | HUD por ojo **1:1** dentro del área segura | ok | copias = rectángulo del ojo, fuentes 48,6/46,1 px |
 | V08d | HUD plano recortado al marco | ok | HUD = marco |
+| V08e | JUGAR espejado y centrado en cada ojo | ok | copias 256×83 en ambos ojos, original oculto |
 | V09 | Distorsión por render target y vuelta al paso directo | ok | brillo 166,2 vs 167,6 |
 | V10 | WASD mueve y Shift corre | ok | 7,8 m vs 18,72 m (×2,4) |
 | V10b | Espacio interactúa (JUGAR) | ok | estado `playing` |
@@ -344,7 +356,8 @@ node tools/test-pad.js
 
 - el botón VR está disponible en el teléfono y activa el modo;
 - la salida queda dentro del ojo izquierdo;
-- el HUD completo se ve dentro de **cada** ojo (copias, original invisible);
+- el HUD completo se ve dentro de **cada** ojo (copias, original invisible) y
+  **JUGAR** aparece centrado en los dos ojos;
 - en horizontal no hay aviso de rotación; en vertical aparece y se puede
   continuar;
 - con mando conectado se ocultan joystick, correr y pausa; al desconectarlo

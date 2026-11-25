@@ -14,10 +14,10 @@ SHA-256 calculado sobre los archivos ya copiados en `web/`.
 
 | Archivo en `web/` | Origen Android | Bytes | SHA-256 | Estado |
 |---|---|---:|---|---|
-| `mobile/game.js` | `android/game.js` | 44.216 | `E1EAE0F6ABC09F151D4F30CCD61C7E016A2BD013FD8D4B4E329C14BC4C5DE9B7` | idéntico |
+| `mobile/game.js` | `android/game.js` | 44.282 | `8FE5979BFB1015E58DC3C767BED2D30F64C3931A5270F8239552634328CCA17C` | idéntico |
 | `mobile/modes.js` | `android/modes.js` | 2.497 | `8E71096D65246CFAE857C194E536861A02E17EF249B76092FEFF7E11E90C1B04` | idéntico |
 | `mobile/android-bridge.js` | `android/android-bridge.js` | 23.014 | `AFC32D1857B03C69D547A7E5332EEEE3A54548438781FC71DE79D91005E68A8D` | idéntico |
-| `mobile/android-game.css` | `android/android-game.css` | 11.982 | `12D48DD445BF76D65C48E49FFFC971A33EEF2A3011FD83AE879F029FE8B44DFB` | idéntico |
+| `mobile/android-game.css` | `android/android-game.css` | 16.372 | `D94DC785C54B48AD80F621FEC195D8B2215280A6FB26693C45E8DA0D6AF2FDBC` | idéntico |
 | `mobile/android-controls.css` | `android/android-controls.css` | 10.864 | `0B482B7A63AF4462614E50E9F190B5F58EDFCCBFDC45229C43EDEF7B2991B7AE` | idéntico |
 | `three.min.js` | `three.min.js` | 603.445 | `9274BBCEC8D96168626C732B5D31C775AA8CFB7EAA0599BEC0C175908A2C1CE2` | idéntico |
 | `fonts/` (13 archivos) | `fonts/` | 13 de 13 | — | idénticos |
@@ -31,8 +31,8 @@ apariciones de `android/` dentro de esos cinco archivos).
 
 | | Bytes | SHA-256 |
 |---|---:|---|
-| Android (`assets/www/index.html`) | 264.737 | `A090656FD6C9075449F141E52B9CBBA06D73A807FA7291527F71CE127E34EBE7` |
-| iPhone (`web/index.html`) | 266.174 | `F4D67CF99FDEB3822F7C98A8F688613343EF923B7702BF393FBCF3FC87EB69C2` |
+| Android (`assets/www/index.html`) | 264.776 | `91D78F71E7FE22EE8C30B0E501EE4F89CBE06E0C19C3934827A5E3D9F509CCBC` |
+| iPhone (`web/index.html`) | 266.213 | `526F91094276B4001DB26518AE3C2D03B3B914C217321FE5568AC0A9ABEAD367` |
 
 El de iPhone **se genera** con `tools/build-ios.js` desde el de Android. Si un
 reemplazo no coincide exactamente, el script falla: no puede producir una copia
@@ -156,8 +156,14 @@ App Store).
   `localStorage`) con su panel de opciones, y el logo del vestíbulo se oculta
   al arrancar la partida. Los tiempos del bot pasan por `botTime()`; no se
   tocaron reglas, puntaje ni entrada.
+- En la fase V17 se renovó la **UI de gameplay** (safe areas, columna del HUD,
+  JUGAR centrado, tipografía y panel de resultado) en `android-game.css`, y
+  `game.js` solo envolvió los paneles en `#rg-left` (mismos ids). No cambian
+  mecánicas, cámara, SBS, IPD ni convergencia. Detalle en
+  `docs/ui-gameplay.md`.
 - El `index.html` de Android: se restauró el arreglo del logo (`logoBubble`,
-  `setLogo`, `logo` en `RasmaticCore.game`); el generador solo lo lee.
+  `setLogo`, `logo` en `RasmaticCore.game`) y en `start()` se oculta el logo si
+  la partida ya está activa; el generador solo lo lee.
 
 `web/ios/ios-bridge.js` **sí se amplió** en esta fase: puente nativo
 `RasmaticNativeGamepad`, aviso de conexión/desconexión y **X** abriendo el panel

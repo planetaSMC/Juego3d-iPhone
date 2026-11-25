@@ -496,17 +496,19 @@
     const hud = document.createElement('div');
     hud.id = 'rg-hud';
     hud.innerHTML =
-      '<div id="rg-score" class="rg-panel">' +
-        '<div class="rg-team rg-p"><span>JUGADOR</span><b>0</b></div>' +
-        '<i class="rg-sep"></i>' +
-        '<div class="rg-team rg-b"><span>BOT</span><b>0</b></div>' +
+      '<div id="rg-left">' +
+        '<div id="rg-score" class="rg-panel">' +
+          '<div class="rg-team rg-p"><span>JUGADOR</span><b>0</b></div>' +
+          '<i class="rg-sep"></i>' +
+          '<div class="rg-team rg-b"><span>BOT</span><b>0</b></div>' +
+        '</div>' +
+        '<div id="rg-req" class="rg-panel">' +
+          '<i class="rg-swatch"></i>' +
+          '<div class="rg-req-txt"><small>PEDIDO</small><b>—</b></div>' +
+        '</div>' +
+        '<div id="rg-carry" class="rg-panel"><i></i><span></span></div>' +
       '</div>' +
       '<div id="rg-time" class="rg-panel">3:00</div>' +
-      '<div id="rg-req" class="rg-panel">' +
-        '<i class="rg-swatch"></i>' +
-        '<div class="rg-req-txt"><small>PEDIDO</small><b>—</b></div>' +
-      '</div>' +
-      '<div id="rg-carry" class="rg-panel"><i></i><span></span></div>' +
       '<div id="rg-toast" role="status" aria-live="polite"></div>' +
       '<div id="rg-hint" class="rg-panel"></div>';
     document.body.appendChild(hud);

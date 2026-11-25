@@ -1,6 +1,6 @@
 # Pruebas
 
-Fecha: 12 de noviembre de 2026.
+Fecha: 25 de noviembre de 2026.
 Entorno: Windows 11, Node 24, Microsoft Edge 156 (Chromium) en modo headless.
 
 Las pruebas están separadas por **dónde se ejecutan**, para no declarar como
@@ -28,11 +28,12 @@ la recarga **sin conexión** y guarda capturas en `docs/evidencias/`.
 ### Resultado
 
 ```
-23/23 casos superados.
+25/25 casos superados.
 Consola sin errores.
 Prueba sin conexion:
   ok   la app carga sin conexion desde el service worker
   ok   horizontal a pantalla completa
+  ok   JUGAR centrado y HUD sin solapes en horizontal
 ```
 
 | # | Caso | Qué comprueba | Resultado |
@@ -60,8 +61,10 @@ Prueba sin conexion:
 | T21 | Service worker | registrado y activo bajo http | ok |
 | T22 | Dificultad del bot (API) | `setDifficulty('facil')` aplica 12 s / 0,75× y persiste en `localStorage` | ok |
 | T23 | Panel de opciones | el botón ⚙ abre el panel, hay 3 niveles, se marca el elegido y «LISTO» lo cierra | ok |
+| T24 | JUGAR centrado y cómodo | centro ≤ 1,5 px del centro de la ventana, dentro del área segura, ≥ 120×50 px y sin tapar el joystick | ok |
+| T25 | Textos legibles sin desbordes | paneles dentro del área segura, marcador ≥ 28 px, reloj ≥ 26 px, pedido ≥ 20 px, sin recortes | ok |
 | — | Sin conexión | con la red cortada, la página recarga y el juego arranca desde la caché | ok |
-| — | Horizontal | a 844×390 el canvas ocupa la ventana y no hay scroll en ningún eje | ok |
+| — | Horizontal | a 844×390 el canvas ocupa la ventana, JUGAR queda centrado sin tapar el joystick y el HUD no se solapa | ok |
 
 T17 usa un mando inyectado (`window.__rasFakePad`) porque no hay hardware
 conectado; ejercita el mismo camino que un mando real en Safari:
@@ -85,7 +88,7 @@ mouse con eventos reales, la entrada directa `?vr=1` y guarda capturas.
 ### Resultado
 
 ```
-32/32 casos superados.
+33/33 casos superados.
   ok   mouse gira la camara (yaw 0.000 -> -0.800)
   ok   el modo VR arranca solo con ?vr=1
 Consola sin errores.
@@ -102,6 +105,13 @@ mm, convergencia, perfiles de pantalla, tamaño y separación central, HUD por o
 y HUD plano, distorsión por render target, WASD + Shift + Espacio + Escape,
 restauración de cámara/renderer al salir y que el juego normal siga funcionando
 después (recoger + entregar +1).
+
+V08c exige ahora que el HUD ocupe **el rectángulo completo de cada ojo (1:1)**,
+con sus paneles dentro del área segura y fuentes mínimas; V08e exige que
+**JUGAR/RECOGER/ENTREGAR se espeje y quede centrado en cada ojo**. Antes las
+copias se escalaban a la mitad y JUGAR solo existía en un borde: era el defecto
+visible en `docs/evidencias/vr-02-vr-box.png`. Detalle de la UI en
+`docs/ui-gameplay.md`.
 
 La calibración nueva (V15–V25) comprueba además: logo RASMATIC oculto en la
 partida, altura/distancia/inclinación/zoom de cámara, intensidad 3D, escala y
@@ -173,7 +183,7 @@ node tools/check-xcode.js
 ### Resultado
 
 ```
-OK: 118 comprobaciones superadas.
+OK: 123 comprobaciones superadas.
 ```
 
 Cubre:
@@ -233,7 +243,36 @@ debe hacer. No valida la firma de Apple.
 
 ---
 
-## 5. Evidencias
+## 5. Calibrador Windows e instalador
+
+```powershell
+cd windows-calibrator
+cmd /c "npm test"      # 62/62
+cmd /c "npm run dist"  # genera el instalador NSIS
+```
+
+El instalador se probó con el binario ya empaquetado, sin instalarlo:
+
+```powershell
+Start-Process "release\win-unpacked\RASMATIC VR Calibrator.exe" -ArgumentList "--smoke" -Wait
+```
+
+```
+SMOKE_RESULT PASS 14
+```
+
+Comprueba: app cargada, spec con claves, juego cargado y vista central activa,
+servidor en puerto, sliders reales, vistas de diagnóstico, código de
+emparejamiento, guardar/cargar/borrar perfil, bloqueo/desbloqueo y validación de
+valores fuera de rango.
+
+Resultado de esta fase: `62/62` pruebas y `14/14` comprobaciones del smoke.
+Instalador: `windows-calibrator/release/RASMATIC VR Calibrator Setup 1.0.0.exe`
+(82.685.220 B). No se ejecutó el instalador completo en una máquina limpia.
+
+---
+
+## 6. Evidencias
 
 Capturas reales del juego en Chromium con viewport de iPhone (390×844):
 
@@ -243,6 +282,7 @@ Capturas reales del juego en Chromium con viewport de iPhone (390×844):
 | `docs/evidencias/ios-02-partida.png` | partida en curso: reloj en 2:56, `PEDIDO VERDE`, estación y botón `RECOGER` |
 | `docs/evidencias/ios-03-final.png` | panel de resultado con `VOLVER A JUGAR` |
 | `docs/evidencias/ios-04-horizontal.png` | la misma escena en horizontal (844×390), sin recortes ni scroll |
+| `docs/evidencias/ui-01-jugar.png` | JUGAR centrado y legible, con el HUD en la columna izquierda |
 
 Modo VR de escritorio:
 
@@ -266,7 +306,7 @@ Mando y VR en iPhone simulado:
 
 ---
 
-## 6. Lo que NO se pudo verificar acá
+## 7. Lo que NO se pudo verificar acá
 
 Este entorno es Windows: no hay macOS, Xcode ni iPhone. Por lo tanto **no** se
 probó:
@@ -283,6 +323,8 @@ probó:
 | **Mando Bluetooth real** | requiere iPhone + mando | emparejar y probar sticks, A/L2/B/X (`docs/mando-bluetooth.md`) |
 | **`GameController` de iOS** | requiere iOS real | la app ya lo usa; confirmar el aviso al conectar |
 | **VR Box físicas** | requieren las gafas y un iPhone | calibrar FOV, IPD, convergencia, tamaño, margen central y distorsión con las lentes puestas, usando el modo prueba |
+| **Legibilidad óptica del HUD en VR** | requiere lentes y distancia real de visión | jugar con el VR Box y confirmar que marcador, pedido y JUGAR se leen sin forzar la vista |
+| **Instalador NSIS ejecutado** | requiere instalarlo en una máquina limpia | ejecutar `RASMATIC VR Calibrator Setup 1.0.0.exe` y repetir el smoke |
 | Seguimiento de cabeza | fuera de alcance (no hay AR/WebXR) | — |
 | Rendimiento real (fps, batería) | hardware distinto | jugar una partida completa en el iPhone |
 | Service worker en iPhone | solo se habilita en https | servir por https o usar la app nativa |

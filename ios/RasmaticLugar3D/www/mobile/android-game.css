@@ -36,6 +36,50 @@ html.ras-android body.ras-arena #corners { display: none; }
 html.ras-android body.ras-arena #loading { display: none; }
 
 /* ---------- HUD ---------- */
+/* Sistema de areas seguras del gameplay.
+   Todo el HUD de partida se ubica con estas variables: no hay `top` fijos
+   en px ni coordenadas atadas a una resolucion concreta.
+   `--rg-boost` solo crece en las copias por ojo del modo VR Box: cada ojo
+   mide la mitad del ancho de la pantalla y las lentes acercan la imagen. */
+body.ras-arena,
+.vr-mirror[data-kind="hud"],
+.vr-mirror[data-kind="end"],
+.vr-mirror[data-kind="act"] {
+  --rg-boost: 1;
+  --rg-x: calc(clamp(12px, 3.6vmin, 28px) * var(--rg-boost));
+  --rg-y: calc(clamp(14px, 4.2vmin, 32px) * var(--rg-boost));
+  --rg-gap: calc(clamp(8px, 1.8vmin, 14px) * var(--rg-boost));
+  --rg-act-h: calc(clamp(56px, 9vmin, 72px) * var(--rg-boost));
+  --rg-act-bottom: calc(clamp(22px, 5vmin, 40px) * var(--rg-boost));
+}
+
+/* Zonas seguras reales del telefono (notch, barra de gestos). En las copias
+   por ojo se anulan y se vuelven a aplicar solo en el borde exterior de cada
+   ojo: el borde interior (centro de la pantalla) no tiene notch. */
+body.ras-arena {
+  --rg-safe-l: env(safe-area-inset-left, 0px);
+  --rg-safe-r: env(safe-area-inset-right, 0px);
+  --rg-safe-t: env(safe-area-inset-top, 0px);
+  --rg-safe-b: env(safe-area-inset-bottom, 0px);
+  --rg-act-lift: 0px;
+}
+
+.vr-mirror[data-kind="hud"],
+.vr-mirror[data-kind="end"],
+.vr-mirror[data-kind="act"] {
+  --rg-safe-l: 0px;
+  --rg-safe-r: 0px;
+  /* El ojo ocupa toda la altura del marco: 5,5 % es la guia de lente. */
+  --rg-y: max(calc(clamp(14px, 4.2vmin, 32px) * var(--rg-boost)), 5.5vh);
+  --rg-boost: 1.28;
+}
+#vr-mirror-hud-l,
+#vr-mirror-end-l,
+#vr-mirror-act-l { --rg-safe-l: env(safe-area-inset-left, 0px); }
+#vr-mirror-hud-r,
+#vr-mirror-end-r,
+#vr-mirror-act-r { --rg-safe-r: env(safe-area-inset-right, 0px); }
+
 #rg-hud {
   position: fixed;
   inset: 0;
@@ -48,34 +92,44 @@ html.ras-android body.ras-arena #loading { display: none; }
 }
 
 .rg-panel {
-  background: rgba(8, 22, 46, .82);
-  border: 1px solid rgba(255, 255, 255, .22);
+  background: rgba(8, 22, 46, .86);
+  border: 1px solid rgba(255, 255, 255, .26);
   border-radius: 16px;
-  box-shadow: 0 10px 28px rgba(4, 14, 34, .35);
+  box-shadow: 0 10px 28px rgba(4, 14, 34, .38);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
 }
 
-/* marcador: esquina superior izquierda */
-#rg-score {
+/* columna izquierda: marcador, pedido y lo que lleva el jugador. Es una
+   columna flexible, asi el pedido nunca pisa el marcador ni se sale. */
+#rg-left {
   position: absolute;
-  left: calc(12px + env(safe-area-inset-left, 0px));
-  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: calc(var(--rg-x) + var(--rg-safe-l));
+  top: calc(var(--rg-y) + var(--rg-safe-t));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--rg-gap);
+  max-width: calc(100% - (var(--rg-x) * 2) - 120px);
+}
+
+#rg-score {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
+  gap: calc(10px * var(--rg-boost));
+  padding: calc(7px * var(--rg-boost)) calc(13px * var(--rg-boost));
 }
 .rg-team { display: flex; flex-direction: column; line-height: 1; }
 .rg-team span {
-  font-size: 10px;
+  font-size: calc(11px * var(--rg-boost));
   letter-spacing: .14em;
-  font-weight: 700;
-  opacity: .72;
+  font-weight: 800;
+  opacity: .8;
 }
 .rg-team b {
   font-family: "Exo 2", system-ui, sans-serif;
-  font-size: 30px;
+  font-size: calc(clamp(30px, 7.6vmin, 38px) * var(--rg-boost));
   font-weight: 900;
   letter-spacing: .02em;
 }
@@ -83,95 +137,113 @@ html.ras-android body.ras-arena #loading { display: none; }
 #rg-score .rg-b b { color: #ffc46b; }
 .rg-sep {
   width: 1px;
-  height: 34px;
-  background: rgba(255, 255, 255, .22);
+  height: calc(32px * var(--rg-boost));
+  background: rgba(255, 255, 255, .24);
 }
 
-/* tiempo: esquina superior derecha */
+/* tiempo: esquina superior derecha, separado del borde y del boton ⚙ */
 #rg-time {
   position: absolute;
-  right: calc(12px + env(safe-area-inset-right, 0px));
-  top: calc(10px + env(safe-area-inset-top, 0px));
-  padding: 9px 16px;
+  right: calc(var(--rg-x) + var(--rg-safe-r));
+  top: calc(var(--rg-y) + var(--rg-safe-t));
+  padding: calc(7px * var(--rg-boost)) calc(13px * var(--rg-boost));
   font-family: "Exo 2", system-ui, sans-serif;
-  font-size: 28px;
+  font-size: calc(clamp(28px, 7vmin, 36px) * var(--rg-boost));
   font-weight: 900;
   letter-spacing: .04em;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 #rg-time.low { color: #ff8a7a; border-color: rgba(255, 138, 122, .6); }
 
+/* En cada ojo el reloj se corre hacia adentro para no chocar con el boton
+   de opciones (que sigue anclado al borde derecho de la pantalla). */
+.vr-mirror[data-kind="hud"] #rg-time {
+  right: calc(var(--rg-x) + 52px);
+  padding: calc(6px * var(--rg-boost)) calc(12px * var(--rg-boost));
+}
+
 /* pedido del jugador */
 #rg-req {
-  position: absolute;
-  left: calc(12px + env(safe-area-inset-left, 0px));
-  top: calc(76px + env(safe-area-inset-top, 0px));
   display: none;
   align-items: center;
-  gap: 12px;
-  padding: 10px 16px 10px 12px;
-  min-width: 176px;
+  gap: calc(10px * var(--rg-boost));
+  padding: calc(8px * var(--rg-boost)) calc(14px * var(--rg-boost))
+           calc(8px * var(--rg-boost)) calc(10px * var(--rg-boost));
+  min-width: calc(168px * var(--rg-boost));
+  max-width: 100%;
+  box-sizing: border-box;
 }
 #rg-req.on { display: flex; }
 #rg-req .rg-swatch {
-  width: 40px;
-  height: 40px;
+  flex: 0 0 auto;
+  width: calc(38px * var(--rg-boost));
+  height: calc(38px * var(--rg-boost));
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, .85);
   box-shadow: 0 0 18px currentColor;
   background: #888;
 }
-#rg-req .rg-req-txt { display: flex; flex-direction: column; line-height: 1.1; }
+#rg-req .rg-req-txt { display: flex; flex-direction: column; line-height: 1.12; min-width: 0; }
 #rg-req .rg-req-txt small {
-  font-size: 10px;
+  font-size: calc(11px * var(--rg-boost));
   letter-spacing: .16em;
-  font-weight: 700;
-  opacity: .72;
+  font-weight: 800;
+  opacity: .8;
 }
 #rg-req .rg-req-txt b {
   font-family: "Exo 2", system-ui, sans-serif;
-  font-size: 21px;
+  font-size: calc(clamp(21px, 5vmin, 27px) * var(--rg-boost));
   font-weight: 900;
   letter-spacing: .02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* qué lleva el jugador: debajo del pedido, fuera de la zona del joystick */
+/* qué lleva el jugador: debajo del pedido, dentro de la misma columna */
 #rg-carry {
-  position: absolute;
-  left: calc(12px + env(safe-area-inset-left, 0px));
-  top: calc(148px + env(safe-area-inset-top, 0px));
   display: none;
   align-items: center;
-  gap: 9px;
-  padding: 8px 15px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .08em;
+  gap: calc(9px * var(--rg-boost));
+  padding: calc(7px * var(--rg-boost)) calc(14px * var(--rg-boost));
+  font-size: calc(clamp(14px, 3.4vmin, 17px) * var(--rg-boost));
+  font-weight: 800;
+  letter-spacing: .05em;
   white-space: nowrap;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 #rg-carry.on { display: flex; }
 #rg-carry i {
-  width: 15px;
-  height: 15px;
+  flex: 0 0 auto;
+  width: calc(15px * var(--rg-boost));
+  height: calc(15px * var(--rg-boost));
   border-radius: 50%;
   background: #888;
   border: 1px solid rgba(255, 255, 255, .8);
 }
+#rg-carry span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-/* aviso central */
+/* aviso central: debajo de la fila superior, nunca encima del marcador */
 #rg-toast {
   position: absolute;
   left: 50%;
-  top: 21%;
+  top: 22%;
   transform: translate(-50%, -8px);
-  max-width: 86vw;
-  padding: 12px 22px;
+  max-width: 86%;
+  padding: calc(10px * var(--rg-boost)) calc(18px * var(--rg-boost));
   border-radius: 14px;
-  font-size: clamp(15px, 4.6vw, 21px);
+  font-size: calc(clamp(21px, 4.6vmin, 26px) * var(--rg-boost));
   font-weight: 800;
-  letter-spacing: .03em;
+  line-height: 1.25;
+  letter-spacing: .02em;
   text-align: center;
-  background: rgba(8, 22, 46, .9);
+  background: rgba(8, 22, 46, .92);
   border: 1px solid rgba(255, 255, 255, .3);
   opacity: 0;
   transition: opacity .18s, transform .18s;
@@ -180,17 +252,20 @@ html.ras-android body.ras-arena #loading { display: none; }
 #rg-toast.ok { color: #8ff0c2; border-color: rgba(143, 240, 194, .6); }
 #rg-toast.bad { color: #ffb0a4; border-color: rgba(255, 176, 164, .6); }
 
-/* pista de inicio: por encima del joystick */
+/* pista de inicio: justo encima del boton de interaccion, sin taparlo */
 #rg-hint {
   position: absolute;
   left: 50%;
-  bottom: calc(196px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--rg-act-bottom) + var(--rg-act-lift) +
+              var(--rg-act-h) + 10px + var(--rg-safe-b));
   transform: translateX(-50%);
-  padding: 9px 16px;
-  font-size: 13.5px;
-  font-weight: 600;
-  letter-spacing: .02em;
-  white-space: nowrap;
+  max-width: 88%;
+  padding: calc(8px * var(--rg-boost)) calc(15px * var(--rg-boost));
+  font-size: calc(clamp(14px, 3.4vmin, 17px) * var(--rg-boost));
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: .01em;
+  text-align: center;
   opacity: 0;
   transition: opacity .3s;
 }
@@ -199,29 +274,36 @@ html.ras-android body.ras-arena #loading { display: none; }
 /* ---------- botón de interacción ---------- */
 #rg-act {
   position: fixed;
-  right: calc(16px + env(safe-area-inset-right, 0px));
-  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  bottom: calc(var(--rg-act-bottom) + var(--rg-act-lift) + var(--rg-safe-b));
+  transform: translate(calc(-50% + var(--rg-dx, 0px)), var(--rg-dy, 0px));
   z-index: 9;
   display: none;
   align-items: center;
   justify-content: center;
-  min-width: 132px;
-  height: 62px;
-  padding: 0 20px;
+  box-sizing: border-box;
+  min-width: calc(clamp(140px, 34vmin, 200px) * var(--rg-boost));
+  height: var(--rg-act-h);
+  padding: 0 calc(22px * var(--rg-boost));
   border: 0;
-  border-radius: 18px;
+  border-radius: 999px;
   font-family: "Exo 2", system-ui, sans-serif;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: .04em;
+  font-size: calc(clamp(16px, 4vmin, 20px) * var(--rg-boost));
+  font-weight: 900;
+  letter-spacing: .05em;
   color: #08203f;
   background: linear-gradient(160deg, #ffffff, #cfe3ff);
-  box-shadow: 0 12px 26px rgba(4, 14, 34, .4), inset 0 0 0 1px rgba(255, 255, 255, .7);
+  box-shadow: 0 14px 30px rgba(4, 14, 34, .42),
+              inset 0 0 0 1px rgba(255, 255, 255, .75),
+              0 0 0 4px rgba(255, 255, 255, .12);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  transition: transform .08s ease, box-shadow .15s ease;
 }
 #rg-act.on { display: flex; }
-#rg-act:active { transform: scale(.97); }
+#rg-act:active {
+  transform: translate(calc(-50% + var(--rg-dx, 0px)), var(--rg-dy, 0px)) scale(.97);
+}
 #rg-act.go { color: #fff; background: linear-gradient(160deg, #2fbf86, #16855b); }
 #rg-act.take { color: #08203f; }
 #rg-act.give { color: #08203f; background: linear-gradient(160deg, #ffe9a8, #ffc247); }
@@ -357,7 +439,7 @@ html.ras-android body.ras-arena #loading { display: none; }
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 18px;
+  padding: max(18px, var(--rg-y, 18px));
   background: radial-gradient(ellipse at center, rgba(10, 26, 58, .78), rgba(6, 16, 36, .94));
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
@@ -365,6 +447,8 @@ html.ras-android body.ras-arena #loading { display: none; }
 #rg-end.on { display: flex; }
 #rg-end .rg-card {
   width: min(430px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
   padding: 26px 22px 22px;
   border-radius: 22px;
   text-align: center;
@@ -372,11 +456,12 @@ html.ras-android body.ras-arena #loading { display: none; }
   background: rgba(10, 26, 58, .92);
   border: 1px solid rgba(255, 255, 255, .22);
   box-shadow: 0 24px 70px rgba(0, 0, 0, .5);
+  box-sizing: border-box;
 }
 #rg-end h2 {
   margin: 0 0 4px;
   font-family: "Exo 2", system-ui, sans-serif;
-  font-size: 24px;
+  font-size: calc(clamp(25px, 6.4vmin, 32px) * var(--rg-boost));
   letter-spacing: .06em;
 }
 #rg-end h2.win { color: #6ff0b4; }
@@ -384,8 +469,9 @@ html.ras-android body.ras-arena #loading { display: none; }
 #rg-end h2.tie { color: #ffd27a; }
 #rg-end .rg-sub {
   margin: 0 0 18px;
-  font-size: 13px;
-  opacity: .72;
+  font-size: calc(14px * var(--rg-boost));
+  line-height: 1.4;
+  opacity: .78;
   letter-spacing: .04em;
 }
 #rg-end .rg-final {
@@ -395,10 +481,15 @@ html.ras-android body.ras-arena #loading { display: none; }
   margin: 0 0 20px;
 }
 #rg-end .rg-final div { display: flex; flex-direction: column; gap: 2px; }
-#rg-end .rg-final span { font-size: 11px; letter-spacing: .14em; opacity: .7; font-weight: 700; }
+#rg-end .rg-final span {
+  font-size: calc(12px * var(--rg-boost));
+  letter-spacing: .14em;
+  opacity: .76;
+  font-weight: 800;
+}
 #rg-end .rg-final b {
   font-family: "Exo 2", system-ui, sans-serif;
-  font-size: 44px;
+  font-size: calc(clamp(44px, 11vmin, 56px) * var(--rg-boost));
   line-height: 1;
 }
 #rg-end .rg-final .rg-fp b { color: #7cc4ff; }
@@ -410,8 +501,8 @@ html.ras-android body.ras-arena #loading { display: none; }
   width: 100%;
   padding: 15px 20px;
   border-radius: 14px;
-  font-weight: 800;
-  font-size: 15px;
+  font-weight: 900;
+  font-size: calc(16px * var(--rg-boost));
   letter-spacing: .06em;
   color: #08203f;
   background: linear-gradient(160deg, #ffffff, #cfe3ff);
@@ -421,14 +512,19 @@ html.ras-android body.ras-arena #loading { display: none; }
 #rg-end button:active { transform: scale(.985); }
 
 /* ---------- pantallas bajas / horizontales ---------- */
-@media (max-height: 430px) {
-  .rg-team b { font-size: 24px; }
-  #rg-time { font-size: 22px; padding: 6px 12px; }
-  #rg-req { top: calc(64px + env(safe-area-inset-top, 0px)); padding: 7px 13px 7px 9px; }
-  #rg-req .rg-swatch { width: 30px; height: 30px; }
-  #rg-req .rg-req-txt b { font-size: 17px; }
-  #rg-carry { top: calc(112px + env(safe-area-inset-top, 0px)); font-size: 12px; }
-  #rg-act { height: 54px; min-width: 118px; font-size: 13.5px; }
-  #rg-hint { bottom: calc(148px + env(safe-area-inset-bottom, 0px)); font-size: 12px; }
-  #rg-end .rg-final b { font-size: 36px; }
+/* Con poca altura se aprieta el aire, no el tamano de lectura. */
+@media (max-height: 460px) {
+  #rg-score { padding: calc(6px * var(--rg-boost)) calc(11px * var(--rg-boost)); }
+  #rg-req { padding: calc(6px * var(--rg-boost)) calc(11px * var(--rg-boost))
+                     calc(6px * var(--rg-boost)) calc(8px * var(--rg-boost)); }
+  #rg-req .rg-swatch { width: calc(32px * var(--rg-boost)); height: calc(32px * var(--rg-boost)); }
+  #rg-carry { padding: calc(6px * var(--rg-boost)) calc(12px * var(--rg-boost)); }
+  #rg-act { border-radius: 18px; }
+  #rg-end .rg-card { padding: 20px 18px 18px; }
+  #rg-end .rg-sub { margin-bottom: 14px; }
+}
+
+/* ---------- retrato angosto: JUGAR por encima del joystick ---------- */
+@media (max-width: 560px) and (orientation: portrait) {
+  body.ras-arena { --rg-act-lift: clamp(124px, 34vmin, 172px); }
 }

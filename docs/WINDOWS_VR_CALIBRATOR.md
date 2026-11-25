@@ -286,8 +286,8 @@ node tools/test-vr.js
 node tools/check-xcode.js
 ```
 
-Resultados del 23/11/2026: `test-web` 23/23 + offline + horizontal,
-`test-pad` 21/21, `test-vr` 32/32 + mouse + `?vr=1`, `check-xcode` 123/123.
+Resultados del 25/11/2026: `test-web` 25/25 + offline + horizontal,
+`test-pad` 21/21, `test-vr` 33/33 + mouse + `?vr=1`, `check-xcode` 123/123.
 
 > `test-vr.js` levanta Chrome por CDP y puede tardar varios minutos.
 
