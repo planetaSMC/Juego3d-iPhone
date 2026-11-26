@@ -213,7 +213,12 @@ IPA real sin firmar:
 
 - `RASMATIC-VR-unsigned.ipa`
 - 829.907 bytes
-- SHA-256 `7778E6B44FB98D99FE20E3E5E4B0033FA1FD6963B256D2577CE89BA7CA801273`
+- SHA-256 del run de código:
+  `7778E6B44FB98D99FE20E3E5E4B0033FA1FD6963B256D2577CE89BA7CA801273`
+- SHA-256 del run final del PR:
+  `8FE2D696801AD9C359BA9262A797DCFC52DC55C62518F525606A90E58A9FD55E`
+- El hash puede variar por marcas de tiempo entre compilaciones; el tamaño y el
+  contenido son los mismos.
 - artefacto `rasmatic-v20-ipa`
 - copia local ignorada por Git: `dist/RASMATIC-VR-unsigned.ipa`
 

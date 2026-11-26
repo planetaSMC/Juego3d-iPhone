@@ -55,9 +55,10 @@ node tools/verify-ipa.js dist/RASMATIC-VR-unsigned.ipa \
 ```
 
 > La compilación real se hizo en GitHub Actions con Xcode 16.4: **BUILD
-> SUCCEEDED** (run 45809544456). IPA sin firmar de 829.907 bytes, SHA-256
-> `7778E6B44FB98D99FE20E3E5E4B0033FA1FD6963B256D2577CE89BA7CA801273`.
-> La firma e instalación en iPhone siguen pendientes. Ver
+> SUCCEEDED** (runs 45809544456 y 45809851662). IPA sin firmar de 829.907
+> bytes. El SHA-256 puede variar por marcas de tiempo entre compilaciones
+> (observados: `7778E6B4…01273` y `8FE2D696…FD55E`); el contenido y el tamaño
+> son los mismos. La firma e instalación en iPhone siguen pendientes. Ver
 > `docs/v20/v20.1-core-motion-fix.md` y `docs/v20/limitations.md`.
 
 ---
