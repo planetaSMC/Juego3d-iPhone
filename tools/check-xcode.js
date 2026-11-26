@@ -194,7 +194,7 @@ if (headSwift) {
   check(!/\.xArbitrary(?!Z|Corrected)/.test(headSwift), 'sin el valor inválido .xArbitrary');
   check(/\.xArbitraryZVertical/.test(headSwift) &&
     /\.xArbitraryCorrectedZVertical/.test(headSwift) &&
-    /\.xmagneticNorthZVertical/.test(headSwift) &&
+    /\.xMagneticNorthZVertical/.test(headSwift) &&
     /\.xTrueNorthZVertical/.test(headSwift), 'solo marcos de referencia reales');
   check(/referenceFrame|selectReferenceFrame/.test(headSwift) &&
     /Sin marco de referencia/.test(headSwift), 'maneja la ausencia de marco');

@@ -62,7 +62,7 @@ final class HeadTrackingBridge {
     ///
     /// `CMAttitudeReferenceFrame` solo tiene cuatro valores válidos:
     /// `.xArbitraryZVertical`, `.xArbitraryCorrectedZVertical`,
-    /// `.xmagneticNorthZVertical` y `.xTrueNorthZVertical`.
+    /// `.xMagneticNorthZVertical` y `.xTrueNorthZVertical`.
     /// No existe un valor genérico sin sufijo: hay que usar uno de esos
     /// cuatro y comprobar antes que el equipo lo soporte.
     ///
@@ -76,7 +76,7 @@ final class HeadTrackingBridge {
         let preferred: [CMAttitudeReferenceFrame] = [
             .xArbitraryZVertical,
             .xArbitraryCorrectedZVertical,
-            .xmagneticNorthZVertical,
+            .xMagneticNorthZVertical,
             .xTrueNorthZVertical
         ]
         return preferred.first { available.contains($0) }
