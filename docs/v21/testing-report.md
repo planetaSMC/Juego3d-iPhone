@@ -91,11 +91,14 @@ V21 se compiló en GitHub Actions con Xcode 16.4:
 
 | Dato | Valor |
 |---|---|
-| Run | [45880086744](https://github.com/planetaSMC/Juego3d-iPhone/actions/runs/45880086744) |
+| Run del código | [45880086744](https://github.com/planetaSMC/Juego3d-iPhone/actions/runs/45880086744) |
+| Run de la rama final | [45880239776](https://github.com/planetaSMC/Juego3d-iPhone/actions/runs/45880239776) |
 | Resultado | **BUILD SUCCEEDED** |
 | IPA | `RASMATIC-VR-unsigned.ipa` |
 | Tamaño | **840.012 bytes** |
-| SHA-256 | `4287E5FEDBAD064EECA6E1B8D7C96B2C866B30623A86C6250232EF9FFB533588` |
+| SHA-256 (run del código) | `4287E5FEDBAD064EECA6E1B8D7C96B2C866B30623A86C6250232EF9FFB533588` |
+| SHA-256 (rama final) | `66714AB0699EB0040B079E35DE4E4D7866469A17426D5B87CF7CAEC0A6E94F05` |
+| Nota | El hash varía por marcas de tiempo; el tamaño y el contenido son los mismos |
 | `verify-ipa.js` | **OK** (bundle, Mach-O, 15 archivos clave, `www/v21/v21.css`) |
 
 Copia local ignorada por Git: `dist/RASMATIC-VR-unsigned.ipa`.

@@ -275,8 +275,9 @@ Implementado y probado en simulación:
   fila de clientes y animaciones.
 
 **Compilación iOS:** V21 compiló en GitHub Actions con Xcode 16.4
-(`BUILD SUCCEEDED`, run 45880086744). IPA sin firmar de 840.012 bytes,
-SHA-256 `4287E5FE…533588`, verificado con `verify-ipa.js`.
+(`BUILD SUCCEEDED`, runs 45880086744 y 45880239776). IPA sin firmar de 840.012
+bytes; el SHA-256 varía por marcas de tiempo (observados `4287E5FE…` y
+`66714AB0…`), verificado con `verify-ipa.js`.
 
 **Pendiente de validación física** (no se afirma que funcione en hardware):
 
