@@ -32,7 +32,7 @@ const { verifyIpa } = require('./verify-ipa');
 const ROOT = path.resolve(__dirname, '..');
 const API = 'https://api.github.com';
 const WORKFLOW = 'ios-ipa.yml';
-const ARTIFACT = 'rasmatic-v20-ipa';
+const ARTIFACT = 'rasmatic-v21-ipa';
 const EXPECTED = [
   { file: 'RASMATIC-VR-unsigned.ipa',
     bundle: 'com.rasmatic.lugar3d', variant: 'v20' }
@@ -244,7 +244,7 @@ async function main() {
   })).data;
 
   const commit = (await api('POST', repoApi + '/git/commits', {
-    message: 'V20: unified RASMATIC VR with pharmacy scene and Windows head tracking',
+    message: 'V21: gameplay, aim, conveyor delivery, client queue and start menu',
     tree: tree.sha,
     parents: parentSha ? [parentSha] : []
   })).data;

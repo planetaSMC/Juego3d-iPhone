@@ -1,12 +1,12 @@
-name: iOS app V20 (RASMATIC VR)
+﻿name: iOS app V21 (RASMATIC VR)
 
-# Compila la app única RASMATIC VR en una Mac de la nube y deja el .ipa
+# Compila la app Ãºnica RASMATIC VR en una Mac de la nube y deja el .ipa
 # sin firmar como artefacto:
 #   RASMATIC-VR-unsigned.ipa
 #
-#   1. Subí esta carpeta a GitHub.
-#   2. Actions -> "iOS app V20 (RASMATIC VR)" -> Run workflow.
-#   3. Descargar el artefacto "rasmatic-v20-ipa".
+#   1. SubÃ­ esta carpeta a GitHub.
+#   2. Actions -> "iOS app V21 (RASMATIC VR)" -> Run workflow.
+#   3. Descargar el artefacto "rasmatic-v21-ipa".
 #   4. Instalar con AltStore/Sideloadly (docs/instalar-en-iphone.md).
 
 on:
@@ -22,10 +22,10 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Descargar el código
+      - name: Descargar el cÃ³digo
         uses: actions/checkout@v4
 
-      - name: Versión de Xcode
+      - name: VersiÃ³n de Xcode
         run: xcodebuild -version
 
       - name: Comprobar estructura, target y permisos
@@ -47,7 +47,7 @@ jobs:
           IPA=dist/RASMATIC-VR-unsigned.ipa
           echo "### RASMATIC VR" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| App | Bundle ID | Tamaño | SHA-256 |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| App | Bundle ID | TamaÃ±o | SHA-256 |" >> "$GITHUB_STEP_SUMMARY"
           echo "|---|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
           size=$(wc -c < "$IPA" | tr -d ' ')
           hash=$(shasum -a 256 "$IPA" | cut -d' ' -f1)
@@ -56,7 +56,8 @@ jobs:
       - name: Subir el .ipa
         uses: actions/upload-artifact@v4
         with:
-          name: rasmatic-v20-ipa
+          name: rasmatic-v21-ipa
           path: dist/RASMATIC-VR-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
+

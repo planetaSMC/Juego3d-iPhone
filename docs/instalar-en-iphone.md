@@ -31,8 +31,8 @@ es la principal.
 Antes de empezar, el `.ipa` tiene que existir. Si todavía no lo tenés:
 
 1. Subí el proyecto a GitHub.
-2. **Actions → iOS app V20 (RASMATIC VR) → Run workflow**.
-3. Descargá el artefacto `rasmatic-v20-ipa`.
+2. **Actions → iOS app V21 (RASMATIC VR) → Run workflow**.
+3. Descargá el artefacto `rasmatic-v21-ipa`.
 
 Adentro está `RASMATIC-VR-unsigned.ipa`. También podés generarlo en una Mac con
 `./tools/build-ipa.sh`. Detalle en `docs/v20/README.md` y

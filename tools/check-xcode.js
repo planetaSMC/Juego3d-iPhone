@@ -301,8 +301,21 @@ check(/runs-on: macos-/.test(wf), 'runner macOS');
 check(/check-xcode\.js/.test(wf), 'check-xcode en CI');
 check(/build-ipa\.sh/.test(wf), 'build-ipa.sh en CI');
 check(/verify-ipa\.js/.test(wf), 'verify-ipa en CI');
-check(/rasmatic-v20-ipa/.test(wf), 'artefacto V20');
+check(/rasmatic-v21-ipa/.test(wf), 'artefacto V21');
 check(/RasmaticVR/.test(wf), 'esquema RasmaticVR');
+
+const wfWinPath = path.join(root, '.github', 'workflows', 'windows-calibrator.yml');
+const wfWin = exists(wfWinPath) ? read(wfWinPath) : '';
+check(!!wfWin, 'workflow Windows');
+check(/runs-on: windows-latest/.test(wfWin), 'runner Windows');
+check(/npm ci/.test(wfWin) && /npm test/.test(wfWin), 'instala y prueba el calibrador');
+check(/npm run dist/.test(wfWin), 'compila instalador NSIS');
+check(/rasmatic-windows-calibrator/.test(wfWin), 'artefacto Windows');
+const pkgWin = JSON.parse(read(path.join(root, 'windows-calibrator', 'package.json')));
+check(pkgWin.build && pkgWin.build.appId === 'com.rasmatic.vrcalibrator', 'appId del calibrador');
+check(pkgWin.scripts && /electron-builder --win nsis/.test(pkgWin.scripts.dist), 'script dist NSIS');
+check(Array.isArray(pkgWin.build.win.target) &&
+  pkgWin.build.win.target.some((t) => t.target === 'nsis'), 'target NSIS');
 
 const ipaPath = path.join(root, 'tools', 'build-ipa.sh');
 const ipa = exists(ipaPath) ? read(ipaPath) : '';

@@ -12,7 +12,7 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 | `node tools/test-web.js` | **30 / 30** + horizontal |
 | `node tools/test-vr.js` | **34 / 34** |
 | `node tools/test-pad.js` | **21 / 21** |
-| `node tools/check-xcode.js` | **154 / 154** |
+| `node tools/check-xcode.js` | **162 / 162** |
 | `windows-calibrator && npm test` | **62 / 62** |
 
 ## 2. Suite V21 (14 casos)

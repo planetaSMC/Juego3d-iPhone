@@ -55,8 +55,8 @@ compilarla en macOS. La guía paso a paso está en
 Resumen:
 
 1. Subir el proyecto a GitHub.
-2. **Actions → iOS app V20 (RASMATIC VR) → Run workflow**.
-3. Descargar el artefacto `rasmatic-v20-ipa` y descomprimirlo.
+2. **Actions → iOS app V21 (RASMATIC VR) → Run workflow**.
+3. Descargar el artefacto `rasmatic-v21-ipa` y descomprimirlo.
 4. Instalar `RASMATIC-VR-unsigned.ipa` con Sideloadly o AltStore.
 
 También se puede compilar en una Mac:
@@ -197,7 +197,7 @@ Hace:
 
 1. `tools/make-icons.ps1` → iconos de PWA y de la app.
 2. `tools/build-ios.js` → `manifest.webmanifest`, `sw.js` y espejo iOS.
-3. `tools/check-xcode.js` → **154 comprobaciones** (target único, plist,
+3. `tools/check-xcode.js` → **162 comprobaciones** (target único, plist,
    permisos, iconos, escena V20, precache y espejo).
 
 Para empaquetar el proyecto:
@@ -223,7 +223,7 @@ Resultados de la última ejecución (2026-11-26, Windows + Edge headless):
 
 | Suite | Resultado |
 |---|---|
-| `check-xcode.js` | **154/154** |
+| `check-xcode.js` | **162/162** |
 | `test-v20.js` | **18/18** |
 | `test-web.js` | **30/30** + horizontal |
 | `test-vr.js` | **34/34** |

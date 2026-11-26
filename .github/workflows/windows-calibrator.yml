@@ -1,0 +1,74 @@
+name: Windows VR Calibrator (V21)
+
+# Compila el centro de configuración VR/Head Tracking de Windows y deja el
+# instalador NSIS como artefacto:
+#   RASMATIC VR Calibrator Setup <version>.exe
+#
+# El paquete incluye `windows-calibrator` + `web/` como recurso (juego V21).
+#
+#   1. Actions -> "Windows VR Calibrator (V21)" -> Run workflow.
+#   2. Descargar el artefacto "rasmatic-windows-calibrator".
+#   3. Ejecutar el instalador en Windows.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'windows-calibrator/**'
+      - 'web/**'
+      - '.github/workflows/windows-calibrator.yml'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: windows-calibrator
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: windows-calibrator/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Pruebas del calibrador
+        run: npm test
+
+      - name: Compilar instalador NSIS
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run dist
+
+      - name: Comprobar instalador
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem release/*.exe | Where-Object { $_.Name -notlike '*uninstall*' } | Select-Object -First 1
+          if (-not $exe) { Write-Error 'No se generó el instalador'; exit 1 }
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash
+          Write-Host "Instalador: $($exe.FullName)"
+          Write-Host "Tamaño: $($exe.Length) bytes"
+          Write-Host "SHA-256: $hash"
+          "### RASMATIC VR Calibrator" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          "| Archivo | Tamaño | SHA-256 |" >> $env:GITHUB_STEP_SUMMARY
+          "|---|---|---|" >> $env:GITHUB_STEP_SUMMARY
+          "| $($exe.Name) | $($exe.Length) B | ``$hash`` |" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Subir instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: rasmatic-windows-calibrator
+          path: windows-calibrator/release/*.exe
+          if-no-files-found: error
+          retention-days: 30
