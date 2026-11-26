@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>es</string>
 	<key>CFBundleDisplayName</key>
-	<string>RASMATIC</string>
+	<string>RASMATIC VR</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -17,20 +17,26 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>20.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>20</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>RASMATICAppVariant</key>
+	<string>v20</string>
+	<key>RASMATICHeadTracking</key>
+	<true/>
+	<key>NSMotionUsageDescription</key>
+	<string>RASMATIC VR usa el giroscopio y el acelerómetro para girar la cámara cuando movés la cabeza. No usa la cámara ni envía datos a Internet.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>RASMATIC usa la red Wi-Fi local para conectar el juego con el calibrador VR de la PC. No envía datos a Internet.</string>
+	<string>RASMATIC VR usa la red Wi-Fi local para conectar el juego con el calibrador y la configuración de la PC. No envía datos a Internet.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIStatusBarHidden</key>

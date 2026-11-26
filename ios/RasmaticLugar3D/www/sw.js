@@ -1,6 +1,6 @@
-/* Generado por tools/build-ios.js - no editar a mano.
-   Build: 0417b73dd1d31bc4 */
-const CACHE = 'rasmatic-0417b73dd1d31bc4';
+/* Generado por tools/build-ios.js (V20) - no editar a mano.
+   Build: 8a3d4b1effa2392a */
+const CACHE = 'rasmatic-v20-8a3d4b1effa2392a';
 const PRECACHE = [
   "./",
   "./index.html",
@@ -13,10 +13,15 @@ const PRECACHE = [
   "./mobile/android-controls.css",
   "./ios/ios.css",
   "./ios/ios-bridge.js",
+  "./headtracking/head-tracking.css",
+  "./headtracking/head-tracking.js",
   "./vr/vr-preview.css",
   "./vr/vr-preview.js",
   "./net/vr-link.css",
   "./net/vr-link.js",
+  "./v20/pharmacy.css",
+  "./v20/pharmacy-scene.js",
+  "./v20/pharmacy-core.js",
   "./fonts/fonts.css",
   "./fonts/google-fonts.css",
   "./icons/icon-180.png",
@@ -60,8 +65,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // El documento va a la red primero para recibir actualizaciones; si no hay
-  // red, se sirve la copia en cache (offline).
   if (isNavigation(request)) {
     event.respondWith(
       fetch(request)
@@ -75,7 +78,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Recursos versionados por build: cache primero.
   event.respondWith(
     caches.match(request).then((hit) => {
       if (hit) return hit;

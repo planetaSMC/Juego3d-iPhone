@@ -1,8 +1,7 @@
 /*
  * Verifica un .ipa sin necesidad de macOS ni de firmarlo.
  *
- *   node tools/verify-ipa.js dist/RASMATIC-HeadTracking-unsigned.ipa --expect com.rasmatic.lugar3d.headtracking --variant headtracking
- *   node tools/verify-ipa.js dist/RASMATIC-Classic-unsigned.ipa --expect com.rasmatic.lugar3d.classic --variant classic
+ *   node tools/verify-ipa.js dist/RASMATIC-VR-unsigned.ipa --expect com.rasmatic.lugar3d --variant v20
  *
  * Comprueba la estructura real del ZIP (no el nombre del archivo):
  *   - un unico Payload/*.app
@@ -176,9 +175,9 @@ function verifyIpa(file, options) {
     /* V19: diferencias de permisos entre las dos apps. */
     const hasMotion = bufferHas(infoBuf, 'NSMotionUsageDescription');
     const hasCamera = bufferHas(infoBuf, 'NSCameraUsageDescription');
-    if (variant === 'headtracking') {
-      check(hasMotion, 'Head Tracking declara NSMotionUsageDescription');
-      check(!hasCamera, 'Head Tracking no pide cámara');
+    if (variant === 'headtracking' || variant === 'v20') {
+      check(hasMotion, 'RASMATIC VR declara NSMotionUsageDescription');
+      check(!hasCamera, 'RASMATIC VR no pide cámara');
     } else if (variant === 'classic') {
       check(!hasMotion, 'Classic no declara permisos de movimiento');
       check(!hasCamera, 'Classic no pide cámara');
@@ -221,6 +220,11 @@ function verifyIpa(file, options) {
     required.push('www/headtracking/head-tracking.js',
       'www/headtracking/head-tracking.css');
   }
+  if (variant === 'v20') {
+    required.push('www/v20/pharmacy-scene.js', 'www/v20/pharmacy-core.js',
+      'www/v20/pharmacy.css', 'www/headtracking/head-tracking.js',
+      'www/headtracking/head-tracking.css');
+  }
   let missing = 0;
   for (const rel of required) {
     if (!zip.has(prefix + rel)) { fail('falta ' + rel + ' dentro de la .app'); missing++; }
@@ -230,6 +234,10 @@ function verifyIpa(file, options) {
   if (variant === 'classic') {
     const htFiles = zip.names.filter((n) => n.startsWith(prefix + 'www/headtracking/'));
     check(htFiles.length === 0, 'Classic no incluye archivos de head tracking');
+  }
+  if (variant === 'v20') {
+    const classic = zip.names.filter((n) => n.startsWith(prefix + 'www/web-classic/'));
+    check(classic.length === 0, 'V20 no incluye la app Classic separada');
   }
   if (variant) {
     const indexText = zip.has(prefix + 'www/index.html')
@@ -242,6 +250,12 @@ function verifyIpa(file, options) {
       check(/storagePrefix: 'rasmatic\.classic\.'/.test(indexText) &&
         /headTracking: false/.test(indexText),
         'index.html de Classic con almacenamiento aislado');
+    } else if (variant === 'v20') {
+      check(/id: 'v20'/.test(indexText) && /headTracking: true/.test(indexText) &&
+        /storagePrefix: 'rasmatic\.'/.test(indexText),
+        'index.html de RASMATIC VR con identidad v20');
+      check(/v20\/pharmacy-scene\.js/.test(indexText),
+        'index.html carga la escena de farmacia V20');
     }
   }
 
@@ -294,7 +308,7 @@ if (require.main === module) {
   const vi = args.indexOf('--variant');
   const variant = vi >= 0 ? args[vi + 1] : undefined;
   if (!file) {
-    console.error('Uso: node tools/verify-ipa.js <archivo.ipa> [--expect <bundle-id>] [--variant headtracking|classic]');
+    console.error('Uso: node tools/verify-ipa.js <archivo.ipa> [--expect <bundle-id>] [--variant v20|headtracking|classic]');
     process.exit(2);
   }
   try {

@@ -33,9 +33,18 @@
   var VERSION = 'ht-1.0';
   var DEG = Math.PI / 180;
   var SEN_KEY = 'rasmatic.ht.sensitivity';
+  var SX_KEY = 'rasmatic.ht.sensX';
+  var SY_KEY = 'rasmatic.ht.sensY';
+  var SR_KEY = 'rasmatic.ht.sensRoll';
   var SMOOTH_KEY = 'rasmatic.ht.smoothing';
+  var RESP_KEY = 'rasmatic.ht.response';
+  var INVX_KEY = 'rasmatic.ht.invertX';
+  var INVY_KEY = 'rasmatic.ht.invertY';
   var DEFAULT_SENS = 1.0;
   var DEFAULT_SMOOTH = 0.12;
+  var DEFAULT_RESPONSE = 1.0;
+  var MIN_RESPONSE = 0.5;
+  var MAX_RESPONSE = 2.0;
   var MIN_SENS = 0.2;
   var MAX_SENS = 2.5;
   var MIN_SMOOTH = 0.03;
@@ -87,8 +96,13 @@
   var nativeName = hasNative && native.name ? String(native.name) : 'Core Motion';
 
   /* ---------------- estado ---------------- */
-  var sensitivity = clamp(readNumber(SEN_KEY, DEFAULT_SENS), MIN_SENS, MAX_SENS);
+  var sensitivityX = clamp(readNumber(SX_KEY, readNumber(SEN_KEY, DEFAULT_SENS)), MIN_SENS, MAX_SENS);
+  var sensitivityY = clamp(readNumber(SY_KEY, sensitivityX), MIN_SENS, MAX_SENS);
+  var sensitivityRoll = clamp(readNumber(SR_KEY, sensitivityX), MIN_SENS, MAX_SENS);
   var smoothing = clamp(readNumber(SMOOTH_KEY, DEFAULT_SMOOTH), MIN_SMOOTH, MAX_SMOOTH);
+  var response = clamp(readNumber(RESP_KEY, DEFAULT_RESPONSE), MIN_RESPONSE, MAX_RESPONSE);
+  var invertX = readNumber(INVX_KEY, 0) ? true : false;
+  var invertY = readNumber(INVY_KEY, 0) ? true : false;
 
   var status = source === 'none' ? 'unsupported'
     : (source === 'native'
@@ -129,12 +143,22 @@
       active: isApplying(),
       permission: permission,
       available: source !== 'none' && status !== 'unsupported',
-      sensitivity: sensitivity,
+      sensitivity: sensitivityX,
+      sensitivityX: sensitivityX,
+      sensitivityY: sensitivityY,
+      sensitivityRoll: sensitivityRoll,
       smoothing: smoothing,
+      response: response,
+      invertX: invertX,
+      invertY: invertY,
       orientation: orientation(),
       samples: samples,
       lastSampleAt: lastSampleAt,
-      storage: { sensitivity: SEN_KEY, smoothing: SMOOTH_KEY }
+      storage: {
+        sensitivity: SEN_KEY, sensitivityX: SX_KEY, sensitivityY: SY_KEY,
+        sensitivityRoll: SR_KEY, smoothing: SMOOTH_KEY, response: RESP_KEY,
+        invertX: INVX_KEY, invertY: INVY_KEY
+      }
     };
   }
 
@@ -150,8 +174,19 @@
 
   function isEnabled() { return enabled; }
   function isApplying() { return blend > 0.001; }
-  function getSensitivity() { return sensitivity; }
+  function getSensitivity() { return sensitivityX; }
+  function getSensitivityX() { return sensitivityX; }
+  function getSensitivityY() { return sensitivityY; }
+  function getSensitivityRoll() { return sensitivityRoll; }
   function getSmoothing() { return smoothing; }
+  function getResponse() { return response; }
+  function getConfig() {
+    return {
+      enabled: enabled, sensitivityX: sensitivityX, sensitivityY: sensitivityY,
+      sensitivityRoll: sensitivityRoll, smoothing: smoothing, response: response,
+      invertX: invertX, invertY: invertY
+    };
+  }
 
   function notify() {
     var st = state();
@@ -180,9 +215,9 @@
   /* ---------------- cálculo de la orientación ---------------- */
   function recompute() {
     if (!baseReady || !haveRaw) return;
-    targetYaw = wrapPi(rawYaw - baseYaw) * sensitivity;
-    targetPitch = clamp(rawPitch - basePitch, -PITCH_LIMIT, PITCH_LIMIT) * sensitivity;
-    targetRoll = clamp(rawRoll - baseRoll, -ROLL_LIMIT, ROLL_LIMIT) * sensitivity;
+    targetYaw = wrapPi(rawYaw - baseYaw) * sensitivityX * (invertX ? -1 : 1);
+    targetPitch = clamp(rawPitch - basePitch, -PITCH_LIMIT, PITCH_LIMIT) * sensitivityY * (invertY ? -1 : 1);
+    targetRoll = clamp(rawRoll - baseRoll, -ROLL_LIMIT, ROLL_LIMIT) * sensitivityRoll;
   }
 
   function baseline() {
@@ -223,7 +258,8 @@
     if (!lastT) lastT = t;
     var dt = Math.min(0.1, Math.max(0, (t - lastT) / 1000));
     lastT = t;
-    var k = 1 - Math.exp(-dt / Math.max(0.01, smoothing));
+    var tau = smoothing / Math.max(0.1, response);
+    var k = 1 - Math.exp(-dt / Math.max(0.01, tau));
     yaw += (targetYaw - yaw) * k;
     pitch += (targetPitch - pitch) * k;
     roll += (targetRoll - roll) * k;
@@ -388,14 +424,36 @@
     return true;
   }
 
+  function setSensitivityX(v) {
+    var n = Number(v);
+    if (!isFinite(n)) return sensitivityX;
+    sensitivityX = clamp(n, MIN_SENS, MAX_SENS);
+    storeSet(SX_KEY, String(Math.round(sensitivityX * 100) / 100));
+    storeSet(SEN_KEY, String(Math.round(sensitivityX * 100) / 100));
+    recompute(); notify();
+    return sensitivityX;
+  }
+  function setSensitivityY(v) {
+    var n = Number(v);
+    if (!isFinite(n)) return sensitivityY;
+    sensitivityY = clamp(n, MIN_SENS, MAX_SENS);
+    storeSet(SY_KEY, String(Math.round(sensitivityY * 100) / 100));
+    recompute(); notify();
+    return sensitivityY;
+  }
+  function setSensitivityRoll(v) {
+    var n = Number(v);
+    if (!isFinite(n)) return sensitivityRoll;
+    sensitivityRoll = clamp(n, MIN_SENS, MAX_SENS);
+    storeSet(SR_KEY, String(Math.round(sensitivityRoll * 100) / 100));
+    recompute(); notify();
+    return sensitivityRoll;
+  }
   function setSensitivity(v) {
     var n = Number(v);
-    if (!isFinite(n)) return sensitivity;
-    sensitivity = clamp(n, MIN_SENS, MAX_SENS);
-    storeSet(SEN_KEY, String(Math.round(sensitivity * 100) / 100));
-    recompute();
-    notify();
-    return sensitivity;
+    if (!isFinite(n)) return sensitivityX;
+    setSensitivityX(n); setSensitivityY(n); setSensitivityRoll(n);
+    return sensitivityX;
   }
 
   function setSmoothing(v) {
@@ -405,6 +463,49 @@
     storeSet(SMOOTH_KEY, String(Math.round(smoothing * 100) / 100));
     notify();
     return smoothing;
+  }
+
+  function setResponse(v) {
+    var n = Number(v);
+    if (!isFinite(n)) return response;
+    response = clamp(n, MIN_RESPONSE, MAX_RESPONSE);
+    storeSet(RESP_KEY, String(Math.round(response * 100) / 100));
+    notify();
+    return response;
+  }
+
+  function setInvert(x, y) {
+    if (typeof x === 'boolean') {
+      invertX = x;
+      storeSet(INVX_KEY, invertX ? '1' : '0');
+    }
+    if (typeof y === 'boolean') {
+      invertY = y;
+      storeSet(INVY_KEY, invertY ? '1' : '0');
+    }
+    recompute(); notify();
+  }
+
+  /* Configuración completa enviada por Windows o por la API.
+     Acepta un objeto parcial; no borra valores ausentes. */
+  function applyConfig(cfg) {
+    if (!cfg || typeof cfg !== 'object') return getConfig();
+    if (typeof cfg.enabled === 'boolean') {
+      if (cfg.enabled && !enabled) enable();
+      else if (!cfg.enabled && enabled) disable();
+    }
+    if (isFinite(Number(cfg.sensitivityX))) setSensitivityX(cfg.sensitivityX);
+    if (isFinite(Number(cfg.sensitivityY))) setSensitivityY(cfg.sensitivityY);
+    if (isFinite(Number(cfg.sensitivityRoll))) setSensitivityRoll(cfg.sensitivityRoll);
+    if (isFinite(Number(cfg.smoothing))) setSmoothing(cfg.smoothing);
+    if (isFinite(Number(cfg.response))) setResponse(cfg.response);
+    if (typeof cfg.invertX === 'boolean' || typeof cfg.invertY === 'boolean') {
+      setInvert(typeof cfg.invertX === 'boolean' ? cfg.invertX : invertX,
+        typeof cfg.invertY === 'boolean' ? cfg.invertY : invertY);
+    }
+    if (cfg.recenter === true || cfg.recenter === 1) recenter();
+    if (cfg.calibrate === true || cfg.calibrate === 1) recenter();
+    return getConfig();
   }
 
   /* ---------------- interfaz flotante ---------------- */
@@ -514,8 +615,19 @@
     calibrate: recenter,
     setSensitivity: setSensitivity,
     getSensitivity: getSensitivity,
+    setSensitivityX: setSensitivityX,
+    setSensitivityY: setSensitivityY,
+    setSensitivityRoll: setSensitivityRoll,
+    getSensitivityX: getSensitivityX,
+    getSensitivityY: getSensitivityY,
+    getSensitivityRoll: getSensitivityRoll,
     setSmoothing: setSmoothing,
     getSmoothing: getSmoothing,
+    setResponse: setResponse,
+    getResponse: getResponse,
+    setInvert: setInvert,
+    applyConfig: applyConfig,
+    getConfig: getConfig,
     orientation: orientation,
     state: state,
     status: function () { return status; },
@@ -534,8 +646,14 @@
         haveRaw: haveRaw,
         baseReady: baseReady,
         samples: samples,
-        sensitivity: sensitivity,
+        sensitivity: sensitivityX,
+        sensitivityX: sensitivityX,
+        sensitivityY: sensitivityY,
+        sensitivityRoll: sensitivityRoll,
         smoothing: smoothing,
+        response: response,
+        invertX: invertX,
+        invertY: invertY,
         orientation: orientation(),
         lastSampleAt: lastSampleAt
       };

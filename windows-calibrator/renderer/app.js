@@ -205,6 +205,32 @@
         if (node) body.appendChild(node);
       });
 
+      if (key === 'ht') {
+        var htActions = document.createElement('div');
+        htActions.className = 'ht-actions';
+        var htRecenter = document.createElement('button');
+        htRecenter.type = 'button';
+        htRecenter.textContent = 'RECENTRAR';
+        htRecenter.addEventListener('click', function (e) {
+          e.preventDefault();
+          api('cal:set', { values: { htRecenter: 1 } }).then(function (r) {
+            if (!r || !r.ok) handleError(r, 'No se pudo recentrar');
+          });
+        });
+        var htCalibrate = document.createElement('button');
+        htCalibrate.type = 'button';
+        htCalibrate.textContent = 'CALIBRAR';
+        htCalibrate.addEventListener('click', function (e) {
+          e.preventDefault();
+          api('cal:set', { values: { htCalibrate: 1 } }).then(function (r) {
+            if (!r || !r.ok) handleError(r, 'No se pudo calibrar');
+          });
+        });
+        htActions.appendChild(htRecenter);
+        htActions.appendChild(htCalibrate);
+        body.appendChild(htActions);
+      }
+
       var reset = document.createElement('button');
       reset.type = 'button';
       reset.className = 'wide';
@@ -253,6 +279,9 @@
     }
     if (key === 'guides') return checkControl(key, 'Guías (marco y zona segura)');
     if (key === 'vignette') return checkControl(key, 'Viñeta de lentes');
+    if (key === 'htEnabled') return checkControl(key, 'Head Tracking activado');
+    if (key === 'htInvertX') return checkControl(key, 'Invertir eje horizontal');
+    if (key === 'htInvertY') return checkControl(key, 'Invertir eje vertical');
     return null;
   }
 

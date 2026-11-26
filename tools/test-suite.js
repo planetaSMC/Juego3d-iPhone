@@ -12,10 +12,16 @@
   const SKEY = (k) => (window.RasmaticStore && typeof RasmaticStore.key === 'function')
     ? RasmaticStore.key(k) : k;
   const tp = (x, z) => { const g = G(); g.player.x = x; g.player.z = z; };
-  const STA = [
-    { x: -3.85, z: -28 }, { x: 3.85, z: -36 }, { x: -3.85, z: -44 },
-    { x: 3.85, z: -52 }, { x: -3.85, z: -60 }, { x: 3.85, z: -68 }
-  ];
+  /* V20: las estaciones viven en las cajas de las estanterías del HTML. */
+  const PH = () => (window.RasmaticPharmacyApi || (G() && G().pharmacy));
+  const STA = [];
+  function syncStations() {
+    STA.length = 0;
+    const ph = PH();
+    if (!ph || !ph.stations) return;
+    ph.stations.forEach(function (s) { STA[s.color] = { x: s.x, z: s.z, drug: s.drug }; });
+  }
+  syncStations();
   const out = [];
   const ok = (name, cond, data) => out.push({ name, pass: !!cond, data });
   const skip = (name, why) => out.push({ name, pass: false, data: { omitido: why } });
@@ -55,14 +61,14 @@
   ok('T02 HUD completo (3:00, marcador, pedido)',
     hud.score && hud.time === '3:00' && hud.req && hud.act === 'JUGAR', hud);
 
-  /* T03: aviso al acercarse al encargado */
-  tp(2.0, 27.0);
+  /* T03: aviso al acercarse al encargado (mostrador del HTML). */
+  tp(21.9, 13.6);
   await until(() => D().ui.action === 'JUGAR', 10000);
   ok('T03 aviso de interaccion', D().ui.action === 'JUGAR' &&
     D().ui.hint === 'Interactuar para jugar', D().ui);
 
   /* T04: iniciar partida */
-  tp(0, 24.6);
+  tp(21.9, 14.0);
   await until(() => D().ui.action === 'JUGAR', 10000);
   const started = window.RasmaticGame.interact();
   await until(() => D().state === 'playing', 5000);
@@ -79,7 +85,7 @@
   if (req < 0) {
     skip('T06 recoger sin sumar', 'no hay pedido activo');
   } else {
-  tp(STA[req].x * 0.9, STA[req].z);
+  tp(STA[req].x, STA[req].z);
   await until(() => D().ui.action === 'RECOGER', 10000);
   const promptTake = D().ui.action;
   const got = window.RasmaticGame.interact();
@@ -90,7 +96,7 @@
   }
 
   /* T07: entregar el color correcto */
-  tp(-3.6, 24.6);
+  tp(21.9, 14.6);
   await until(() => D().ui.action === 'ENTREGAR', 10000);
   const promptGive = D().ui.action;
   const gave = window.RasmaticGame.interact();
@@ -106,19 +112,34 @@
 
   /* T09: entregar un color equivocado no suma */
   const req2 = D().request;
-  const wrong = (req2 + 1) % 6;
-  tp(STA[wrong].x * 0.9, STA[wrong].z);
-  await until(() => D().ui.action === 'RECOGER', 10000);
-  window.RasmaticGame.interact();
-  await until(() => D().carrying === wrong, 5000);
-  const stockBefore = D().stockP[wrong];
-  tp(-3.6, 24.6);
-  await until(() => D().ui.action === 'ENTREGAR', 10000);
-  const bad = window.RasmaticGame.interact();
-  await until(() => D().carrying === -1, 5000);
-  ok('T09 entrega incorrecta', bad === true && D().score.player === 1 &&
-    D().carrying === -1 && D().stockP[wrong] === stockBefore + 1,
-    { score: D().score.player, stock: D().stockP[wrong], antes: stockBefore });
+  let wrong = -1;
+  for (let off = 1; off < 6 && wrong < 0; off++) {
+    const cand = (req2 + off) % 6;
+    tp(STA[cand].x, STA[cand].z);
+    await until(() => D().ui.action === 'RECOGER', 4000);
+    if (D().ui.action !== 'RECOGER') continue;
+    window.RasmaticGame.interact();
+    await until(() => D().carrying >= 0, 4000);
+    if (D().carrying === cand) wrong = cand;
+    else if (D().carrying >= 0) {
+      /* El radio de recogida enganchó otra caja: se devuelve al estante. */
+      tp(21.9, 14.6);
+      await sleep(200);
+    }
+  }
+  if (wrong < 0) {
+    skip('T09 entrega incorrecta', 'no se pudo aislar una caja equivocada');
+  } else {
+    const stockBefore = D().stockP[wrong];
+    tp(21.9, 14.6);
+    await until(() => D().ui.action === 'ENTREGAR', 10000);
+    const bad = window.RasmaticGame.interact();
+    await until(() => D().carrying === -1, 5000);
+    ok('T09 entrega incorrecta', bad === true && D().score.player === 1 &&
+      D().carrying === -1 && D().stockP[wrong] === stockBefore + 1,
+      { score: D().score.player, stock: D().stockP[wrong], antes: stockBefore,
+        equivocado: wrong, pedido: req2 });
+  }
 
   /* T10: doble entrega no duplica */
   const again = window.RasmaticGame.interact();
@@ -167,7 +188,8 @@
     { state: D().state, score: D().score, endOpen: endNow });
 
   /* T14: joystick tactil (pointer events reales sobre #ras-stick). */
-  tp(0, 30);
+  tp(20, 26);
+  G().player.yaw = 0;
   await sleep(400);
   const zb0 = G().player.z;
   const stick = document.getElementById('ras-stick');
@@ -235,7 +257,8 @@
   window.dispatchEvent(new Event('touchstart'));
 
   /* Stick izquierdo arriba -> avance (my = 1). */
-  tp(0, 30);
+  tp(20, 26);
+  G().player.yaw = 0;
   fake.axes[1] = -1;
   await sleep(500);
   const padState = window.RasmaticInput.debug().pad;
@@ -259,7 +282,7 @@
   const padClass = document.body.classList.contains('ras-pad-on');
 
   /* Boton A (indice 0) -> interactuar. En idle junto al encargado inicia. */
-  tp(0, 24.6);
+  tp(21.9, 14.0);
   await sleep(700);
   buttons[0] = { pressed: true, value: 1 };
   await sleep(600);
@@ -357,7 +380,7 @@
   /* T24: JUGAR centrado, comodo y sin tapar el joystick en retrato. */
   const reqNow = D().request;
   const stNow = reqNow >= 0 ? STA[reqNow] : STA[0];
-  tp(stNow.x * 0.9, stNow.z);
+  tp(stNow.x, stNow.z);
   const nearAct = await until(
     () => ['RECOGER', 'ENTREGAR', 'JUGAR'].indexOf(D().ui.action) >= 0, 12000);
   await sleep(500);

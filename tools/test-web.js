@@ -265,7 +265,7 @@ async function main() {
     await sleep(250);
 
     await evaluate('(function(){var g=window.RasmaticCore.game;' +
-      'g.player.x=0;g.player.z=24.6;return true;})()');
+      'g.player.x=21.9;g.player.z=14.0;return true;})()');
     await waitFor(async () => (await evaluate('window.RasmaticGame.debug().ui.action')) === 'JUGAR', 20000, 'aviso JUGAR');
     await sleep(500);
     await shot('ui-01-jugar.png');
@@ -277,11 +277,13 @@ async function main() {
        con el pedido en el HUD. */
     await evaluate(`(function(){
       var d = window.RasmaticGame.debug();
-      var sta = [ {x:-3.85,z:-28},{x:3.85,z:-36},{x:-3.85,z:-44},
-                  {x:3.85,z:-52},{x:-3.85,z:-60},{x:3.85,z:-68} ];
-      var s = sta[Math.max(0, d.request)];
+      var ph = window.RasmaticPharmacyApi;
+      var s = ph && ph.stations ? ph.stations.filter(function (x) {
+        return x.color === d.request;
+      })[0] : null;
+      if (!s) return false;
       var g = window.RasmaticCore.game;
-      g.player.x = s.x * 0.9; g.player.z = s.z;
+      g.player.x = s.x; g.player.z = s.z;
       return true;
     })()`);
     await waitFor(async () => (await evaluate('window.RasmaticGame.debug().ui.action')) === 'RECOGER', 30000, 'aviso RECOGER');
@@ -304,7 +306,7 @@ async function main() {
     await waitFor(async () => evaluate('window.__ready === true'), 60000, 'horizontal');
     await sleep(1500);
     await evaluate('(function(){var g=window.RasmaticCore.game;' +
-      'g.player.x=0;g.player.z=24.6;return true;})()');
+      'g.player.x=21.9;g.player.z=14.0;return true;})()');
     await waitFor(async () => (await evaluate('window.RasmaticGame.debug().ui.action')) === 'JUGAR', 20000, 'JUGAR horizontal');
     await sleep(500);
     const land = await evaluate(`(function(){

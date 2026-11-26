@@ -12,7 +12,8 @@ const spec = loadSpec(GAME_ROOT);
 test('la spec se extrae del juego real', () => {
   assert.ok(spec.keys.length >= 25);
   assert.ok(spec.groups.cam && spec.groups.stereo && spec.groups.screen);
-  assert.strictEqual(spec.tabs.length, 7);
+  assert.strictEqual(spec.tabs.length, 8);
+  assert.ok(spec.groups.ht && spec.groups.ht.keys.indexOf('htSensX') >= 0);
   assert.strictEqual(spec.version, 'vr-cal-2.0');
   assert.strictEqual(spec.defaults.ipd, 64);
   assert.strictEqual(spec.defaults.fov, 70);

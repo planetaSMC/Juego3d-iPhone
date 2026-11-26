@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RASMATIC V20 · prueba de escena</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#bcd3c8}canvas{display:block;width:100%;height:100%}</style>
+</head>
+<body>
+<script>
+window.addEventListener('error', function (e) {
+  window.__err = (e.error && e.error.stack) || e.message;
+  var d = document.createElement('pre');
+  d.id = 'err';
+  d.textContent = window.__err;
+  document.body.appendChild(d);
+});
+</script>
+<script src="../three.min.js"></script>
+<script src="pharmacy-scene.js"></script>
+<script>
+'use strict';
+const R = new THREE.WebGLRenderer({ antialias: true });
+R.setPixelRatio(1);
+R.setSize(innerWidth, innerHeight);
+document.body.appendChild(R.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 200);
+const player = { x: 46.8, z: 9.4, y: 0, yaw: Math.PI / 2, pitch: -0.05 };
+const ph = window.RasmaticPharmacy({ scene, camera, renderer: R, player });
+window.__ph = ph;
+function place() {
+  camera.position.set(player.x, ph.eye, player.z);
+  camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
+}
+place();
+addEventListener('resize', () => {
+  R.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  ph.update(dt);
+  place();
+  R.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+window.__ready = true;
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

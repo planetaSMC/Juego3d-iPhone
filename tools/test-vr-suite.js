@@ -44,10 +44,13 @@
     key: k, bubbles: true, cancelable: true
   }));
   const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-  const STA = [
-    { x: -3.85, z: -28 }, { x: 3.85, z: -36 }, { x: -3.85, z: -44 },
-    { x: 3.85, z: -52 }, { x: -3.85, z: -60 }, { x: 3.85, z: -68 }
-  ];
+  const STA = [];
+  (function () {
+    const ph = window.RasmaticPharmacyApi;
+    if (ph && ph.stations) ph.stations.forEach(function (s) {
+      STA[s.color] = { x: s.x, z: s.z, drug: s.drug };
+    });
+  })();
   const tp = (x, z, yaw, pitch) => {
     const g = G();
     g.player.x = x; g.player.z = z;
@@ -122,22 +125,17 @@
 
     ok('V01b boton de acceso visible en escritorio', launchVisible === true, { visible: launchVisible });
 
-    /* ---------------- V15: logo fuera de la partida ---------------- */
-    const LOGO = G().logo;
-    const logoHidden = !!LOGO &&
-      LOGO.emblem.visible === false && LOGO.emblemRefl.visible === false &&
-      Array.isArray(LOGO.letters) && LOGO.letters.length > 0 &&
-      LOGO.letters.every((m) => m.visible === false) &&
-      (!LOGO.slogan || LOGO.slogan.visible === false) &&
-      (!LOGO.bubble || LOGO.bubble.visible === false) &&
-      LOGO.visible() === false;
-    ok('V15 el logo RASMATIC no aparece en la partida',
-      logoHidden && !!window.RasmaticArena,
-      { emblema: LOGO && LOGO.emblem.visible, reflejo: LOGO && LOGO.emblemRefl.visible,
-        letras: LOGO && LOGO.letters.filter((m) => m.visible).length,
-        eslogan: !!(LOGO && LOGO.slogan && LOGO.slogan.visible),
-        cartel: !!(LOGO && LOGO.bubble && LOGO.bubble.visible),
-        arena: !!window.RasmaticArena, estado: D().state });
+    /* ---------------- V15: escena V20 (farmacia del HTML) ---------------- */
+    const PH = G().pharmacy;
+    const v20Scene = !!PH && PH.drugs.length === 15 && PH.shelves.length === 3 &&
+      PH.stations.length === 6 && !!PH.machine && PH.machine.boxes.length === 30 &&
+      !G().logo.emblem;
+    ok('V15 la escena es la farmacia V20, sin restos del almacén',
+      v20Scene,
+      { farmacia: !!PH, medicamentos: PH && PH.drugs.length,
+        estanterias: PH && PH.shelves.length, estaciones: PH && PH.stations.length,
+        cajas_maquina: PH && PH.machine.boxes.length,
+        estado: D().state });
 
     /* ---------------- V02: activar ---------------- */
     VR.reset();
@@ -178,7 +176,7 @@
       { izquierda: +p0.toFixed(6), derecha: +p1.toFixed(6) });
 
     /* ---------------- V04: parallax real (no imagen duplicada) ---------------- */
-    tp(0, -20, 0, 0);
+    tp(30, 20, 0, 0);
     await sleep(300);
     await frames(2);
     const g4 = await grab();
@@ -327,7 +325,7 @@
 
     /* JUGAR (y RECOGER/ENTREGAR) tambien debe existir por ojo: centrado en
        cada ojo y dentro de su area segura, no solo en un borde. */
-    tp(2.0, 27.0);
+    tp(21.9, 13.6);
     const near8e = await until(() => D().ui.action === 'JUGAR', 12000);
     await sleep(700);
     const s8e = VR.state();
@@ -405,7 +403,7 @@
     await frames(2);
     await sleep(300);
 
-    tp(0, -20);
+    tp(30, 20, 0, 0);
     await until(() => D().ui.action === '', 8000);
 
     /* El modo plano sigue disponible para la vista previa de escritorio. */
@@ -446,7 +444,7 @@
     /* ================ calibración avanzada ================ */
     VR.reset();
     await frames(2);
-    tp(0, 30, 0, 0);
+    tp(20, 26, 0, 0);
     await frames(3);
 
     /* ---------------- V16: cámara ---------------- */
@@ -653,7 +651,8 @@
 
     /* ---------------- V25: controles del panel ---------------- */
     const needIds = ['vr-camHeight', 'vr-depth', 'vr-cropL', 'vr-cropR', 'vr-brightness',
-      'vr-test', 'vr-reset-all', 'vr-fov', 'vr-ipd', 'vr-exit', 'vr-cfg-save'];
+      'vr-test', 'vr-reset-all', 'vr-fov', 'vr-ipd', 'vr-exit', 'vr-cfg-save',
+      'vr-ht-enabled', 'vr-ht-inv-x', 'vr-ht-inv-y', 'vr-ht-recenter', 'vr-ht-calibrate'];
     const missingIds = needIds.filter((id) => !document.getElementById(id));
     const tabCount = document.querySelectorAll('#vr-tabs [data-tab]').length;
     const fovInput = document.getElementById('vr-fov');
@@ -663,17 +662,17 @@
     const fovUI = VR.state().settings.fov;
     VR.set('fov', 70);
     ok('V25 panel completo por categorías y control conectado',
-      missingIds.length === 0 && tabCount === 7 && Math.abs(fovUI - 75) < 0.01,
+      missingIds.length === 0 && tabCount === 8 && Math.abs(fovUI - 75) < 0.01,
       { faltantes: missingIds, pestañas: tabCount, fov_desde_ui: fovUI });
 
     VR.reset();
     await frames(2);
-    tp(0, 30, 0, 0);
+    tp(20, 26, 0, 0);
 
     /* ---------------- V10: controles de Windows ---------------- */
     /* Se espera por frames renderizados, no por milisegundos: con WebGL
        por software el reloj del juego avanza a pocos FPS. */
-    tp(0, 30, 0, 0);
+    tp(20, 26, 0, 0);
     await frames(2);
     const z0 = G().player.z;
     key('w', 'keydown');
@@ -683,7 +682,7 @@
     const zWalk = G().player.z;
     const walk = z0 - zWalk;
 
-    tp(0, 30, 0, 0);
+    tp(20, 26, 0, 0);
     await frames(2);
     key('Shift', 'keydown');
     key('w', 'keydown');
@@ -698,7 +697,7 @@
       { caminando: +walk.toFixed(2), corriendo: +run.toFixed(2), ratio: +(run / walk).toFixed(2) });
 
     /* Espacio interactua: en idle, junto al encargado, inicia la partida. */
-    tp(0, 24.6, 0, 0);
+    tp(21.9, 14.0, 0, 0);
     const nearNpc = await until(() => D().ui.action === 'JUGAR', 12000);
     key(' ', 'keydown');
     key(' ', 'keyup');
@@ -753,7 +752,7 @@
     const req = D().request;
     let takeOk = null, giveOk = null;
     if (customer && req >= 0) {
-      tp(STA[req].x * 0.9, STA[req].z);
+      tp(STA[req].x, STA[req].z);
       const nearSta = await until(() => D().ui.action === 'RECOGER', 15000);
       takeOk = false;
       if (nearSta) {
@@ -763,7 +762,7 @@
       giveOk = false;
       if (takeOk) {
         const score0 = D().score.player;
-        tp(-3.6, 24.6);
+        tp(21.9, 14.6);
         const nearCounter = await until(() => D().ui.action === 'ENTREGAR', 15000);
         if (nearCounter) {
           window.RasmaticGame.interact();

@@ -159,22 +159,17 @@
   /* Estaciones sobre las góndolas del pasillo central (caras al pasillo).
      La caja asoma 0,15 por delante de la cara de la góndola (|x| = 4.0) para
      que se vea desde el pasillo: dentro de la estantería el marco la tapa. */
-  const STATIONS = [
-    { c: 0, x: -3.85, z: -28 },
-    { c: 1, x:  3.85, z: -36 },
-    { c: 2, x: -3.85, z: -44 },
-    { c: 3, x:  3.85, z: -52 },
-    { c: 4, x: -3.85, z: -60 },
-    { c: 5, x:  3.85, z: -68 }
-  ];
-  const STATION_Y = -1.22;   // sobre la bandeja superior de la góndola
+  /* V20: las estaciones se llenan desde las cajas de las estanterías del HTML.
+     El orden de COLOR_DRUGS coincide con pharmacy-scene.js. */
+  const STATIONS = [];
+  const COLOR_DRUGS = [1, 0, 6, 5, 4, 2];
 
   const SPOT = {
-    npc:      { x:  1.1, z:  22.8 },   // delante del logo, visible desde el arranque
-    counter:  { x: -3.6, z:  24.6 },   // extremo sur del escritorio de consulta
-    customer: { x: -3.6, z:  20.6 },   // a la vista desde el mostrador
-    kiosk:    { x:  1.7, z: -80.6 },
-    bot:      { x: -2.2, z: -81.0 }
+    npc:      { x: 21.9, z: 10.3 },   // farmacéutico detrás del mostrador HTML
+    counter:  { x: 21.9, z: 14.6 },   // frente del mostrador, zona de entrega
+    customer: { x: 21.9, z: 16.0 },   // cliente del mostrador
+    kiosk:    { x: 16.4, z: 11.8 },   // terminal junto a la RASMATIC BOT
+    bot:      { x: 14.0, z: 19.5 }    // detrás de la ventanilla del bot
   };
 
   const K = 0.55;            // escala de los personajes nuevos
@@ -805,97 +800,71 @@
      k   escala del cuerpo (1 = 9.1 unidades de alto)
      El rostro mira hacia +z, igual que el arranque del jugador. */
   function buildPerson(coat, k) {
-    const M = G.mats;
-    const sc = typeof k === 'number' ? k : K;
+    const ph = G.pharmacy;
+    const sc = (typeof k === 'number' ? k : K) * 1.05;
+    const isCoat = coat === G.mats.white;
+    const isGreen = coat === G.mats.green;
+    const shirt = isGreen ? 0x1fa070 : (isCoat ? 0xf4f8f6 : 0x1f5fd0);
+    const v = isCoat ? 12 : (isGreen ? 4 : 0);
+    const inner = ph.makePerson(shirt, 0x2b1b12, 0xf1cfae, v, isCoat ? { white: true } : {});
+    inner.scale.setScalar(sc);
     const outer = new T.Group();
-    const g = new T.Group();
-    g.scale.setScalar(sc);
-    outer.add(g);
-
-    [-0.5, 0.5].forEach(function (x) {
-      addMesh(new T.CylinderGeometry(0.34, 0.3, 3.2, 10), M.dark, x, 1.6, 0, g);
-    });
-    addMesh(new T.CylinderGeometry(1.05, 1.35, 3.9, 16), coat, 0, 5.15, 0, g);
-    /* delantal blanco sobre el uniforme: da lectura de farmacia */
-    const apron = addMesh(new T.BoxGeometry(1.5, 2.6, 0.14), M.white, 0, 4.6, 0.98, g);
-    apron.rotation.x = -0.06;
-    addMesh(new T.CylinderGeometry(0.28, 0.3, 0.6, 12), M.skin, 0, 7.4, 0, g);
-
-    const head = addMesh(new T.SphereGeometry(0.82, 18, 14), M.skin, 0, 8.25, 0, g);
-    head.scale.set(0.9, 1.05, 0.9);
-    const hair = addMesh(new T.SphereGeometry(0.86, 18, 12), M.hair, 0, 8.45, -0.06, g);
-    hair.scale.set(0.92, 0.82, 0.92);
-
-    /* ojos y boca: sin ellos la cabeza se lee como un huevo liso */
-    const eyeMat = new T.MeshBasicMaterial({ color: 0x1b2430 });
-    [-1, 1].forEach(function (k2) {
-      const eye = addMesh(new T.SphereGeometry(0.13, 10, 8), eyeMat, k2 * 0.3, 8.34, 0.66, g);
-      eye.scale.set(0.85, 1.15, 0.6);
-      const brow = addMesh(new T.BoxGeometry(0.3, 0.05, 0.05), eyeMat, k2 * 0.3, 8.6, 0.66, g);
-      brow.rotation.z = k2 * -0.12;
-    });
-    const mouth = addMesh(new T.BoxGeometry(0.34, 0.06, 0.05), eyeMat, 0, 7.98, 0.68, g);
-    mouth.rotation.z = 0.03;
-
-    [-1, 1].forEach(function (k2) {
-      const arm = addMesh(new T.CylinderGeometry(0.26, 0.22, 3.4, 10), coat, k2 * 1.15, 5.0, 0.1, g);
-      arm.rotation.z = k2 * 0.12;
-      addMesh(new T.SphereGeometry(0.3, 10, 8), M.skin, k2 * 1.3, 3.2, 0.15, g);
-    });
-    outer.userData.inner = g;
+    outer.add(inner);
+    outer.userData.inner = inner;
     outer.userData.scale = sc;
     return outer;
   }
 
   /* Altura del cartel justo encima de la cabeza, en unidades de mundo. */
-  function headTop(p) { return 9.15 * (p.userData.scale || K); }
+  function headTop(p) { return 5.1 * (p.userData.scale || K); }
 
   function buildNpc() {
-    const g = buildPerson(G.mats.blue, 0.72);
-    g.position.set(SPOT.npc.x, G.home.floor, SPOT.npc.z);
-    g.rotation.y = 0;                            // de cara al arranque (+z)
+    /* El farmacéutico del HTML (AT) ya está en la escena; se usa tal cual. */
+    const g = G.pharmacy.pharmacist;
+    g.visible = true;
+    g.rotation.y = 0;                            // de cara al mostrador (+z)
     const tag = makeTag(2.3, 0.66);
-    tag.spr.position.set(0, headTop(g) + 0.85, 0.45);
+    tag.spr.position.set(0, 6.2, 0.3);
     drawTag(tag, { title: 'JUGAR', color: '#2fbf86' });
     g.add(tag.spr);
-    G.place.add(g);
     S.npc = { group: g, tag: tag };
   }
 
-  function buildStations() {
-    const M = G.mats;
-    const glow = glowTexture();
-    STATIONS.forEach(function (def) {
-      const c = COLORS[def.c];
-      const g = new T.Group();
-      g.position.set(def.x, STATION_Y, def.z);
+  function drugLabel(c) {
+    const ph = G && G.pharmacy ? G.pharmacy : window.RasmaticPharmacyApi;
+    const st = ph && ph.stations ? ph.stations.filter(function (s) { return s.color === c; })[0] : null;
+    const idx = st ? st.drug : COLOR_DRUGS[c];
+    return ph && ph.drugs && ph.drugs[idx] ? ph.drugs[idx].name.toUpperCase() : COLORS[c].name;
+  }
 
-      /* Color plano (sin iluminación) para que la caja se lea exactamente
-         igual que la muestra del HUD: las luces del almacén lavaban el
-         naranja hacia amarillo y el violeta hacia blanco. */
-      const mat = new T.MeshBasicMaterial({ color: c.hex });      const box = addMesh(new T.BoxGeometry(0.44, 0.44, 0.4), mat, 0, 0, 0, g);
-      const edge = new T.LineSegments(
-        new T.EdgesGeometry(new T.BoxGeometry(0.48, 0.48, 0.44)),
-        new T.LineBasicMaterial({ color: 0xffffff })
-      );
-      g.add(edge);
+  function buildStations() {
+    const ph = G.pharmacy;
+    const glow = glowTexture();
+    S.stations.length = 0;
+    STATIONS.length = 0;
+    ph.stations.forEach(function (s) {
+      const c = COLORS[s.color];
+      const box = s.box;
+      box.visible = true;
+      const wp = new T.Vector3();
+      box.getWorldPosition(wp);
+
+      const tag = makeTag(2.4, 0.7);
+      tag.spr.position.set(wp.x, wp.y + 1.0, wp.z);
+      G.place.add(tag.spr);
 
       const halo = new T.Sprite(new T.SpriteMaterial({
         map: glow, color: c.hex, transparent: true,
-        blending: T.AdditiveBlending, depthWrite: false, opacity: 0.6
+        blending: T.AdditiveBlending, depthWrite: false, opacity: 0.5
       }));
-      halo.scale.set(1.5, 1.5, 1);
-      g.add(halo);
+      halo.position.set(wp.x, wp.y, wp.z);
+      halo.scale.set(1.4, 1.4, 1);
+      G.place.add(halo);
 
-      /* El cartel se adelanta hacia la entrada del pasillo y queda por
-         encima de la caja: dentro de la estantería lo tapa el marco. */
-      const tag = makeTag(2.4, 0.7);
-      tag.spr.position.set(0, 0.35, 0.6);
-      g.add(tag.spr);
-
-      G.place.add(g);
+      STATIONS.push({ c: s.color, x: s.x, z: s.z });
       S.stations.push({
-        def: def, group: g, box: box, mat: mat, halo: halo, tag: tag, edge: edge
+        def: { c: s.color, x: s.x, z: s.z }, group: box, box: box,
+        mat: null, halo: halo, tag: tag, edge: null, pharmacy: s
       });
     });
     updateStationSigns();
@@ -907,20 +876,19 @@
       const n = stockP[st.def.c] || 0;
       drawTag(st.tag, {
         color: c.css,
-        title: c.name,
-        sub: n > 0 ? (n === 1 ? '1 unidad' : n + ' unidades') : 'AGOTADO'
+        title: drugLabel(st.def.c),
+        sub: n > 0 ? (c.name + ' · ' + (n === 1 ? '1 unidad' : n + ' unidades')) : 'AGOTADO'
       });
-      st.mat.color.setHex(n > 0 ? c.hex : 0x39465a);
-      st.box.visible = n > 0;
-      st.edge.visible = n > 0;
-      st.halo.material.color.setHex(n > 0 ? c.hex : 0x39465a);
+      if (st.box) st.box.visible = n > 0;
+      if (st.edge) st.edge.visible = n > 0;
+      if (st.halo) st.halo.material.color.setHex(n > 0 ? c.hex : 0x39465a);
     });
   }
 
   function buildCustomer() {
-    const g = buildPerson(G.mats.white, 0.6);
+    const g = buildPerson(G.mats.blue, 0.6);
     g.position.set(SPOT.customer.x, G.home.floor, SPOT.customer.z);
-    g.rotation.y = 0;                            // mira al jugador (+z)
+    g.rotation.y = Math.PI;                      // mira al mostrador (-z)
     const tag = makeTag(3.1, 0.86);
     tag.spr.position.set(0, headTop(g) + 1.15, 0);
     g.add(tag.spr);
@@ -974,27 +942,22 @@
     S.kiosk = { group: g, screenMat: screenMat, arm: arm, tag: tag };
   }
 
-  /* Cajas de color dentro de la máquina: una por medicamento. */
+  /* Cajas de la RASMATIC BOT: se usan las cajas reales del HTML (MB), que ya
+     tienen la textura y el medicamento. No se repintan ni se reparentan. */
   function buildBotBoxes() {
-    const spec = G.spec, boxes = G.machine.boxes;
-    const n = spec.length;
+    const spec = G.spec;
     for (let i = 0; i < COLORS.length; i++) {
-      const idx = Math.min(n - 1, Math.floor((i + 0.5) * n / COLORS.length));
-      const sp = spec[idx], m = boxes[idx];
-      if (!sp || !m) continue;
-      G.place.attach(m);
-      const c = COLORS[i];
-      m.material = new T.MeshBasicMaterial({ color: c.hex });
+      const st = G.pharmacy.stations.filter(function (x) { return x.color === i; })[0];
+      const d = st ? st.drug : COLOR_DRUGS[i];
+      let sp = spec.filter(function (s) { return s.drug === d; })[0];
+      if (!sp) sp = spec[i];
+      if (!sp || !sp.mesh) continue;
+      const m = sp.mesh;
+      m.visible = true;
       m.scale.set(1, 1, 1);
       m.rotation.set(0, 0, 0);
-      const home = new T.Vector3(
-        sp.x,
-        G.home.floor + G.boxY(sp),
-        G.home.mz + 0.55 - sp.d / 2
-      );
-      m.position.copy(home);
-      m.visible = true;
-      S.botBoxes.push({ color: i, spec: sp, mesh: m, home: home });
+      m.position.copy(m.userData && m.userData.home ? m.userData.home : m.position);
+      S.botBoxes.push({ color: i, spec: sp, mesh: m, home: m.position.clone() });
     }
   }
 
@@ -1010,20 +973,26 @@
   }
 
   function hideLegacy() {
-    /* Los carteles de los personajes originales viven dentro del grupo del
-       lugar; se reconocen por su anclaje inferior (center.y ~ 0.02). */
-    G.place.traverse(function (o) {
-      if (o.isSprite && o.center && o.center.y < 0.2) o.visible = false;
-    });
+    /* V20: la escena del almacén ya no existe; no hay carteles legacy que
+       ocultar. Se conserva la función por compatibilidad con el arranque. */
   }
 
   /* ---------------- Movimiento del CNC ---------------- */
-  function setMast(x) { G.machine.mast.position.x = x - G.home.pxOff; }
-  function setCar(y) { G.machine.car.position.y = y; }
-  function setPad(e) { G.machine.pad.position.z = lerp(G.home.ret, G.home.ext, e) - G.home.zm; }
+  function setMast(x) {
+    if (G.machine.api) G.machine.api.setMast(x);
+    else G.machine.mast.position.x = x - G.home.pxOff;
+  }
+  function setCar(y) {
+    if (G.machine.api) G.machine.api.setCar(y);
+    else G.machine.car.position.y = y;
+  }
+  function setPad(e) {
+    if (G.machine.api) G.machine.api.setPad(e);
+    else G.machine.pad.position.z = lerp(G.home.ret, G.home.ext, e) - G.home.zm;
+  }
 
   function parkMachine() {
-    G.machine.root.rotation.y = 0;
+    if (G.machine.baseRotation !== undefined) G.machine.root.rotation.y = G.machine.baseRotation;
     cnc.x = G.home.x;
     cnc.y = G.home.y;
     cnc.e = 0;
@@ -1033,6 +1002,7 @@
   }
 
   function applyCnc() {
+    if (G.machine.api) { G.machine.api.apply(cnc); return; }
     setMast(cnc.x);
     setCar(cnc.y);
     setPad(cnc.e);
@@ -1271,7 +1241,7 @@
     nodes.req.classList.add('on');
     nodes.swatch.style.background = col.css;
     nodes.swatch.style.color = col.css;
-    nodes.reqName.textContent = col.name;
+    nodes.reqName.textContent = drugLabel(c);
   }
 
   function setCarry(c) {
@@ -1284,7 +1254,7 @@
     const col = COLORS[c];
     nodes.carry.classList.add('on');
     nodes.carryDot.style.background = col.css;
-    nodes.carryTxt.textContent = 'Llevas: ' + col.name;
+    nodes.carryTxt.textContent = 'Llevas: ' + drugLabel(c);
     if (handMesh) {
       handMesh.visible = true;
       handMesh.material.color.setHex(col.hex);
@@ -1360,7 +1330,7 @@
     const col = COLORS[c];
     drawTag(S.customer.tag, {
       color: col.css,
-      title: 'PIDE ' + col.name,
+      title: 'PIDE ' + drugLabel(c),
       sub: 'Llévalo al mostrador'
     });
     S.customer.group.visible = true;
@@ -1375,7 +1345,7 @@
     carrying = c;
     setCarry(c);
     updateStationSigns();
-    toast('Recogiste ' + COLORS[c].name, 'ok');
+    toast('Recogiste ' + drugLabel(c), 'ok');
     return true;
   }
 
@@ -1429,9 +1399,11 @@
     S.botCustomer.group.visible = false;
     S.botCustomer.pop = 0;
     S.botBoxes.forEach(function (b) {
+      if (b.mesh.parent !== G.machine.root) G.machine.root.add(b.mesh);
       b.mesh.visible = true;
       b.mesh.position.copy(b.home);
       b.mesh.scale.set(1, 1, 1);
+      b.mesh.rotation.set(0, 0, 0);
     });
     S.kiosk.screenMat.color.setHex(0x39d0ff);
     S.npc.tag.spr.visible = false;
@@ -1468,9 +1440,11 @@
     bot = null;
     parkMachine();
     S.botBoxes.forEach(function (b) {
+      if (b.mesh.parent !== G.machine.root) G.machine.root.add(b.mesh);
       b.mesh.visible = true;
       b.mesh.position.copy(b.home);
       b.mesh.scale.set(1, 1, 1);
+      b.mesh.rotation.set(0, 0, 0);
     });
     S.kiosk.screenMat.color.setHex(0x39d0ff);
     document.body.classList.add('rg-over');
@@ -1513,9 +1487,11 @@
     S.npc.tag.spr.visible = true;
     S.kiosk.screenMat.color.setHex(0x39d0ff);
     S.botBoxes.forEach(function (b) {
+      if (b.mesh.parent !== G.machine.root) G.machine.root.add(b.mesh);
       b.mesh.visible = true;
       b.mesh.position.copy(b.home);
       b.mesh.scale.set(1, 1, 1);
+      b.mesh.rotation.set(0, 0, 0);
     });
     parkMachine();
     document.body.classList.remove('rg-over');
@@ -1573,7 +1549,7 @@
         setHint(null);
         setAction('ENTREGAR', 'give');
       } else {
-        setHint('Llevá ' + COLORS[carrying].name + ' al mostrador');
+        setHint('Llevá ' + drugLabel(carrying) + ' al mostrador');
         setAction(null, '');
       }
       return;
@@ -1582,11 +1558,6 @@
     if (st && stockP[st.def.c] > 0) {
       setHint(null);
       setAction('RECOGER', 'take');
-    } else if (Math.abs(G.player.z) < 7 && Math.abs(G.player.x) < 11.5) {
-      /* El emblema RASMATIC ocupa el centro del vestíbulo: es sólido y hay
-         que bordearlo para entrar al pasillo de góndolas. */
-      setHint('Rodeá el logo por el costado');
-      setAction(null, '');
     } else {
       setHint(null);
       setAction(null, '');
@@ -1610,7 +1581,7 @@
     S.kiosk.screenMat.color.setHex(col.hex);
     drawTag(S.botCustomer.tag, {
       color: col.css,
-      title: 'PIDE ' + col.name,
+      title: 'PIDE ' + drugLabel(c),
       sub: 'El bot ya lo busca'
     });
     S.botCustomer.group.visible = true;
@@ -1685,12 +1656,11 @@
           bot.phase = 'drop';
           bot.t0 = t;
           bot.dur = botTime(0.55);
+          /* La caja sale de la máquina y aparece en la ventanilla del bot. */
+          if (G.machine.api && G.machine.api.deliver) G.machine.api.deliver(bot.box.mesh);
+          else if (bot.box.mesh.parent !== G.place) G.place.attach(bot.box.mesh);
           bot.dropFrom = bot.box.mesh.position.clone();
-          bot.dropTo = new T.Vector3(
-            G.home.x,
-            G.home.floor + 0.46 + bot.spec.h / 2,
-            G.home.mz + 1.3
-          );
+          bot.dropTo = new T.Vector3(SPOT.bot.x, 1.55, SPOT.bot.z);
         }
         break;
 
@@ -1706,7 +1676,7 @@
           bot.flyFrom = bot.box.mesh.position.clone();
           bot.flyTo = new T.Vector3(
             SPOT.bot.x,
-            G.home.floor + 3.2 * K + 0.4,
+            3.1,
             SPOT.bot.z
           );
         }
@@ -1738,9 +1708,11 @@
           const b = bot.box, col = bot.color;
           S.botCustomer.group.visible = false;
           S.kiosk.screenMat.color.setHex(0x39d0ff);
+          if (b.mesh.parent !== G.machine.root) G.machine.root.add(b.mesh);
           b.mesh.visible = stockB[col] > 0;
           b.mesh.position.copy(b.home);
           b.mesh.scale.set(1, 1, 1);
+          b.mesh.rotation.set(0, 0, 0);
           parkMachine();
           bot = null;
           requestB = -1;
@@ -1830,12 +1802,10 @@
     if (!core || !core.game) return false;
     G = core.game;
     try {
-      G.machine.root.rotation.y = 0;
-      /* La escena original usa 40° verticales, pensado para el recorrido
-         cinematográfico. En vertical el campo horizontal queda en ~19° y no
-         se ven las dos góndolas del pasillo; 62° deja ~30° horizontales sin
-         deformar y permite buscar los colores. */
-      G.camera.fov = 62;
+      if (G.machine.baseRotation !== undefined) G.machine.root.rotation.y = G.machine.baseRotation;
+      /* La farmacia del HTML usa 72° verticales; es el mismo campo que la
+         escena de referencia y funciona en vertical y horizontal. */
+      G.camera.fov = 72;
       G.camera.updateProjectionMatrix();
       window.RasmaticCNC = true;
       window.RasmaticArena = true;

@@ -1,7 +1,8 @@
 {
-  "name": "RASMATIC · Lugar 3D",
-  "short_name": "RASMATIC",
-  "description": "Juego 3D de almacen: recorrido, estaciones, CNC y partida de 3 minutos.",
+  "name": "RASMATIC VR",
+  "short_name": "RASMATIC VR",
+  "description": "Farmacia 3D RASMATIC con Head Tracking, partida, VR BOX y controles Bluetooth.",
+  "id": "./?app=v20",
   "lang": "es",
   "dir": "ltr",
   "start_url": "./index.html",
@@ -12,7 +13,7 @@
     "fullscreen"
   ],
   "orientation": "any",
-  "background_color": "#a3b2c7",
+  "background_color": "#bcd3c8",
   "theme_color": "#0f2a55",
   "icons": [
     {

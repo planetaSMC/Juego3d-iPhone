@@ -1,0 +1,118 @@
+/* ============================================================
+   RASMATIC V20 · shell de la escena de farmacia
+   ============================================================ */
+
+#v20-mode {
+  position: fixed;
+  left: calc(14px + env(safe-area-inset-left, 0px));
+  top: calc(86px + env(safe-area-inset-top, 0px));
+  z-index: 20;
+  min-width: 116px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(150, 210, 255, .55);
+  background: rgba(8, 22, 46, .82);
+  color: #dcecff;
+  font: 800 11px/1 "Exo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: .1em;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(2, 10, 26, .4);
+}
+#v20-mode:active { transform: scale(.97); }
+
+#v20-routes {
+  position: fixed;
+  left: calc(14px + env(safe-area-inset-left, 0px));
+  top: calc(130px + env(safe-area-inset-top, 0px));
+  z-index: 20;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(150, 210, 255, .45);
+  background: rgba(8, 22, 46, .74);
+  color: #dcecff;
+  font: 800 10px/1 "Exo 2", system-ui, sans-serif;
+  letter-spacing: .1em;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+#v20-routes:active { transform: scale(.97); }
+
+#v20-dock {
+  position: fixed;
+  left: 50%;
+  top: calc(74px + env(safe-area-inset-top, 0px));
+  transform: translateX(-50%);
+  z-index: 19;
+  display: none;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: min(92vw, 620px);
+  padding: 7px 9px;
+  border-radius: 16px;
+  background: rgba(8, 22, 46, .82);
+  border: 1px solid rgba(150, 210, 255, .35);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(2, 10, 26, .4);
+}
+#v20-dock.on { display: flex; }
+#v20-dock button {
+  all: unset;
+  cursor: pointer;
+  padding: 7px 10px;
+  border-radius: 10px;
+  color: #dcecff;
+  font: 700 11px/1 "Exo 2", system-ui, sans-serif;
+  letter-spacing: .04em;
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .12);
+  touch-action: manipulation;
+}
+#v20-dock button:active { transform: scale(.97); }
+
+#v20-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #bcd3c8;
+  color: #0f2a55;
+  font: 800 15px/1.4 "Exo 2", system-ui, sans-serif;
+  letter-spacing: .06em;
+  transition: opacity .4s;
+}
+#v20-loading.off { opacity: 0; pointer-events: none; }
+
+/* En recorrido/modelo no se muestra el HUD de partida. */
+body.v20-film #rg-hud,
+body.v20-film #rg-act,
+body.v20-film #rg-opts-btn,
+body.v20-film #rg-opts,
+body.v20-film #rg-end,
+body.v20-film #ht-bar,
+body.v20-model #rg-hud,
+body.v20-model #rg-act,
+body.v20-model #rg-opts-btn,
+body.v20-model #rg-opts,
+body.v20-model #rg-end,
+body.v20-model #ht-bar {
+  display: none !important;
+}
+
+/* El HUD del juego se dibuja encima del canvas. */
+#ras-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+@media (max-width: 600px) {
+  #v20-mode { top: calc(80px + env(safe-area-inset-top, 0px)); min-width: 100px; }
+  #v20-dock { top: calc(66px + env(safe-area-inset-top, 0px)); }
+}

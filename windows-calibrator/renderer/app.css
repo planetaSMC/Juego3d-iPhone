@@ -718,3 +718,9 @@ button.wide.pri:hover { filter: brightness(1.08); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+/* V20 · botones de Head Tracking */
+.ht-actions { display: flex; gap: 8px; margin: 10px 0 6px; }
+.ht-actions button { flex: 1; padding: 10px 8px; border-radius: 10px; border: 1px solid rgba(150, 210, 255, .35); background: linear-gradient(160deg, #1f5fd0, #1fa070); color: #fff; font-weight: 800; font-size: 11px; letter-spacing: .08em; cursor: pointer; }
+.ht-actions button:active { transform: scale(.98); }
+
