@@ -40,7 +40,10 @@ una llamada de dibujo independiente sin multiplicar materiales.
    delante del jugador.
 6. La caja soltada sigue siendo apuntable y se puede volver a agarrar.
 7. Cerca de la entrada de la cinta, la acción muestra `COLOCAR` y la caja real
-   pasa al recorrido de la cinta.
+   pasa al recorrido de la cinta. El pedido visible se congela con el que se
+   colocó y no avanza hasta que la caja y el empleado terminan; si el mando
+   repite el flanco, una ventana de 300 ms impide agarrar el siguiente
+   medicamento.
 
 En VR SBS la caja se parenta a la cámara del juego. El render estero desplaza
 la cámara por ojo y la caja se dibuja correctamente en ambos ojos.
@@ -87,6 +90,6 @@ colocar o soltar; por eso no hay conflicto entre el menú, la partida y la VR.
 | P08b | A selecciona, agarra y suelta con el puente nativo del mando |
 | P08c | lo mismo con el modo VR Box activo |
 
-Resultados de la última ejecución local: `test-v21` **17/17**, `test-pad`
+Resultados de la última ejecución local: `test-v21` **19/19**, `test-pad`
 **23/23**. No sustituyen una prueba con iPhone, mando Bluetooth y VR Box
 físicos; ver `limitations.md`.

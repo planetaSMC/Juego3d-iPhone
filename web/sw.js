@@ -1,6 +1,6 @@
 /* Generado por tools/build-ios.js (V20) - no editar a mano.
-   Build: 467f56cb34fd1d32 */
-const CACHE = 'rasmatic-v21-467f56cb34fd1d32';
+   Build: 1064b336c6e759ab */
+const CACHE = 'rasmatic-v21-1064b336c6e759ab';
 const PRECACHE = [
   "./",
   "./index.html",

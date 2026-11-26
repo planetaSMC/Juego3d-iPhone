@@ -46,6 +46,8 @@ V21.1 añade:
 - **Cada medicamento de las estanterías es una malla individual** (330 cajas):
   se puede apuntar, agarrar, soltar en el piso y volver a agarrar por separado.
 - La caja real se lleva en la mano; no se sustituye por un cubo genérico.
+- Al colocar la caja, el pedido **no** avanza: se mantiene hasta que la cinta y
+  el empleado terminan la entrega.
 - La entrega valida el **medicamento exacto**, no solo el color.
 - El mando físico permite mover, apuntar, seleccionar, agarrar, colocar y
   soltar, tanto con VR Box como sin VR.
@@ -247,7 +249,7 @@ Resultados de la última ejecución (2026-11-26, Windows + Edge headless):
 | Suite | Resultado |
 |---|---|
 | `check-xcode.js` | **162/162** |
-| `test-v21.js` | **17/17** |
+| `test-v21.js` | **19/19** |
 | `test-v20.js` | **18/18** |
 | `test-web.js` | **30/30** + horizontal |
 | `test-vr.js` | **34/34** |

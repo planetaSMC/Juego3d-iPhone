@@ -98,17 +98,35 @@
     /* ---------------- V21-05: colocar en la cinta ---------------- */
     window.RasmaticGame._test.config({ beltSpeed: 7 });
     const entry = PH().conveyor.entry;
+    const reqPlaceBefore = D().request;
+    const reqImgPlaceBefore = document.getElementById('rg-req-img').getAttribute('src');
+    const carriedId = D().carryingBox ? D().carryingBox.id : -1;
     tp(entry.x + 1.8, entry.z, 0, 0);
     const nearBelt = await until(() => D().ui.action === 'COLOCAR', 8000);
     const placed = window.RasmaticGame.interact();
+    /* Un segundo flanco inmediato no debe agarrar el siguiente medicamento. */
+    const doubleTap = window.RasmaticGame.interact();
+    const stillEmpty = D().carrying === -1;
     const moving = await until(() => {
       const b = D().belt;
       return b.count === 1 && b.items[0] && b.items[0].s > 0.2 && b.speed > 0;
     }, 6000);
+    /* El pedido no debe avanzar al colocar: solo cuando el empleado valida
+       al final de la cinta (V21-06). */
+    await sleep(600);
+    const reqPlaceAfter = D().request;
+    const reqImgPlaceAfter = document.getElementById('rg-req-img').getAttribute('src');
     const b1 = D().belt;
-    ok('V21-05 colocar en la cinta y transporte real',
-      nearBelt && placed === true && moving && D().carrying === -1,
-      { accion: D().ui.action, cinta: b1, llevando: D().carrying });
+    ok('V21-05 colocar en la cinta y transporte real sin cambiar el pedido',
+      nearBelt && placed === true && moving && D().carrying === -1 &&
+      doubleTap === false && stillEmpty &&
+      reqPlaceAfter === reqPlaceBefore && reqImgPlaceAfter === reqImgPlaceBefore &&
+      b1.count === 1 && b1.items[0].drug === window.RasmaticGame._test.expectedDrug(reqPlaceBefore) &&
+      b1.items[0].id === carriedId,
+      { accion: D().ui.action, cinta: b1, llevando: D().carrying,
+        doble_toque: doubleTap, id_caja: carriedId,
+        pedido_antes: reqPlaceBefore, pedido_despues: reqPlaceAfter,
+        imagen_igual: reqImgPlaceAfter === reqImgPlaceBefore });
 
     /* ---------------- V21-06: empleado valida y entrega ---------------- */
     const score0 = D().score.player;
@@ -331,6 +349,70 @@
       { pedido_color: reqExact, medicamento_esperado: expected,
         agarrado: exactGrab, entregado: exactDelivered,
         puntaje: D().score.player });
+
+    /* ---------------- V21-17: el pedido no cambia al colocar ------------- */
+    window.RasmaticGame._test.startNow();
+    await until(() => D().state === 'playing', 5000);
+    await until(() => D().clients.length >= 3 && D().request >= 0, 15000);
+    window.RasmaticGame._test.config({ beltSpeed: 3.6 });
+    const reqStay = D().request;
+    const expectedStay = window.RasmaticGame._test.expectedDrug(reqStay);
+    const stayAim = window.RasmaticGame._test.aimAtDrug(expectedStay);
+    const stayGrab = stayAim && window.RasmaticGame.interact();
+    const stayHeld = await until(() => D().carryingDrug === expectedStay, 5000);
+    const stayScore0 = D().score.player;
+    const stayPlaced = stayHeld && window.RasmaticGame._test.placeBeltNow();
+    const stayT0 = Date.now();
+    let earlyChange = null;
+    let stayedDelivered = false;
+    for (let i = 0; i < 220; i++) {
+      const d = D();
+      if (d.score.player > stayScore0) { stayedDelivered = true; break; }
+      if (d.request !== reqStay) {
+        earlyChange = { ms: Date.now() - stayT0, request: d.request,
+          belt: d.belt, employee: d.employee, score: d.score.player };
+        break;
+      }
+      await sleep(100);
+    }
+    ok('V21-17 el pedido no cambia hasta que la caja llega al cliente',
+      stayAim === true && stayGrab === true && stayHeld && stayPlaced === true &&
+      stayedDelivered && earlyChange === null,
+      { pedido: reqStay, medicamento: expectedStay, colocado: stayPlaced,
+        entregado: stayedDelivered, cambio_anticipado: earlyChange,
+        cinta: D().belt, empleado: D().employee });
+
+    /* ---------------- V21-18: el HUD no cambia con la caja en tránsito ----- */
+    window.RasmaticGame._test.startNow();
+    await until(() => D().state === 'playing', 5000);
+    await until(() => D().clients.length >= 3 && D().request >= 0, 15000);
+    window.RasmaticGame._test.config({ beltSpeed: 7 });
+    const lockReq0 = D().request;
+    const lockDrug0 = window.RasmaticGame._test.expectedDrug(lockReq0);
+    const lockImg0 = document.getElementById('rg-req-img').getAttribute('src');
+    const lockAim = window.RasmaticGame._test.aimAtDrug(lockDrug0);
+    const lockGrab = lockAim && window.RasmaticGame.interact();
+    const lockHeld = await until(() => D().carryingDrug === lockDrug0, 5000);
+    const lockPlaced = lockHeld && window.RasmaticGame._test.placeBeltNow();
+    const lockSet = lockPlaced && D().requestLock === lockReq0;
+    window.RasmaticGame._test.advanceFront();
+    await sleep(250);
+    const lockReq1 = D().request;
+    const lockImg1 = document.getElementById('rg-req-img').getAttribute('src');
+    const heldDisplay = lockImg1 === lockImg0 && D().requestLock === lockReq0 &&
+      D().pendingRequest === lockReq1 && lockReq1 !== lockReq0;
+    const unlocked = await until(() => D().requestLock === -1, 35000);
+    const lockImg2 = document.getElementById('rg-req-img').getAttribute('src');
+    const expectedImg = PH().drugImage(window.RasmaticGame._test.expectedDrug(lockReq1));
+    ok('V21-18 con una caja en tránsito el HUD conserva el pedido colocado',
+      lockAim === true && lockGrab === true && lockHeld && lockPlaced === true &&
+      lockSet && heldDisplay && unlocked && lockImg2 === expectedImg,
+      { colocado: lockPlaced, pedido_colocado: lockReq0, pedido_nuevo: lockReq1,
+        imagen_congelada: lockImg1 === lockImg0, bloqueo: D().requestLock,
+        pendiente: D().pendingRequest, desbloqueado: unlocked,
+        imagen_final_ok: lockImg2 === expectedImg,
+        cinta: D().belt, empleado: D().employee, pedido_actual: D().request,
+        llevando: D().carrying, stock: D().stockP });
 
     /* Restaurar un estado limpio. */
     window.RasmaticGame._test.config({ beltSpeed: 3.6 });

@@ -58,6 +58,20 @@ entrada (40.4, 7.1)
    la estantería (y el stock se restaura si pertenecía a una estación).
 7. El empleado vuelve a su pose de espera (0,45 s).
 
+### Pedido estable
+
+- Al colocar la caja, el HUD **no** avanza al siguiente medicamento. Se guarda
+  el pedido con el que se colocó (`requestLock`) y se mantiene mientras haya
+  una caja en la cinta o en manos del empleado.
+- Si otro cliente o una entrega anterior cambia `requestP` en ese intervalo, el
+  nuevo pedido queda en `pendingRequest` y se muestra recién cuando la cinta y
+  el empleado quedan libres.
+- No se puede colocar una caja si no hay un pedido activo (por ejemplo, durante
+  el segundo entre la entrega de un cliente y el siguiente).
+- Tras colocar, la mira se limpia y la acción queda bloqueada 300 ms para que
+  un doble flanco del mando no agarre el siguiente medicamento.
+- V21-05 y V21-17 comprueban que el pedido y la imagen no cambian al colocar.
+
 ### Validación
 
 - **Correcto:** `scoreP++`, se oculta el pedido, el cliente pasa a `receiving`,
@@ -108,8 +122,10 @@ caché `drugKit`.
 
 ## 8. Pruebas relacionadas
 
-- V21-05: colocar y verificar que `s` avanza y la cinta tiene velocidad.
-- V21-06: entrega validada y cambio de pedido.
+- V21-05: colocar, verificar que `s` avanza, que la caja es la misma y que el
+  pedido no cambia.
+- V21-06: entrega validada y cambio de pedido recién al final.
+- V21-17: el pedido se mantiene durante todo el recorrido hasta la entrega.
 - V21-08: medicamento incorrecto no suma y vuelve al stock.
 - V21-09: dos paquetes con separación ≥ 1,5.
 - V21-16: copia individual del medicamento exacto entregada y sumada.

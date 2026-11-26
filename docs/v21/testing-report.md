@@ -7,7 +7,7 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 
 | Suite | Resultado |
 |---|---|
-| `node tools/test-v21.js` | **17 / 17** |
+| `node tools/test-v21.js` | **19 / 19** |
 | `node tools/test-v20.js` | **18 / 18** |
 | `node tools/test-web.js` | **30 / 30** + horizontal |
 | `node tools/test-vr.js` | **34 / 34** |
@@ -15,7 +15,7 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 | `node tools/check-xcode.js` | **162 / 162** |
 | `windows-calibrator && npm test` | **62 / 62** |
 
-## 2. Suite V21 (17 casos)
+## 2. Suite V21 (19 casos)
 
 | Caso | Comprueba |
 |---|---|
@@ -23,7 +23,7 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 | V21-02 | INICIAR, 3 → 2 → 1, reloj congelado en 180 y partida al final |
 | V21-03 | tres clientes en sus slots y pedido visible como imagen real |
 | V21-04 | mira + contorno, desaparición al mirar afuera, sin etiquetas |
-| V21-05 | colocar en cinta, `s` avanza, velocidad > 0, mano vacía |
+| V21-05 | colocar en cinta sin cambiar el pedido; `s` avanza, caja real e identidad estable |
 | V21-06 | empleado recoge, valida, entrega y cambia el pedido |
 | V21-07 | la fila avanza, el siguiente queda activo y se repone |
 | V21-08 | medicamento equivocado no suma y vuelve al stock |
@@ -36,6 +36,8 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 | V21-14 | 330 cajas individuales con identidad única, sin fusión |
 | V21-15 | agarrar una caja, soltarla en el piso y volver a agarrarla |
 | V21-16 | entregar una copia individual del medicamento exacto pedido |
+| V21-17 | el pedido no cambia al colocar: se mantiene hasta la entrega |
+| V21-18 | con una caja en tránsito, el HUD conserva el pedido colocado y recién muestra el siguiente al quedar libre la cinta |
 
 Evidencias: `docs/evidencias/v21/v21-menu.png`,
 `v21-countdown.png`, `v21-aim.png`, `v21-belt.png`, `v21-queue.png`.

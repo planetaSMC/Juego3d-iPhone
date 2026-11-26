@@ -116,7 +116,7 @@ node tools/test-pad.js
 cd windows-calibrator; npm test
 ```
 
-Resultados de la última ejecución local: `test-v21` **17/17**, `test-pad`
+Resultados de la última ejecución local: `test-v21` **19/19**, `test-pad`
 **23/23**, `test-v20` **18/18**, `test-web` **30/30**, `test-vr` **34/34**,
 `check-xcode` **162/162** y calibrador Windows **62/62**. Ver `testing-report.md`.
 
