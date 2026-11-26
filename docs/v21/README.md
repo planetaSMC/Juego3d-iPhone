@@ -120,9 +120,10 @@ Resultados de la última ejecución local: `test-v21` **17/17**, `test-pad`
 **23/23**, `test-v20` **18/18**, `test-web` **30/30**, `test-vr` **34/34**,
 `check-xcode` **162/162** y calibrador Windows **62/62**. Ver `testing-report.md`.
 
-La compilación iOS de V21 en `main` dio **BUILD SUCCEEDED** (Xcode 16.4). La
-rama V21.1 cambia solo `web/` y las pruebas; falta volver a compilarla en
-Actions y firmar el IPA. La instalación en iPhone sigue pendiente.
+La compilación iOS de V21.1 dio **BUILD SUCCEEDED** en GitHub Actions (run
+45890568451, Xcode 16.4): IPA de 843.351 bytes, SHA-256
+`A0F91D19…9101C7D9`, verificado con `verify-ipa.js`. La firma e instalación en
+iPhone siguen pendientes.
 
 ## 6. Documentos V21
 

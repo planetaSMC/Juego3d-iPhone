@@ -1,6 +1,6 @@
 # V21 · Limitaciones y alcance real
 
-V21 está implementada y probada en simulación. No se probó en un iPhone físico.
+V21.1 está implementada y probada en simulación. No se probó en un iPhone físico.
 
 ## 1. Hardware y compilación
 
@@ -11,6 +11,9 @@ V21 está implementada y probada en simulación. No se probó en un iPhone físi
   Xcode 16.4): `BUILD SUCCEEDED`, IPA de 840.012 bytes. Hashes observados:
   `4287E5FE…533588` y `66714AB0…94F05` (varían por timestamps), verificados con
   `verify-ipa.js`.
+- **V21.1 también compiló** en el PR #4 (run 45890568451, Xcode 16.4):
+  `BUILD SUCCEEDED`, IPA de 843.351 bytes, SHA-256 `A0F91D19…9101C7D9`,
+  contenido de `www/` idéntico a `web/` (normalizando CRLF/LF).
 - No se instaló ni firmó la app.
 
 ## 2. Sensores y VR

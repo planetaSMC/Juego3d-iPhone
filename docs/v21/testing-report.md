@@ -93,9 +93,19 @@ No se crean geometrías ni materiales por fotograma:
 
 ### V21.1 (rama actual)
 
-V21.1 cambia `web/` y las pruebas. **Todavía no se compiló en GitHub Actions**;
-hace falta ejecutar el workflow iOS sobre `v21.1-individual-medications` antes
-de firmar o publicar. La compilación de V21 que sigue es la referencia histórica.
+V21.1 se compiló en GitHub Actions (Xcode 16.4) sobre el PR #4:
+
+| Dato | Valor |
+|---|---|
+| Run | [45890568451](https://github.com/planetaSMC/Juego3d-iPhone/actions/runs/45890568451) |
+| Resultado | **BUILD SUCCEEDED** |
+| IPA | `RASMATIC-VR-unsigned.ipa` |
+| Tamaño | **843.351 bytes** |
+| SHA-256 | `A0F91D19A4DAAC2BB025A58A0578DCCFE1206F343804968283ECCB8C9101C7D9` |
+| `verify-ipa.js` | **OK** (bundle, Mach-O, 15 archivos clave) |
+| Contenido | `www/mobile/game.js` y `www/v20/pharmacy-scene.js` coinciden con `web/` (normalizando CRLF/LF) |
+
+La compilación de V21 en `main` que sigue es la referencia histórica.
 
 ### V21 en `main`
 

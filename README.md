@@ -302,10 +302,12 @@ Implementado y probado en simulación:
   validación por medicamento exacto; controles de mando verificados en VR y
   fuera de VR (simulación).
 
-**Compilación iOS:** V21 compiló en GitHub Actions con Xcode 16.4
-(`BUILD SUCCEEDED`, runs 45880086744 y 45880239776). IPA sin firmar de 840.012
-bytes; el SHA-256 varía por marcas de tiempo (observados `4287E5FE…` y
-`66714AB0…`), verificado con `verify-ipa.js`.
+**Compilación iOS:** V21.1 compiló en GitHub Actions con Xcode 16.4
+(`BUILD SUCCEEDED`, run 45890568451). IPA sin firmar de **843.351 bytes**,
+SHA-256 `A0F91D19A4DAAC2BB025A58A0578DCCFE1206F343804968283ECCB8C9101C7D9`,
+verificado con `verify-ipa.js`; el contenido de `www/` coincide con `web/`
+(normalizando CRLF/LF). V21 ya había compilado en `main` (runs 45880086744 y
+45880239776).
 
 **Pendiente de validación física** (no se afirma que funcione en hardware):
 
