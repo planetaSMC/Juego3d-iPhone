@@ -8,7 +8,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "start": "electron .",
-    "test": "node --test test/*.test.js",
+    "test": "node --test test/http.test.js test/protocol.test.js test/security.test.js test/spec.test.js test/store.test.js test/vrlink.test.js",
     "dist": "electron-builder --win nsis",
     "pack": "electron-builder --win dir"
   },
