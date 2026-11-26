@@ -47,6 +47,7 @@ const required = [
   'v20/pharmacy-scene.js',
   'v20/pharmacy-core.js',
   'v20/pharmacy.css',
+  'v21/v21.css',
   'fonts/fonts.css',
   'fonts/google-fonts.css'
 ];
@@ -86,7 +87,7 @@ const hash = crypto.createHash('sha256');
 for (const rel of [
   'index.html', 'mobile/game.js', 'mobile/android-bridge.js',
   'mobile/android-game.css', 'mobile/android-controls.css',
-  'v20/pharmacy-scene.js', 'v20/pharmacy-core.js', 'v20/pharmacy.css',
+  'v20/pharmacy-scene.js', 'v20/pharmacy-core.js', 'v20/pharmacy.css', 'v21/v21.css',
   'headtracking/head-tracking.js', 'vr/vr-preview.js', 'net/vr-link.js'
 ]) {
   hash.update(read(rel));
@@ -119,6 +120,7 @@ const precache = [
   './v20/pharmacy.css',
   './v20/pharmacy-scene.js',
   './v20/pharmacy-core.js',
+  './v21/v21.css',
   './fonts/fonts.css',
   './fonts/google-fonts.css',
   './icons/icon-180.png',
@@ -129,7 +131,7 @@ const precache = [
 
 const sw = `/* Generado por tools/build-ios.js (V20) - no editar a mano.
    Build: ${buildId} */
-const CACHE = 'rasmatic-v20-${buildId}';
+const CACHE = 'rasmatic-v21-${buildId}';
 const PRECACHE = ${JSON.stringify(precache, null, 2)};
 
 self.addEventListener('install', (event) => {

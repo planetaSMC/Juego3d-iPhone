@@ -115,7 +115,7 @@
 
   /* Arrastre de cámara en place/model. */
   renderer.domElement.addEventListener('pointerdown', function (e) {
-    if (mode === 'film') return;
+    if (mode === 'film' || inputLocked()) return;
     try { renderer.domElement.setPointerCapture(e.pointerId); } catch (err) {}
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (mode === 'model') { pd = { x: e.clientX, y: e.clientY }; autoSpin = false; pinch0 = 0; }
@@ -147,25 +147,35 @@
     autoSpin = false;
   }, { passive: false });
 
+  /* V21: el menú y la cuenta regresiva congelan el movimiento, no la cámara
+     (la vista debe seguir el Head Tracking). */
+  function inputLocked() {
+    var g = window.RasmaticGame;
+    return !!(g && typeof g.isInputLocked === 'function' && g.isInputLocked());
+  }
+
   /* Movimiento de primera persona. */
   function updatePlace(dt) {
-    var fwd = (keys.w || keys.ArrowUp ? 1 : 0) - (keys.s || keys.ArrowDown ? 1 : 0);
-    var str = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-    var turn = (keys.ArrowLeft ? 1 : 0) - (keys.ArrowRight ? 1 : 0);
-    fwd += EXT.my;
-    str += EXT.mx;
-    turn -= EXT.lx;
+    var locked = inputLocked();
+    var fwd = locked ? 0 : (keys.w || keys.ArrowUp ? 1 : 0) - (keys.s || keys.ArrowDown ? 1 : 0);
+    var str = locked ? 0 : (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+    var turn = locked ? 0 : (keys.ArrowLeft ? 1 : 0) - (keys.ArrowRight ? 1 : 0);
+    if (!locked) {
+      fwd += EXT.my;
+      str += EXT.mx;
+      turn -= EXT.lx;
+    }
     var len = Math.hypot(fwd, str);
     if (len > 1) { fwd /= len; str /= len; }
     PP.yaw += turn * dt * 1.9;
-    PP.pitch = clamp(PP.pitch + EXT.ly * dt * 1.6, -1.5, 1.5);
-    var run = keys.Shift || EXT.run;
+    if (!locked) PP.pitch = clamp(PP.pitch + EXT.ly * dt * 1.6, -1.5, 1.5);
+    var run = !locked && (keys.Shift || EXT.run);
     var speed = (run ? 2 : 1) * 8 * dt;
     var sy = Math.sin(PP.yaw), cy = Math.cos(PP.yaw);
     var nx = PP.x + (-sy * fwd + cy * str) * speed;
     var nz = PP.z + (-cy * fwd - sy * str) * speed;
-    if (!ph.blocked(nx, PP.z)) PP.x = nx;
-    if (!ph.blocked(PP.x, nz)) PP.z = nz;
+    if (!locked && !ph.blocked(nx, PP.z)) PP.x = nx;
+    if (!locked && !ph.blocked(PP.x, nz)) PP.z = nz;
     PP.x = clamp(PP.x, ph.bounds.minX, ph.bounds.maxX);
     PP.z = clamp(PP.z, ph.bounds.minZ, ph.bounds.maxZ);
     if (fwd || str) bobTime += dt;

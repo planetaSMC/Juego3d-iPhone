@@ -323,10 +323,12 @@
         ojo_der: mr && [Math.round(mr.left), Math.round(mr.top), Math.round(mr.width), Math.round(mr.height)],
         marco: [Math.round(sx8c), Math.round(sy8c), Math.round(sw8c), Math.round(sh8c)] });
 
-    /* JUGAR (y RECOGER/ENTREGAR) tambien debe existir por ojo: centrado en
-       cada ojo y dentro de su area segura, no solo en un borde. */
-    tp(21.9, 13.6);
-    const near8e = await until(() => D().ui.action === 'JUGAR', 12000);
+    /* La acción de la mira también debe existir por ojo: centrada en cada
+       ojo y dentro de su área segura, no solo en un borde. */
+    window.RasmaticGame._test.startNow();
+    await until(() => D().state === 'playing' && D().request >= 0, 20000);
+    window.RasmaticGame._test.aimAtStation(D().request);
+    const near8e = await until(() => D().ui.action === 'RECOGER', 12000);
     await sleep(700);
     const s8e = VR.state();
     const actL = document.getElementById('vr-mirror-act-l');
@@ -346,9 +348,9 @@
       al.top > ml.top + ml.height * 0.5 && ar.top > mr.top + mr.height * 0.5;
     const actSafe = insideEye(al, ml, 6) && insideEye(ar, mr, 6);
     const actHidden = realAct && getComputedStyle(realAct).opacity === '0';
-    ok('V08e JUGAR espejado, centrado y dentro del area segura de cada ojo',
+    ok('V08e acción de la mira espejada, centrada y dentro del área segura',
       near8e && s8e.mirrors.act === true && centered && lowerHalf && actSafe &&
-      actHidden && !!copyL && copyL.textContent === 'JUGAR',
+      actHidden && !!copyL && copyL.textContent === 'RECOGER',
       { aviso: D().ui.action, espejos: s8e.mirrors, centrado: centered,
         mitad_inferior: lowerHalf, area_segura: actSafe,
         original_oculto: actHidden,
@@ -672,6 +674,7 @@
     /* ---------------- V10: controles de Windows ---------------- */
     /* Se espera por frames renderizados, no por milisegundos: con WebGL
        por software el reloj del juego avanza a pocos FPS. */
+    if (D().state !== 'playing') window.RasmaticGame._test.startNow();
     tp(20, 26, 0, 0);
     await frames(2);
     const z0 = G().player.z;
@@ -696,15 +699,18 @@
       walk > 0.2 && run > walk * 1.35,
       { caminando: +walk.toFixed(2), corriendo: +run.toFixed(2), ratio: +(run / walk).toFixed(2) });
 
-    /* Espacio interactua: en idle, junto al encargado, inicia la partida. */
-    tp(21.9, 14.0, 0, 0);
-    const nearNpc = await until(() => D().ui.action === 'JUGAR', 12000);
+    /* Espacio en el menú inicia la cuenta regresiva. */
+    window.RasmaticGame._test.timeLeft(0.1);
+    await until(() => D().state === 'over', 15000);
+    window.RasmaticGame.onBack();
+    await until(() => D().state === 'menu', 8000);
     key(' ', 'keydown');
     key(' ', 'keyup');
-    const started = await until(() => D().state === 'playing', 12000);
-    ok('V10b Espacio interactua (JUGAR)',
-      nearNpc && started === true,
-      { aviso: nearNpc, estado: D().state });
+    const started = await until(() => D().state === 'countdown', 5000);
+    window.RasmaticGame._test.startNow();
+    ok('V10b Espacio inicia la cuenta regresiva',
+      started === true && D().state === 'playing',
+      { countdown: started, estado: D().state });
 
     /* Escape sale del modo VR. */
     key('Escape', 'keydown');
@@ -748,11 +754,12 @@
     const stickDisplay = stick ? getComputedStyle(stick).display : 'ausente';
     const gameOk = D().state === 'playing' && hudVisible;
 
+    if (D().state !== 'playing') window.RasmaticGame._test.startNow();
     const customer = await until(() => D().request >= 0 && D().customer === true, 45000);
     const req = D().request;
     let takeOk = null, giveOk = null;
     if (customer && req >= 0) {
-      tp(STA[req].x, STA[req].z);
+      window.RasmaticGame._test.aimAtStation(req);
       const nearSta = await until(() => D().ui.action === 'RECOGER', 15000);
       takeOk = false;
       if (nearSta) {
@@ -762,12 +769,9 @@
       giveOk = false;
       if (takeOk) {
         const score0 = D().score.player;
-        tp(21.9, 14.6);
-        const nearCounter = await until(() => D().ui.action === 'ENTREGAR', 15000);
-        if (nearCounter) {
-          window.RasmaticGame.interact();
-          giveOk = await until(() => D().score.player === score0 + 1, 8000);
-        }
+        window.RasmaticGame._test.config({ beltSpeed: 7 });
+        const placed = window.RasmaticGame._test.placeBeltNow();
+        giveOk = placed && await until(() => D().score.player === score0 + 1, 15000);
       }
     }
     ok('V12 el juego normal sigue funcionando despues de VR',

@@ -1,5 +1,9 @@
 # V20 · RASMATIC VR unificado
 
+> **V21 continúa esta fase.** El gameplay, la mira, la cinta funcional, la fila
+> de clientes y el menú de inicio se documentan en `docs/v21/README.md`.
+> V20.1 conserva la app única y el escenario de farmacia; V21 los reutiliza.
+
 V20 unifica las dos apps V19 en una sola app iOS:
 
 - **Nombre visible:** RASMATIC VR

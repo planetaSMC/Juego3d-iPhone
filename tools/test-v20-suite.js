@@ -146,16 +146,14 @@
       { dificultades: diffSeen, guardado: diffStored });
     window.RasmaticGame.setDifficulty('normal');
 
-    /* ---------------- V20-09: partida ---------------- */
-    tp(21.9, 14.0, Math.PI, 0);
-    const prompt = await until(() => D().ui.action === 'JUGAR', 10000);
-    const started = window.RasmaticGame.interact();
+    /* ---------------- V20-09: partida (V21: inicio directo de prueba) ---------------- */
+    const started = window.RasmaticGame._test.startNow();
     const playing = await until(() => D().state === 'playing', 8000);
     const customer = await until(() => D().customer === true && D().request >= 0, 20000);
     const req = D().request;
     let take = false, give = false;
     if (customer && req >= 0) {
-      tp(ph.stations[req].x, ph.stations[req].z);
+      window.RasmaticGame._test.aimAtStation(req);
       const near = await until(() => D().ui.action === 'RECOGER', 8000);
       if (near) {
         window.RasmaticGame.interact();
@@ -163,28 +161,27 @@
       }
       if (take) {
         const s0 = D().score.player;
-        tp(21.9, 14.6, Math.PI, 0);
-        const nearC = await until(() => D().ui.action === 'ENTREGAR', 8000);
-        if (nearC) {
-          window.RasmaticGame.interact();
-          give = await until(() => D().score.player === s0 + 1, 5000);
-        }
+        window.RasmaticGame._test.config({ beltSpeed: 7 });
+        const placed = window.RasmaticGame._test.placeBeltNow();
+        give = placed && await until(() => D().score.player === s0 + 1, 15000);
       }
     }
-    ok('V20-09 partida: cliente, recoger y entregar',
-      prompt && started === true && playing && customer && take && give,
-      { aviso: prompt, estado: D().state, cliente: customer,
+    ok('V20-09 partida: cliente, recoger y entrega por cinta',
+      started === true && playing && customer && take && give,
+      { estado: D().state, cliente: customer,
         recoger: take, entregar: give, puntaje: D().score.player });
     window.RasmaticGame._test.timeLeft(1);
     const over = await until(() => D().state === 'over', 20000);
     const endOpen = document.getElementById('rg-end').classList.contains('on');
     window.RasmaticGame.onBack();
-    await until(() => D().state === 'idle', 5000);
-    ok('V20-10 fin de partida y vuelta al lugar',
-      over && endOpen && D().state === 'idle',
+    await until(() => D().state === 'menu', 5000);
+    ok('V20-10 fin de partida y vuelta al menú',
+      over && endOpen && D().state === 'menu',
       { fin: over, panel: endOpen, estado: D().state });
 
     /* ---------------- V20-11: joystick opcional + entrada externa ---------------- */
+    window.RasmaticGame._test.startNow();
+    await frames(2);
     window.RasmaticGame.setJoystick(false);
     const stick = document.getElementById('ras-stick');
     const stickHidden = getComputedStyle(stick).display === 'none';

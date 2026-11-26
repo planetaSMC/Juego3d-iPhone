@@ -214,13 +214,14 @@ check(/id: 'v20'/.test(index) && /headTracking: true/.test(index), 'identidad v2
 check(/storagePrefix: 'rasmatic\.'/.test(index), 'prefijo rasmatic.*');
 check(/v20\/pharmacy-scene\.js/.test(index), 'carga pharmacy-scene.js');
 check(/v20\/pharmacy-core\.js/.test(index), 'carga pharmacy-core.js');
+check(/v21\/v21\.css/.test(index), 'carga v21.css');
 check(/mobile\/game\.js/.test(index), 'carga game.js');
 check(/headtracking\/head-tracking\.js/.test(index), 'carga head-tracking.js');
 check(/vr\/vr-preview\.js/.test(index) && /net\/vr-link\.js/.test(index), 'carga VR y enlace Windows');
 check(!/(src|href)="[^"]*android\//.test(index), 'sin rutas android/');
 check(/manifest\.webmanifest/.test(index), 'enlace al manifest');
 
-for (const rel of ['v20/pharmacy-scene.js', 'v20/pharmacy-core.js', 'v20/pharmacy.css',
+for (const rel of ['v20/pharmacy-scene.js', 'v20/pharmacy-core.js', 'v20/pharmacy.css', 'v21/v21.css',
   'three.min.js', 'mobile/game.js', 'headtracking/head-tracking.js']) {
   check(exists(path.join(web, rel)), 'existe web/' + rel);
 }
@@ -229,6 +230,10 @@ check(/RasmaticPharmacy/.test(sceneJs), 'expone RasmaticPharmacy');
 check(/blocked\(x, z\)/.test(sceneJs), 'colisiones del HTML');
 check(/RASMATIC BOT/.test(sceneJs) || /machine/.test(sceneJs), 'máquina RASMATIC BOT');
 check(/mergeShelfBoxes/.test(sceneJs), 'optimización de estanterías');
+check(/FARMACIA RASMATIC/.test(sceneJs) && !/FARMACIA 16 HORAS/.test(sceneJs),
+  'cartel Farmacia RASMATIC sin 16 horas');
+check(/conveyor\s*=\s*\{/.test(sceneJs) && /drugImage/.test(sceneJs),
+  'cinta funcional y miniatura de medicamento');
 const coreJs = read(path.join(web, 'v20', 'pharmacy-core.js'));
 check(/window\.RasmaticCore/.test(coreJs), 'expone RasmaticCore');
 check(/film/.test(coreJs) && /model/.test(coreJs) && /place/.test(coreJs), 'tres modos');
@@ -238,6 +243,12 @@ check(/RasmaticPharmacyApi/.test(gameJs), 'game.js usa la farmacia');
 check(/COLOR_DRUGS/.test(gameJs), 'mapeo de medicamentos');
 check(/machine\.api/.test(gameJs), 'adaptador CNC');
 check(/rasmatic\.joystick/.test(gameJs), 'joystick opcional');
+check(/v21-start-btn/.test(gameJs) && /startCountdown/.test(gameJs), 'menú y cuenta V21');
+check(/placeOnBelt/.test(gameJs) && /updateBelt/.test(gameJs), 'cinta funcional V21');
+check(/aim\.target/.test(gameJs) && /aim\.outline/.test(gameJs), 'mira y contorno V21');
+check(/S\.queue/.test(gameJs) && /spawnClient/.test(gameJs), 'fila de clientes V21');
+const vrJs = read(path.join(web, 'vr', 'vr-preview.js'));
+check(/aimQuaternion/.test(vrJs), 'mira con Head Tracking en VR');
 check(/rasmatic\.ht\.sensitivity/.test(read(path.join(web, 'headtracking', 'head-tracking.js'))), 'sensibilidad HT');
 
 const manifest = JSON.parse(read(path.join(web, 'manifest.webmanifest')));
@@ -247,7 +258,7 @@ check(Array.isArray(manifest.icons) && manifest.icons.length >= 3, 'manifest con
 for (const icon of manifest.icons) check(exists(path.join(web, icon.src)), 'icono ' + icon.src);
 
 const sw = read(path.join(web, 'sw.js'));
-check(/const CACHE = 'rasmatic-v20-/.test(sw), 'cache rasmatic-v20-');
+check(/const CACHE = 'rasmatic-v21-/.test(sw), 'cache rasmatic-v21-');
 const precache = [...sw.matchAll(/"(\.\/[^"]*)"/g)].map((m) => m[1]);
 check(precache.length > 10, 'precache ' + precache.length + ' recursos');
 let missingPre = 0;
@@ -311,6 +322,10 @@ for (const doc of ['README.md', 'rea-architecture.md', 'rea-mechanics.md', 'rea-
   'rea-game-modes.md', 'rea-integration-plan.md', 'windows-headtracking-config.md',
   'testing-report.md', 'limitations.md']) {
   check(exists(path.join(root, 'docs', 'v20', doc)), 'docs/v20/' + doc);
+}
+for (const doc of ['README.md', 'aim-and-queue.md', 'conveyor-delivery.md',
+  'start-menu.md', 'testing-report.md', 'limitations.md']) {
+  check(exists(path.join(root, 'docs', 'v21', doc)), 'docs/v21/' + doc);
 }
 check(exists(path.join(root, 'docs', 'instalar-en-iphone.md')), 'guía de instalación');
 
