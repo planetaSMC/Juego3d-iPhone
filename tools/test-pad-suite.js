@@ -101,9 +101,15 @@
     await sleep(150);
     const z0 = D().player.z;
     N().raw('0,1000,0,0,0');
-    await sleep(800);
+    /* Sondeo en vez de una espera fija: el primer frame tras iniciar la
+       partida puede tardar más en algunos equipos. */
+    let z1 = z0;
+    for (let i = 0; i < 8 && z1 > z0 - 0.25; i++) {
+      await sleep(250);
+      z1 = D().player.z;
+      if (i === 3 && z1 > z0 - 0.25) N().raw('0,1000,0,0,0');
+    }
     N().raw('0,0,0,0,0');
-    const z1 = D().player.z;
     ok('P06 stick izquierdo mueve al personaje',
       z1 < z0 - 0.25,
       { z_antes: z0, z_despues: z1, avance: +(z0 - z1).toFixed(2) });

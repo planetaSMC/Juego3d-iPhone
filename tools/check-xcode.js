@@ -190,6 +190,14 @@ if (headSwift) {
   check(/1\.0 \/ 60\.0/.test(headSwift), '60 Hz');
   check(/RasmaticNativeHeadTracking\.raw/.test(headSwift) && /RasmaticNativeHeadTracking\.status/.test(headSwift), 'envía raw/status');
   check(/isDeviceMotionAvailable/.test(headSwift), 'detecta sensor ausente');
+  check(/availableAttitudeReferenceFrames\(\)/.test(headSwift), 'consulta marcos de referencia disponibles');
+  check(!/\.xArbitrary(?!Z|Corrected)/.test(headSwift), 'sin el valor inválido .xArbitrary');
+  check(/\.xArbitraryZVertical/.test(headSwift) &&
+    /\.xArbitraryCorrectedZVertical/.test(headSwift) &&
+    /\.xmagneticNorthZVertical/.test(headSwift) &&
+    /\.xTrueNorthZVertical/.test(headSwift), 'solo marcos de referencia reales');
+  check(/referenceFrame|selectReferenceFrame/.test(headSwift) &&
+    /Sin marco de referencia/.test(headSwift), 'maneja la ausencia de marco');
   check(!/AVCapture/.test(headSwift), 'no usa cámara');
 } else bad('falta HeadTrackingBridge.swift');
 check(/import GameController/.test(bridgeSwift), 'GameController');

@@ -1,6 +1,6 @@
 //
 //  HeadTrackingBridge.swift
-//  RASMATIC VR HEAD TRACKING
+//  RASMATIC VR
 //
 //  Seguimiento real de orientación de la cabeza con Core Motion.
 //
@@ -15,7 +15,7 @@
 //
 //  Permisos
 //  --------
-//  No se usa la cámara. El Info.plist de la app Head Tracking declara
+//  No se usa la cámara. El Info.plist de RASMATIC VR declara
 //  NSMotionUsageDescription para que iOS explique el acceso al movimiento.
 //  Si el dispositivo no tiene giroscopio o no llegan muestras, el JavaScript
 //  muestra "SIN SENSORES" / "SIN RESPUESTA" y NO simula movimiento.
@@ -58,23 +58,48 @@ final class HeadTrackingBridge {
 
     // MARK: - Ciclo de vida
 
+    /// Elige un marco de referencia que el dispositivo realmente soporte.
+    ///
+    /// `CMAttitudeReferenceFrame` solo tiene cuatro valores válidos:
+    /// `.xArbitraryZVertical`, `.xArbitraryCorrectedZVertical`,
+    /// `.xmagneticNorthZVertical` y `.xTrueNorthZVertical`.
+    /// No existe un valor genérico sin sufijo: hay que usar uno de esos
+    /// cuatro y comprobar antes que el equipo lo soporte.
+    ///
+    /// Se prefiere el eje Z arbitrario (sin magnetómetro): es el más estable
+    /// en interiores y no salta por interferencias metálicas. Si el equipo no
+    /// lo ofrece, se acepta el corregido o uno magnético; si no hay ninguno,
+    /// se devuelve `nil` y no se inicia una sesión inválida.
+    private static func referenceFrame(
+        available: CMAttitudeReferenceFrame
+    ) -> CMAttitudeReferenceFrame? {
+        let preferred: [CMAttitudeReferenceFrame] = [
+            .xArbitraryZVertical,
+            .xArbitraryCorrectedZVertical,
+            .xmagneticNorthZVertical,
+            .xTrueNorthZVertical
+        ]
+        return preferred.first { available.contains($0) }
+    }
+
     func start() {
         guard !running else { return }
         guard motion.isDeviceMotionAvailable else {
             sendStatus(available: false, name: "Sin giroscopio")
             return
         }
+        guard let frame = HeadTrackingBridge.referenceFrame(
+            available: CMMotionManager.availableAttitudeReferenceFrames()
+        ) else {
+            // El equipo tiene device motion pero ningún marco utilizable:
+            // se informa y no se arranca una sesión inválida.
+            sendStatus(available: false, name: "Sin marco de referencia")
+            return
+        }
 
         running = true
         lastOrientation = ""
         lastStatus = ""
-
-        // xArbitraryZVertical: eje Z vertical y rumbo relativo al arranque.
-        // No usa el magnetómetro (más estable en interiores y sin saltos por
-        // interferencias metálicas).
-        let frames = CMMotionManager.availableAttitudeReferenceFrames()
-        let frame: CMAttitudeReferenceFrame =
-            frames.contains(.xArbitraryZVertical) ? .xArbitraryZVertical : .xArbitrary
 
         motion.deviceMotionUpdateInterval = HeadTrackingBridge.interval
         motion.startDeviceMotionUpdates(using: frame, to: .main) { [weak self] data, error in

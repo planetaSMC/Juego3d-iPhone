@@ -22,7 +22,7 @@ ni sensores físicos; ver `limitations.md`.
 
 | Suite | Comando | Resultado |
 |---|---|---|
-| Estructura y app única | `node tools/check-xcode.js` | **135 / 135** |
+| Estructura y app única | `node tools/check-xcode.js` | **139 / 139** |
 | Juego y HUD (PWA) | `node tools/test-web.js` | **30 / 30** + horizontal OK |
 | Escena, modos y Head Tracking | `node tools/test-v20.js` | **18 / 18** |
 | VR SBS / IPD / panel | `node tools/test-vr.js` | **34 / 34** |
@@ -30,7 +30,7 @@ ni sensores físicos; ver `limitations.md`.
 | Calibrador Windows | `cd windows-calibrator && npm test` | **62 / 62** |
 | Verificador de `.ipa` | `node tools/verify-ipa.js <ipa> --variant v20` | **OK (18 comprobaciones)** |
 
-## 3. `check-xcode.js` — 135/135
+## 3. `check-xcode.js` — 139/139
 
 Comprueba sin Xcode:
 

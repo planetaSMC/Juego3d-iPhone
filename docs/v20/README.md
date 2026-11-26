@@ -81,7 +81,7 @@ node tools/verify-ipa.js dist/RASMATIC-VR-unsigned.ipa \
 - Rama de desarrollo: `v20`.
 - Punto de recuperación V19: rama `v19-recovery` (commit `53f410b`).
 - `main` no se modifica hasta aprobar la validación física.
-- Resultados de simulación: **135/135** estructura, **30/30** juego,
+- Resultados de simulación: **139/139** estructura, **30/30** juego,
   **18/18** V20, **34/34** VR, **21/21** mando y **62/62** calibrador Windows.
 - Pendiente: compilación/firma real, iPhone, Core Motion, Bluetooth y VR Box
   físicos. Ver `limitations.md`.

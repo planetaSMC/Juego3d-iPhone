@@ -179,7 +179,7 @@ Hace:
 
 1. `tools/make-icons.ps1` → iconos de PWA y de la app.
 2. `tools/build-ios.js` → `manifest.webmanifest`, `sw.js` y espejo iOS.
-3. `tools/check-xcode.js` → **135 comprobaciones** (target único, plist,
+3. `tools/check-xcode.js` → **139 comprobaciones** (target único, plist,
    permisos, iconos, escena V20, precache y espejo).
 
 Para empaquetar el proyecto:
@@ -204,7 +204,7 @@ Resultados de la última ejecución (2026-11-26, Windows + Edge headless):
 
 | Suite | Resultado |
 |---|---|
-| `check-xcode.js` | **135/135** |
+| `check-xcode.js` | **139/139** |
 | `test-v20.js` | **18/18** |
 | `test-web.js` | **30/30** + horizontal |
 | `test-vr.js` | **34/34** |
