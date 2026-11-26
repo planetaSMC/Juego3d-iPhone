@@ -154,8 +154,10 @@ Idéntico (mismo código, copiado byte a byte):
 
 La **UI de gameplay** también es la misma en Android y iPhone: en la fase V17 se
 rediseñó en las dos copias (áreas seguras, columna del HUD, JUGAR centrado,
-tipografía y resultado), y en VR se dibuja 1:1 dentro de cada ojo. Detalle en
-`docs/ui-gameplay.md`.
+tipografía y resultado), y en VR se dibuja 1:1 dentro de cada ojo. En la fase V18
+se añadió la **personalización de interfaz** (tamaño, posición, grosor, contraste
+y fondo por elemento, con perfiles normal y VR) desde Opciones → **PERSONALIZACIÓN
+DE INTERFAZ**. Detalle en `docs/ui-gameplay.md` y `docs/ui-personalization.md`.
 
 Diferencias, todas deliberadas y explicadas en `docs/paridad.md`:
 
@@ -278,14 +280,14 @@ node tools/test-web.js
 ```
 
 Abre un Chromium real simulando un iPhone (390×844, táctil, DPR 1 para las
-pruebas), juega la partida y verifica **25 casos** (arranque, HUD, cliente,
+pruebas), juega la partida y verifica **30 casos** (arranque, HUD, cliente,
 recoger/entregar, entrega incorrecta, CNC, fin de partida, revancha, joystick,
 cámara, pausa en segundo plano, mando, safe areas, metadatos, service worker,
-dificultad del bot y layout de JUGAR/textos), más una recarga **sin conexión** y
-una comprobación en **horizontal**. Además guarda capturas en
-`docs/evidencias/`.
+dificultad del bot, layout de JUGAR/textos y personalización de interfaz), más
+una recarga **sin conexión** y una comprobación en **horizontal**. Además guarda
+capturas en `docs/evidencias/`.
 
-Resultado de la última ejecución: **25/25 + offline**, consola sin errores.
+Resultado de la última ejecución: **30/30 + offline**, consola sin errores.
 
 El modo VR tiene su propia suite de escritorio:
 
@@ -293,9 +295,10 @@ El modo VR tiene su propia suite de escritorio:
 node tools/test-vr.js
 ```
 
-**33/33 casos** (estéreo real, IPD, convergencia, perfiles, HUD por ojo y plano,
-JUGAR espejado, distorsión, WASD/Shift/Espacio/Escape, restauración al salir y no
-regresión del juego), más mouse con eventos reales y arranque con `?vr=1`.
+**34/34 casos** (estéreo real, IPD, convergencia, perfiles, HUD por ojo y plano,
+JUGAR espejado, distorsión, WASD/Shift/Espacio/Escape, restauración al salir,
+personalización VR duplicada 1:1 y no regresión del juego), más mouse con eventos
+reales y arranque con `?vr=1`.
 
 El mando nativo y el VR móvil se prueban con un iPhone simulado:
 
@@ -332,6 +335,8 @@ node tools/verify-ipa.js dist/RasmaticLugar3D-unsigned.ipa
   controles, ajustes, cómo funciona el estéreo, pruebas y limitaciones.
 - `docs/ui-gameplay.md` — rediseño de la UI durante la partida: diagnóstico,
   sistema de áreas seguras, JUGAR centrado, adaptación SBS y elementos intactos.
+- `docs/ui-personalization.md` — panel **PERSONALIZACIÓN DE INTERFAZ**: elementos,
+  controles, perfiles normal/VR, persistencia y API pública.
 - `docs/instalar-en-iphone.md` — guía de 11 pasos por USB en Windows, las otras
   formas de instalar, costos, límites de Apple y problemas frecuentes.
 - `docs/firma-y-requisitos.md` — qué significa “sin firmar”, requisitos por
@@ -346,8 +351,8 @@ node tools/verify-ipa.js dist/RasmaticLugar3D-unsigned.ipa
 | Juego copiado del APK Android | 6 archivos + 13 fuentes, SHA-256 idéntico |
 | `web/index.html` generado | 266.213 B · `526F91094276B4001DB26518AE3C2D03B3B914C217321FE5568AC0A9ABEAD367` |
 | Verificación del proyecto iOS | 123/123 comprobaciones |
-| Pruebas funcionales (Chromium) | 25/25 + offline + horizontal |
-| Pruebas del modo VR (escritorio) | 33/33 + mouse + `?vr=1` |
+| Pruebas funcionales (Chromium) | 30/30 + offline + horizontal |
+| Pruebas del modo VR (escritorio) | 34/34 + mouse + `?vr=1` |
 | Pruebas de mando nativo y VR móvil (iPhone simulado) | 21/21 |
 | Instalador Windows | `windows-calibrator/release/RASMATIC VR Calibrator Setup 1.0.0.exe` · smoke 14/14 |
 | Verificador de `.ipa` | probado con un IPA sintético (estructura, Mach-O, bundle id y juego completo) |

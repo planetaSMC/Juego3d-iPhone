@@ -249,6 +249,19 @@ async function main() {
     await sleep(2500);
     await shot('ios-01-inicio.png');
 
+    /* Panel de personalización de interfaz (V18): se abre desde Opciones. */
+    await evaluate('document.getElementById("rg-opts-btn").click()');
+    await sleep(350);
+    await evaluate('document.getElementById("rg-opts-ui").click()');
+    await sleep(650);
+    await shot('ui-02-personalizacion.png');
+    await evaluate('(function(){var c=document.querySelector("#rg-ui .rg-ui-card");' +
+      'if(c)c.scrollTop=c.scrollHeight;return true;})()');
+    await sleep(400);
+    await shot('ui-03-personalizacion-vr.png');
+    await evaluate('window.RasmaticGame.ui.close(false)');
+    await sleep(250);
+
     await evaluate('(function(){var g=window.RasmaticCore.game;' +
       'g.player.x=0;g.player.z=24.6;return true;})()');
     await waitFor(async () => (await evaluate('window.RasmaticGame.debug().ui.action')) === 'JUGAR', 20000, 'aviso JUGAR');

@@ -41,6 +41,37 @@
   };
   let difficulty = 'normal';
 
+  /* ---------------- Personalización de la interfaz (V18) ----------------
+     Cada elemento del HUD tiene su propio tamaño, desplazamiento y, cuando
+     corresponde, peso/contraste/fondo. Se guardan dos perfiles (normal y VR)
+     en localStorage con versión, y se aplican como variables CSS: cambiar un
+     valor no reinicia la escena ni toca la partida. */
+  const UI_KEY = 'rasmatic.ui.v1';
+  const UI_VERSION = 1;
+  const UI_ELEMENTS = [
+    { id: 'score',  label: 'Marcador', weight: false, bg: true,  bgDefault: 0.86 },
+    { id: 'points', label: 'Puntaje', weight: true,  bg: false, bgDefault: 0 },
+    { id: 'time',   label: 'Reloj y temporizador', weight: true, bg: true, bgDefault: 0.86 },
+    { id: 'req',    label: 'Información del pedido', weight: false, bg: true, bgDefault: 0.86 },
+    { id: 'med',    label: 'Nombre del medicamento', weight: true, bg: false, bgDefault: 0 },
+    { id: 'carry',  label: 'Lo que llevás', weight: true, bg: true, bgDefault: 0.86 },
+    { id: 'toast',  label: 'Mensajes y notificaciones', weight: true, bg: true, bgDefault: 0.92 },
+    { id: 'hint',   label: 'Indicaciones y pistas', weight: true, bg: true, bgDefault: 0.86 },
+    { id: 'act',    label: 'Botones JUGAR / RECOGER / ENTREGAR', weight: true, bg: false, bgDefault: 0 },
+    { id: 'end',    label: 'Resultado de la partida', weight: true, bg: true, bgDefault: 0.92 }
+  ];
+  const UI_META = {};
+  UI_ELEMENTS.forEach(function (e) { UI_META[e.id] = e; });
+  const UI_WEIGHTS = [0, 400, 500, 600, 700, 800, 900];
+  const UI_SCALE_MIN = 0.6, UI_SCALE_MAX = 1.5;
+  const UI_OFFSET = 40;
+  let uiSaved = null;
+  let uiDraft = null;
+  let uiEditProfile = 'normal';
+  let uiSelId = 'score';
+  let uiPreviewOn = true;
+  let uiEditor = null;
+
   const COLORS = [
     { id: 'rojo',     name: 'ROJO',     css: '#e8453c', hex: 0xe8453c },
     { id: 'azul',     name: 'AZUL',     css: '#2f7bff', hex: 0x2f7bff },
@@ -152,6 +183,458 @@
   function closeOpts() {
     if (nodes.opts) nodes.opts.classList.remove('on');
   }
+
+  /* ---------------- Personalización: datos y perfiles ---------------- */
+  function uiClone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  function uiNum(v, lo, hi, def) {
+    v = Number(v);
+    if (!isFinite(v)) return def;
+    return Math.min(hi, Math.max(lo, v));
+  }
+
+  function uiDefaultElement() {
+    return { scale: 1, dx: 0, dy: 0, weight: 0, contrast: 1, bg: null };
+  }
+
+  function uiDefaultProfile() {
+    const p = {};
+    UI_ELEMENTS.forEach(function (e) { p[e.id] = uiDefaultElement(); });
+    return p;
+  }
+
+  function uiNormalizeElement(id, raw) {
+    const d = uiDefaultElement();
+    if (!raw || typeof raw !== 'object') return d;
+    d.scale = Math.round(uiNum(raw.scale, UI_SCALE_MIN, UI_SCALE_MAX, 1) * 100) / 100;
+    d.dx = Math.round(uiNum(raw.dx, -UI_OFFSET, UI_OFFSET, 0));
+    d.dy = Math.round(uiNum(raw.dy, -UI_OFFSET, UI_OFFSET, 0));
+    d.contrast = Math.round(uiNum(raw.contrast, 0.8, 1.4, 1) * 100) / 100;
+    const w = Number(raw.weight);
+    d.weight = UI_WEIGHTS.indexOf(w) >= 0 ? w : 0;
+    if (raw.bg === null || raw.bg === undefined || raw.bg === '') d.bg = null;
+    else d.bg = Math.round(uiNum(raw.bg, 0, 1, UI_META[id].bgDefault) * 100) / 100;
+    return d;
+  }
+
+  function uiNormalizeProfile(raw) {
+    const p = uiDefaultProfile();
+    if (!raw || typeof raw !== 'object') return p;
+    UI_ELEMENTS.forEach(function (e) {
+      if (raw[e.id]) p[e.id] = uiNormalizeElement(e.id, raw[e.id]);
+    });
+    return p;
+  }
+
+  function uiRead() {
+    let raw = null;
+    try { raw = JSON.parse(localStorage.getItem(UI_KEY) || 'null'); } catch (e) { raw = null; }
+    if (!raw || typeof raw !== 'object' || !raw.profiles) {
+      return { normal: uiDefaultProfile(), vr: uiDefaultProfile() };
+    }
+    /* v1 se acepta tal cual; versiones futuras se leen por campos conocidos
+       y cualquier valor inválido vuelve al predeterminado. */
+    return {
+      normal: uiNormalizeProfile(raw.profiles.normal),
+      vr: uiNormalizeProfile(raw.profiles.vr)
+    };
+  }
+
+  function uiWrite() {
+    if (!uiSaved) return false;
+    try {
+      localStorage.setItem(UI_KEY, JSON.stringify({ v: UI_VERSION, profiles: uiSaved }));
+      return true;
+    } catch (e) {
+      return false;   /* modo privado: queda aplicado en memoria */
+    }
+  }
+
+  function uiApplyProfile(profile, vr) {
+    const data = uiSaved[profile];
+    const root = document.documentElement;
+    const sfx = vr ? 'v' : '';
+    UI_ELEMENTS.forEach(function (e) {
+      const v = data[e.id];
+      root.style.setProperty('--ui-' + e.id + '-s' + sfx, String(v.scale));
+      root.style.setProperty('--ui-' + e.id + '-x' + sfx, v.dx + 'px');
+      root.style.setProperty('--ui-' + e.id + '-y' + sfx, v.dy + 'px');
+      if (v.contrast !== 1) root.style.setProperty('--ui-' + e.id + '-c' + sfx, String(v.contrast));
+      else root.style.removeProperty('--ui-' + e.id + '-c' + sfx);
+      if (v.weight) root.style.setProperty('--ui-' + e.id + '-w' + sfx, String(v.weight));
+      else root.style.removeProperty('--ui-' + e.id + '-w' + sfx);
+      if (v.bg !== null) root.style.setProperty('--ui-' + e.id + '-b' + sfx, String(v.bg));
+      else root.style.removeProperty('--ui-' + e.id + '-b' + sfx);
+    });
+  }
+
+  function uiApplyAll() {
+    if (!uiSaved) uiSaved = uiRead();
+    uiApplyProfile('normal', false);
+    uiApplyProfile('vr', true);
+  }
+
+  function uiLoad() {
+    uiSaved = uiRead();
+    uiApplyAll();
+    return uiSaved;
+  }
+
+  function uiCommit(profile, data, opts) {
+    const p = profile === 'vr' ? 'vr' : 'normal';
+    if (!uiSaved) uiSaved = uiRead();
+    uiSaved[p] = uiNormalizeProfile(data);
+    if (!opts || opts.save !== false) uiWrite();
+    if (!opts || opts.apply !== false) uiApplyAll();
+    return uiClone(uiSaved[p]);
+  }
+
+  /* ---------------- Personalización: vista previa y panel ---------------- */
+  function uiPreviewScene() {
+    return '<div class="rg-ui-pv-el" data-ui="score">JUGADOR <b data-ui="points">3</b><small> · BOT 1</small></div>' +
+      '<div class="rg-ui-pv-el" data-ui="time">2:41</div>' +
+      '<div class="rg-ui-pv-el" data-ui="req">PEDIDO <b data-ui="med">VERDE</b></div>' +
+      '<div class="rg-ui-pv-el" data-ui="carry">LLEVÁS AZUL</div>' +
+      '<div class="rg-ui-pv-el" data-ui="toast">¡A atender clientes!</div>' +
+      '<div class="rg-ui-pv-el" data-ui="hint">Acércate al encargado</div>' +
+      '<div class="rg-ui-pv-el" data-ui="act">JUGAR</div>';
+  }
+
+  function buildUIEditor() {
+    if (document.getElementById('rg-ui')) return;
+    const root = document.createElement('div');
+    root.id = 'rg-ui';
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+    root.setAttribute('aria-label', 'Personalización de interfaz');
+    const scene = uiPreviewScene();
+    root.innerHTML =
+      '<div class="rg-ui-card">' +
+        '<div class="rg-ui-head">' +
+          '<h2>PERSONALIZACIÓN DE INTERFAZ</h2>' +
+          '<button type="button" class="rg-ui-x" id="rg-ui-close" aria-label="Cerrar">✕</button>' +
+        '</div>' +
+        '<p class="rg-ui-sub">Ajustá tamaño y posición de los textos de la partida. La vista previa muestra los dos modos; los cambios se aplican al confirmar.</p>' +
+        '<div class="rg-ui-profiles" role="tablist" aria-label="Perfil">' +
+          '<button type="button" role="tab" data-uiprofile="normal">PANTALLA NORMAL</button>' +
+          '<button type="button" role="tab" data-uiprofile="vr">VR / SBS</button>' +
+        '</div>' +
+        '<p class="rg-ui-note">El perfil predeterminado de fábrica se recupera con RESTABLECER TODO.</p>' +
+        '<label class="rg-ui-select-row"><span>ELEMENTO</span><select id="rg-ui-el"></select></label>' +
+        '<div class="rg-ui-controls">' +
+          '<div class="rg-ui-row">' +
+            '<span class="rg-ui-label">Tamaño <b id="rg-ui-scale-val">100%</b></span>' +
+            '<div class="rg-ui-btns">' +
+              '<button type="button" data-step="scale" data-dir="-1" aria-label="Reducir">−</button>' +
+              '<input type="range" id="rg-ui-scale" min="60" max="150" step="5" aria-label="Tamaño">' +
+              '<button type="button" data-step="scale" data-dir="1" aria-label="Aumentar">+</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="rg-ui-row">' +
+            '<span class="rg-ui-label">Horizontal <b id="rg-ui-dx-val">0 px</b></span>' +
+            '<div class="rg-ui-btns">' +
+              '<button type="button" data-step="dx" data-dir="-1" aria-label="Izquierda">◀</button>' +
+              '<input type="range" id="rg-ui-dx" min="-40" max="40" step="2" aria-label="Posición horizontal">' +
+              '<button type="button" data-step="dx" data-dir="1" aria-label="Derecha">▶</button>' +
+              '<button type="button" class="rg-ui-center" data-center="dx">CENTRAR</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="rg-ui-row">' +
+            '<span class="rg-ui-label">Vertical <b id="rg-ui-dy-val">0 px</b></span>' +
+            '<div class="rg-ui-btns">' +
+              '<button type="button" data-step="dy" data-dir="-1" aria-label="Arriba">▲</button>' +
+              '<input type="range" id="rg-ui-dy" min="-40" max="40" step="2" aria-label="Posición vertical">' +
+              '<button type="button" data-step="dy" data-dir="1" aria-label="Abajo">▼</button>' +
+              '<button type="button" class="rg-ui-center" data-center="dy">CENTRAR</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="rg-ui-row" data-row="weight">' +
+            '<span class="rg-ui-label">Grosor de fuente</span>' +
+            '<select id="rg-ui-weight">' +
+              '<option value="0">Automático</option>' +
+              '<option value="400">Fina (400)</option>' +
+              '<option value="600">Media (600)</option>' +
+              '<option value="700">Fuerte (700)</option>' +
+              '<option value="800">Muy fuerte (800)</option>' +
+              '<option value="900">Máxima (900)</option>' +
+            '</select>' +
+          '</div>' +
+          '<div class="rg-ui-row" data-row="contrast">' +
+            '<span class="rg-ui-label">Contraste <b id="rg-ui-contrast-val">100%</b></span>' +
+            '<input type="range" id="rg-ui-contrast" min="80" max="140" step="5" aria-label="Contraste">' +
+          '</div>' +
+          '<div class="rg-ui-row" data-row="bg">' +
+            '<span class="rg-ui-label">Fondo <b id="rg-ui-bg-val">86%</b></span>' +
+            '<input type="range" id="rg-ui-bg" min="0" max="100" step="5" aria-label="Opacidad del fondo">' +
+          '</div>' +
+        '</div>' +
+        '<div class="rg-ui-previews" id="rg-ui-previews">' +
+          '<div class="rg-ui-prev-box"><span>PANTALLA NORMAL</span>' +
+            '<div class="rg-ui-pv-frame rg-ui-pv-normal" id="rg-ui-prev-normal">' + scene + '</div>' +
+          '</div>' +
+          '<div class="rg-ui-prev-box"><span>VR / SBS</span>' +
+            '<div class="rg-ui-pv-frame rg-ui-pv-sbs" id="rg-ui-prev-vr">' +
+              '<div class="rg-ui-pv-eye">' + scene + '</div>' +
+              '<div class="rg-ui-pv-eye">' + scene + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="rg-ui-actions">' +
+          '<button type="button" class="rg-ui-ghost" id="rg-ui-reset-el">RESTABLECER ELEMENTO</button>' +
+          '<button type="button" class="rg-ui-ghost" id="rg-ui-reset-all">RESTABLECER TODO</button>' +
+          '<button type="button" class="rg-ui-ghost" id="rg-ui-preview-btn">VISTA PREVIA: SÍ</button>' +
+          '<button type="button" class="rg-ui-cancel" id="rg-ui-cancel">CANCELAR</button>' +
+          '<button type="button" class="rg-ui-apply" id="rg-ui-apply">APLICAR</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(root);
+
+    const q = function (sel) { return root.querySelector(sel); };
+    uiEditor = {
+      root: root,
+      el: q('#rg-ui-el'),
+      scale: q('#rg-ui-scale'),
+      dx: q('#rg-ui-dx'),
+      dy: q('#rg-ui-dy'),
+      weight: q('#rg-ui-weight'),
+      contrast: q('#rg-ui-contrast'),
+      bg: q('#rg-ui-bg'),
+      scaleVal: q('#rg-ui-scale-val'),
+      dxVal: q('#rg-ui-dx-val'),
+      dyVal: q('#rg-ui-dy-val'),
+      contrastVal: q('#rg-ui-contrast-val'),
+      bgVal: q('#rg-ui-bg-val'),
+      prevNormal: q('#rg-ui-prev-normal'),
+      prevVr: q('#rg-ui-prev-vr'),
+      previewBtn: q('#rg-ui-preview-btn')
+    };
+
+    UI_ELEMENTS.forEach(function (e) {
+      const o = document.createElement('option');
+      o.value = e.id;
+      o.textContent = e.label;
+      uiEditor.el.appendChild(o);
+    });
+
+    uiEditor.el.addEventListener('change', function () {
+      uiSelId = uiEditor.el.value;
+      uiSyncControls();
+    });
+
+    root.addEventListener('input', function (ev) {
+      const t = ev.target;
+      if (t === uiEditor.scale) uiSetDraft({ scale: Number(t.value) / 100 });
+      else if (t === uiEditor.dx) uiSetDraft({ dx: Number(t.value) });
+      else if (t === uiEditor.dy) uiSetDraft({ dy: Number(t.value) });
+      else if (t === uiEditor.contrast) uiSetDraft({ contrast: Number(t.value) / 100 });
+      else if (t === uiEditor.bg) uiSetDraft({ bg: Number(t.value) / 100 });
+    });
+
+    uiEditor.weight.addEventListener('change', function () {
+      uiSetDraft({ weight: Number(uiEditor.weight.value) });
+    });
+
+    root.addEventListener('click', function (ev) {
+      const b = ev.target.closest('button');
+      if (!b) return;
+      if (b.dataset.uiprofile) {
+        uiEditProfile = b.dataset.uiprofile === 'vr' ? 'vr' : 'normal';
+        uiSyncControls();
+        return;
+      }
+      if (b.dataset.step) {
+        const prop = b.dataset.step;
+        const dir = Number(b.dataset.dir) || 1;
+        const cfg = uiDraft[uiEditProfile][uiSelId];
+        if (prop === 'scale') uiSetDraft({ scale: cfg.scale + dir * 0.05 });
+        else uiSetDraft({ [prop]: cfg[prop] + dir * 4 });
+        return;
+      }
+      if (b.dataset.center) {
+        uiSetDraft({ [b.dataset.center]: 0 });
+        return;
+      }
+      if (b.id === 'rg-ui-close' || b.id === 'rg-ui-cancel') { uiClose(true); return; }
+      if (b.id === 'rg-ui-apply') { uiApplyDraft(); return; }
+      if (b.id === 'rg-ui-reset-el') {
+        uiDraft[uiEditProfile][uiSelId] = uiDefaultElement();
+        uiSyncControls();
+        uiPaintPreview();
+        return;
+      }
+      if (b.id === 'rg-ui-reset-all') {
+        uiDraft[uiEditProfile] = uiDefaultProfile();
+        uiSyncControls();
+        uiPaintPreview();
+        return;
+      }
+      if (b.id === 'rg-ui-preview-btn') {
+        uiPreviewOn = !uiPreviewOn;
+        uiSyncControls();
+        return;
+      }
+    });
+  }
+
+  function uiSetDraft(patch) {
+    if (!uiDraft) return;
+    const cur = uiDraft[uiEditProfile][uiSelId];
+    Object.keys(patch).forEach(function (k) { cur[k] = patch[k]; });
+    uiDraft[uiEditProfile][uiSelId] = uiNormalizeElement(uiSelId, cur);
+    uiSyncControls();
+    uiPaintPreview();
+  }
+
+  function uiSyncControls() {
+    if (!uiEditor || !uiDraft) return;
+    const cfg = uiDraft[uiEditProfile][uiSelId];
+    const meta = UI_META[uiSelId];
+    const setVal = function (input, value) { if (input) input.value = String(value); };
+    setVal(uiEditor.scale, Math.round(cfg.scale * 100));
+    setVal(uiEditor.dx, cfg.dx);
+    setVal(uiEditor.dy, cfg.dy);
+    setVal(uiEditor.contrast, Math.round(cfg.contrast * 100));
+    const bg = cfg.bg === null ? meta.bgDefault : cfg.bg;
+    setVal(uiEditor.bg, Math.round(bg * 100));
+    if (uiEditor.weight) uiEditor.weight.value = String(cfg.weight);
+    uiEditor.scaleVal.textContent = Math.round(cfg.scale * 100) + '%';
+    uiEditor.dxVal.textContent = (cfg.dx > 0 ? '+' : '') + cfg.dx + ' px';
+    uiEditor.dyVal.textContent = (cfg.dy > 0 ? '+' : '') + cfg.dy + ' px';
+    uiEditor.contrastVal.textContent = Math.round(cfg.contrast * 100) + '%';
+    uiEditor.bgVal.textContent = Math.round(bg * 100) + '%';
+    uiEditor.el.value = uiSelId;
+    const tabs = uiEditor.root.querySelectorAll('[data-uiprofile]');
+    for (let i = 0; i < tabs.length; i++) {
+      const on = tabs[i].dataset.uiprofile === uiEditProfile;
+      tabs[i].classList.toggle('on', on);
+      tabs[i].setAttribute('aria-selected', on ? 'true' : 'false');
+    }
+    const wRow = uiEditor.root.querySelector('[data-row="weight"]');
+    wRow.classList.toggle('off', !meta.weight);
+    uiEditor.weight.disabled = !meta.weight;
+    const bRow = uiEditor.root.querySelector('[data-row="bg"]');
+    bRow.classList.toggle('off', !meta.bg);
+    uiEditor.bg.disabled = !meta.bg;
+    uiEditor.previewBtn.textContent = 'VISTA PREVIA: ' + (uiPreviewOn ? 'SÍ' : 'NO');
+    uiEditor.root.classList.toggle('no-preview', !uiPreviewOn);
+  }
+
+  function uiPaintPreview() {
+    if (!uiEditor || !uiDraft) return;
+    const paint = function (scope, profile, k) {
+      if (!scope) return;
+      const list = scope.querySelectorAll('[data-ui]');
+      for (let i = 0; i < list.length; i++) {
+        const el = list[i];
+        const id = el.getAttribute('data-ui');
+        const meta = UI_META[id];
+        if (!meta) continue;
+        const cfg = profile[id] || uiDefaultElement();
+        const dx = cfg.dx * k, dy = cfg.dy * k;
+        const centered = id === 'toast' || id === 'hint' || id === 'act';
+        el.style.transform = (centered
+          ? 'translate(calc(-50% + ' + dx + 'px), ' + dy + 'px)'
+          : 'translate(' + dx + 'px, ' + dy + 'px)') +
+          ' scale(' + cfg.scale + ')';
+        el.style.filter = 'contrast(' + cfg.contrast + ')';
+        el.style.fontWeight = meta.weight && cfg.weight ? String(cfg.weight) : '';
+        if (meta.bg) {
+          const b = cfg.bg === null ? meta.bgDefault : cfg.bg;
+          el.style.backgroundColor = 'rgba(8,22,46,' + b + ')';
+        } else {
+          el.style.backgroundColor = '';
+        }
+      }
+    };
+    const nw = uiEditor.prevNormal ? uiEditor.prevNormal.clientWidth : 92;
+    paint(uiEditor.prevNormal, uiDraft.normal, nw / 390);
+    const eye = uiEditor.prevVr ? uiEditor.prevVr.querySelector('.rg-ui-pv-eye') : null;
+    paint(uiEditor.prevVr, uiDraft.vr, (eye ? eye.clientWidth : 95) / 422);
+  }
+
+  function uiOpen() {
+    if (!document.getElementById('rg-ui')) buildUIEditor();
+    if (!uiEditor) return false;
+    if (uiEditor.root.classList.contains('on')) return true;
+    if (!uiSaved) uiSaved = uiRead();
+    uiDraft = uiClone(uiSaved);
+    uiEditProfile = document.body.classList.contains('vr-on') ? 'vr' : 'normal';
+    uiSelId = 'score';
+    uiPreviewOn = true;
+    closeOpts();
+    uiEditor.root.classList.add('on');
+    uiSyncControls();
+    uiPaintPreview();
+    return true;
+  }
+
+  function uiClose(back) {
+    if (uiEditor) uiEditor.root.classList.remove('on');
+    uiDraft = null;
+    if (back && state === 'idle') openOpts();
+    return true;
+  }
+
+  function uiApplyDraft() {
+    if (!uiDraft) return false;
+    uiSaved = {
+      normal: uiNormalizeProfile(uiDraft.normal),
+      vr: uiNormalizeProfile(uiDraft.vr)
+    };
+    uiWrite();
+    uiApplyAll();
+    uiClose(true);
+    toast('Interfaz actualizada', 'ok');
+    return true;
+  }
+
+  const uiApi = {
+    elements: function () {
+      return UI_ELEMENTS.map(function (e) {
+        return { id: e.id, label: e.label, weight: e.weight, bg: e.bg };
+      });
+    },
+    state: function () {
+      if (!uiSaved) uiSaved = uiRead();
+      return {
+        version: UI_VERSION,
+        active: document.body.classList.contains('vr-on') ? 'vr' : 'normal',
+        profiles: uiClone(uiSaved)
+      };
+    },
+    get: function (profile) {
+      if (!uiSaved) uiSaved = uiRead();
+      return uiClone(uiSaved[profile === 'vr' ? 'vr' : 'normal']);
+    },
+    set: function (profile, id, patch, opts) {
+      if (!UI_META[id]) return false;
+      const base = uiApi.get(profile);
+      base[id] = Object.assign({}, base[id], patch || {});
+      uiCommit(profile, base, opts);
+      return true;
+    },
+    setProfile: function (profile, data, opts) {
+      uiCommit(profile, data, opts);
+      return true;
+    },
+    reset: function (profile, id, opts) {
+      const base = uiApi.get(profile);
+      if (id && UI_META[id]) {
+        base[id] = uiDefaultElement();
+      } else {
+        const def = uiDefaultProfile();
+        Object.keys(def).forEach(function (k) { base[k] = def[k]; });
+      }
+      uiCommit(profile, base, opts);
+      return true;
+    },
+    load: function () {
+      uiLoad();
+      return uiClone(uiSaved);
+    },
+    open: function () { return uiOpen(); },
+    close: function (back) { return uiClose(!!back); }
+  };
 
   /* ---------------- Etiquetas 3D ---------------- */
   function makeTag(w, h) {
@@ -557,6 +1040,7 @@
           '</button>' +
         '</div>' +
         '<p class="rg-opts-note" id="rg-diff-note"></p>' +
+        '<button type="button" class="rg-opts-ui" id="rg-opts-ui">PERSONALIZACIÓN DE INTERFAZ</button>' +
         '<button type="button" class="rg-opts-ok" id="rg-opts-ok">LISTO</button>' +
       '</div>';
     document.body.appendChild(opts);
@@ -571,6 +1055,10 @@
     opts.querySelector('#rg-opts-ok').addEventListener('click', function (e) {
       e.preventDefault();
       closeOpts();
+    });
+    opts.querySelector('#rg-opts-ui').addEventListener('click', function (e) {
+      e.preventDefault();
+      uiOpen();
     });
 
     const end = document.createElement('div');
@@ -615,6 +1103,8 @@
     nodes.hint = document.getElementById('rg-hint');
     nodes.sp = hud.querySelector('.rg-p b');
     nodes.sb = hud.querySelector('.rg-b b');
+
+    buildUIEditor();
   }
 
   function setScore() {
@@ -778,6 +1268,7 @@
   /* ---------------- Ciclo de partida ---------------- */
   function begin() {
     state = 'playing';
+    if (uiEditor && uiEditor.root.classList.contains('on')) uiClose(false);
     scoreP = 0;
     scoreB = 0;
     carrying = -1;
@@ -821,6 +1312,7 @@
 
   function finish() {
     state = 'over';
+    if (uiEditor && uiEditor.root.classList.contains('on')) uiClose(false);
     setTime(0);
     setAction(null, '');
     setHint(null);
@@ -1219,6 +1711,7 @@
       hideLegacy();
       buildUI();
       loadDifficulty();
+      uiLoad();
 
       resetStocks();
       updateStationSigns();
@@ -1286,6 +1779,7 @@
       return { id: difficulty, label: DIFFICULTY[difficulty].label,
         interval: CFG.botInterval, first: CFG.botFirst, speed: CFG.botSpeed };
     },
+    ui: uiApi,
     /* Solo para pruebas automatizadas por CDP. */
     _test: {
       teleport: function (x, z) {

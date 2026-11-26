@@ -245,11 +245,12 @@ Genera en `windows-calibrator/release/`:
 El instalador permite elegir carpeta, crea accesos en Escritorio y Menú Inicio, y no
 requiere Node. El juego se empaqueta en `resources/game` desde `../web`.
 
-Verificación del build del 23/11/2026: `release/win-unpacked/RASMATIC VR
+Verificación del build del 25/11/2026 (juego `0417b73dd1d31bc4`): `release/win-unpacked/RASMATIC VR
 Calibrator.exe --smoke` termina con código 0, `resources/game` coincide byte a
 byte con `web/` y `app.asar` contiene `ws` y `qrcode`. El NSIS x64 resultante
-pesa ≈ 78,9 MB y no está firmado (no hay certificado de código). La instalación
-real del `.exe` no se ejecutó en esta máquina: se probó el `win-unpacked`.
+pesa 82.691.850 B (≈ 78,9 MiB) y no está firmado (no hay certificado de código).
+La instalación real del `.exe` no se ejecutó en esta máquina: se probó el
+`win-unpacked`.
 
 Si `npm run dist` falla por falta de red o permisos de symlink, `npm run pack` genera
 `win-unpacked/` y se puede usar el `.exe` directamente; documentar el error concreto.
@@ -286,8 +287,8 @@ node tools/test-vr.js
 node tools/check-xcode.js
 ```
 
-Resultados del 25/11/2026: `test-web` 25/25 + offline + horizontal,
-`test-pad` 21/21, `test-vr` 33/33 + mouse + `?vr=1`, `check-xcode` 123/123.
+Resultados del 25/11/2026 (juego `0417b73dd1d31bc4`): `test-web` 30/30 + offline + horizontal,
+`test-pad` 21/21, `test-vr` 34/34 + mouse + `?vr=1`, `check-xcode` 123/123.
 
 > `test-vr.js` levanta Chrome por CDP y puede tardar varios minutos.
 

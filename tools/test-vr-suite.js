@@ -354,6 +354,55 @@
         original_oculto: actHidden,
         boton_izq: al && [Math.round(al.left), Math.round(al.top), Math.round(al.width), Math.round(al.height)],
         boton_der: ar && [Math.round(ar.left), Math.round(ar.top), Math.round(ar.width), Math.round(ar.height)] });
+    /* V26: la personalización del HUD VR se duplica 1:1 en ambos ojos y no
+       toca IPD ni convergencia. El perfil normal no altera la vista VR. */
+    const UIG = window.RasmaticGame.ui;
+    const uiBackup = UIG.state();
+    const ipdBefore26 = dist3(VR.state().eyes[0].position, VR.state().eyes[1].position);
+    const convBefore26 = VR.state().eyes[0].projection[8];
+    UIG.reset('normal', null, { save: false });
+    UIG.reset('vr', null, { save: false });
+    await frames(2);
+    await sleep(350);
+    const baseL26 = mirrorL.querySelector('#rg-score').getBoundingClientRect();
+    const baseR26 = mirrorR.querySelector('#rg-score').getBoundingClientRect();
+    UIG.set('normal', 'score', { scale: 0.6 }, { save: false });
+    await frames(2);
+    await sleep(350);
+    const normalL26 = mirrorL.querySelector('#rg-score').getBoundingClientRect();
+    const normalR26 = mirrorR.querySelector('#rg-score').getBoundingClientRect();
+    UIG.set('vr', 'score', { scale: 1.3, dx: 10, dy: 8 }, { save: false });
+    await frames(2);
+    await sleep(400);
+    const vrL26 = mirrorL.querySelector('#rg-score').getBoundingClientRect();
+    const vrR26 = mirrorR.querySelector('#rg-score').getBoundingClientRect();
+    const sameSize26 = Math.abs(vrL26.width - vrR26.width) <= 1 &&
+      Math.abs(vrL26.height - vrR26.height) <= 1;
+    const relL26 = { x: vrL26.left - ml.left, y: vrL26.top - ml.top };
+    const relR26 = { x: vrR26.left - mr.left, y: vrR26.top - mr.top };
+    const sameRel26 = Math.abs(relL26.x - relR26.x) <= 1 &&
+      Math.abs(relL26.y - relR26.y) <= 1;
+    const grew26 = vrL26.width > normalL26.width * 1.2;
+    const normalIgnored26 = Math.abs(normalL26.width - baseL26.width) <= 1 &&
+      Math.abs(normalR26.width - baseR26.width) <= 1;
+    const ipdAfter26 = dist3(VR.state().eyes[0].position, VR.state().eyes[1].position);
+    const convAfter26 = VR.state().eyes[0].projection[8];
+    const optics26 = Math.abs(ipdAfter26 - ipdBefore26) < 1e-6 &&
+      Math.abs(convAfter26 - convBefore26) < 1e-9;
+    const safeVr26 = insideEye(vrL26, ml, 4) && insideEye(vrR26, mr, 4);
+    ok('V26 personalizacion VR duplicada 1:1 y sin tocar optica',
+      sameSize26 && sameRel26 && grew26 && normalIgnored26 && optics26 && safeVr26,
+      { tamanos: [Math.round(vrL26.width), Math.round(vrR26.width)],
+        relativos: [relL26, relR26], escala_vr: grew26,
+        normal_ignorado: normalIgnored26,
+        ipd: [+ipdBefore26.toFixed(5), +ipdAfter26.toFixed(5)],
+        convergencia: [+convBefore26.toFixed(6), +convAfter26.toFixed(6)],
+        area_segura: safeVr26 });
+    UIG.setProfile('normal', uiBackup.profiles.normal, { save: false });
+    UIG.setProfile('vr', uiBackup.profiles.vr, { save: false });
+    await frames(2);
+    await sleep(300);
+
     tp(0, -20);
     await until(() => D().ui.action === '', 8000);
 

@@ -14,10 +14,10 @@ SHA-256 calculado sobre los archivos ya copiados en `web/`.
 
 | Archivo en `web/` | Origen Android | Bytes | SHA-256 | Estado |
 |---|---|---:|---|---|
-| `mobile/game.js` | `android/game.js` | 44.282 | `8FE5979BFB1015E58DC3C767BED2D30F64C3931A5270F8239552634328CCA17C` | idéntico |
+| `mobile/game.js` | `android/game.js` | 65.083 | `EE2E52A65F3E72365E8769F7FD04B4705033958A90A0C99B9612705267143A0A` | idéntico |
 | `mobile/modes.js` | `android/modes.js` | 2.497 | `8E71096D65246CFAE857C194E536861A02E17EF249B76092FEFF7E11E90C1B04` | idéntico |
 | `mobile/android-bridge.js` | `android/android-bridge.js` | 23.014 | `AFC32D1857B03C69D547A7E5332EEEE3A54548438781FC71DE79D91005E68A8D` | idéntico |
-| `mobile/android-game.css` | `android/android-game.css` | 16.372 | `D94DC785C54B48AD80F621FEC195D8B2215280A6FB26693C45E8DA0D6AF2FDBC` | idéntico |
+| `mobile/android-game.css` | `android/android-game.css` | 33.997 | `7E4E2ED83B09D23A750B80ED3573D2EA44F283AC3CAECBC14F8E83FD3C443183` | idéntico |
 | `mobile/android-controls.css` | `android/android-controls.css` | 10.864 | `0B482B7A63AF4462614E50E9F190B5F58EDFCCBFDC45229C43EDEF7B2991B7AE` | idéntico |
 | `three.min.js` | `three.min.js` | 603.445 | `9274BBCEC8D96168626C732B5D31C775AA8CFB7EAA0599BEC0C175908A2C1CE2` | idéntico |
 | `fonts/` (13 archivos) | `fonts/` | 13 de 13 | — | idénticos |
@@ -161,6 +161,11 @@ App Store).
   `game.js` solo envolvió los paneles en `#rg-left` (mismos ids). No cambian
   mecánicas, cámara, SBS, IPD ni convergencia. Detalle en
   `docs/ui-gameplay.md`.
+- En la fase V18 se agregó la **personalización de interfaz** (tamaño, posición,
+  grosor, contraste y fondo por elemento, perfiles normal/VR y persistencia
+  versionada) en `game.js` y `android-game.css`. Solo cambia cómo se pinta el
+  HUD: no toca reglas, puntaje, bot, dificultades, cámara, SBS, IPD ni
+  convergencia. Detalle en `docs/ui-personalization.md`.
 - El `index.html` de Android: se restauró el arreglo del logo (`logoBubble`,
   `setLogo`, `logo` en `RasmaticCore.game`) y en `start()` se oculta el logo si
   la partida ya está activa; el generador solo lo lee.

@@ -28,7 +28,7 @@ la recarga **sin conexión** y guarda capturas en `docs/evidencias/`.
 ### Resultado
 
 ```
-25/25 casos superados.
+30/30 casos superados.
 Consola sin errores.
 Prueba sin conexion:
   ok   la app carga sin conexion desde el service worker
@@ -63,6 +63,11 @@ Prueba sin conexion:
 | T23 | Panel de opciones | el botón ⚙ abre el panel, hay 3 niveles, se marca el elegido y «LISTO» lo cierra | ok |
 | T24 | JUGAR centrado y cómodo | centro ≤ 1,5 px del centro de la ventana, dentro del área segura, ≥ 120×50 px y sin tapar el joystick | ok |
 | T25 | Textos legibles sin desbordes | paneles dentro del área segura, marcador ≥ 28 px, reloj ≥ 26 px, pedido ≥ 20 px, sin recortes | ok |
+| T26 | Tamaño individual del HUD | escala del marcador ≥ 1,15× y tipografía del puntaje ≥ 1,2× por API | ok |
+| T27 | Posición y límites | desplazamiento +20/+15 px exacto y extremos −40/+40 px recortados dentro de la ventana | ok |
+| T28 | Persistencia versionada | `rasmatic.ui.v1` con `v:1`, recarga desde `localStorage` y valores inválidos normalizados | ok |
+| T29 | Perfiles y restauración | normal 1,25 y VR 0,8 independientes; restablecer elemento y perfil no toca al otro | ok |
+| T30 | Aplicación en vivo y panel | partida/joystick/gamepad intactos; 5 botones, vista previa, CANCELAR descarta y APLICAR cierra | ok |
 | — | Sin conexión | con la red cortada, la página recarga y el juego arranca desde la caché | ok |
 | — | Horizontal | a 844×390 el canvas ocupa la ventana, JUGAR queda centrado sin tapar el joystick y el HUD no se solapa | ok |
 
@@ -82,13 +87,13 @@ node tools/test-vr.js
 ```
 
 Abre un navegador Chromium en ventana de escritorio (1280×720, DPR 1, sin
-emulación táctil), ejecuta los casos V01–V25 dentro de la página, prueba el
+emulación táctil), ejecuta los casos V01–V26 dentro de la página, prueba el
 mouse con eventos reales, la entrada directa `?vr=1` y guarda capturas.
 
 ### Resultado
 
 ```
-33/33 casos superados.
+34/34 casos superados.
   ok   mouse gira la camara (yaw 0.000 -> -0.800)
   ok   el modo VR arranca solo con ?vr=1
 Consola sin errores.
@@ -112,6 +117,12 @@ con sus paneles dentro del área segura y fuentes mínimas; V08e exige que
 copias se escalaban a la mitad y JUGAR solo existía en un borde: era el defecto
 visible en `docs/evidencias/vr-02-vr-box.png`. Detalle de la UI en
 `docs/ui-gameplay.md`.
+
+V26 comprueba la personalización de interfaz en VR: el perfil VR escala y
+desplaza el HUD de forma idéntica en ambos ojos (tamaño y posición relativa al
+ojo), el perfil normal no altera la vista VR y la operación no modifica IPD ni
+convergencia. El panel de personalización se abre desde Opciones y nunca sale
+del área segura de cada ojo.
 
 La calibración nueva (V15–V25) comprueba además: logo RASMATIC oculto en la
 partida, altura/distancia/inclinación/zoom de cámara, intensidad 3D, escala y
@@ -268,7 +279,8 @@ valores fuera de rango.
 
 Resultado de esta fase: `62/62` pruebas y `14/14` comprobaciones del smoke.
 Instalador: `windows-calibrator/release/RASMATIC VR Calibrator Setup 1.0.0.exe`
-(82.685.220 B). No se ejecutó el instalador completo en una máquina limpia.
+(82.691.850 B, build de juego `0417b73dd1d31bc4`). No se ejecutó el instalador
+completo en una máquina limpia.
 
 ---
 
@@ -283,6 +295,8 @@ Capturas reales del juego en Chromium con viewport de iPhone (390×844):
 | `docs/evidencias/ios-03-final.png` | panel de resultado con `VOLVER A JUGAR` |
 | `docs/evidencias/ios-04-horizontal.png` | la misma escena en horizontal (844×390), sin recortes ni scroll |
 | `docs/evidencias/ui-01-jugar.png` | JUGAR centrado y legible, con el HUD en la columna izquierda |
+| `docs/evidencias/ui-02-personalizacion.png` | panel **PERSONALIZACIÓN DE INTERFAZ** con vista previa normal |
+| `docs/evidencias/ui-03-personalizacion-vr.png` | el mismo panel con la vista previa SBS (perfil VR) |
 
 Modo VR de escritorio:
 

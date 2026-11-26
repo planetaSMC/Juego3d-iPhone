@@ -267,6 +267,11 @@ centradas, si los bordes se recortan y si el parallax se siente correcto.
 - **Separado del juego.** Todo vive en `web/vr/`; no se editó
   `GamepadManager.kt`, `android-bridge.js` ni `ios-bridge.js`, y el módulo no
   toca el estado de la partida.
+- **Personalización de interfaz (V18).** El HUD se puede ajustar por elemento
+  (tamaño, posición, grosor, contraste y fondo) desde Opciones, con un perfil
+  propio para VR. En SBS la misma escala y posición relativa se aplica a ambos
+  ojos; el panel se previsualiza dentro de cada ojo y no toca IPD, convergencia
+  ni distorsión. Detalle en `docs/ui-personalization.md`.
 
 ### API para pruebas
 
@@ -304,7 +309,7 @@ Levanta el servidor, abre Edge/Chrome headless en ventana de escritorio
 Resultado de la última corrida (25 de noviembre de 2026):
 
 ```
-33/33 casos superados.
+34/34 casos superados.
   ok   mouse gira la camara (yaw 0.000 -> -0.800)
   ok   el modo VR arranca solo con ?vr=1
 Consola sin errores.
@@ -345,6 +350,7 @@ Consola sin errores.
 | V23 | Persistencia al salir/entrar | ok | IPD 68 y altura 0,2 en `localStorage` |
 | V24 | Restaurar una categoría no toca las demás | ok | cámara a neutro, imagen intacta |
 | V25 | Panel completo por categorías y control conectado | ok | 7 pestañas, FOV 75 desde la UI |
+| V26 | Personalización VR duplicada 1:1 y sin tocar óptica | ok | mismo tamaño y posición relativa en ambos ojos; IPD y convergencia intactos |
 
 ### iPhone simulado (Chromium, 844×390, táctil)
 
@@ -411,7 +417,7 @@ Nuevos:
 | `web/vr/vr-preview.js` | Módulo VR: estéreo, calibración, postproceso, escena de prueba, perfiles, API |
 | `web/vr/vr-preview.css` | Botón, panel por categorías, guías, viñeta, copias, aviso de rotación |
 | `tools/test-vr.js` | Arranque headless de escritorio, suite, capturas, `?vr=1` |
-| `tools/test-vr-suite.js` | Casos V01–V25 dentro de la página |
+| `tools/test-vr-suite.js` | Casos V01-V26 dentro de la página |
 | `tools/test-pad.js` | iPhone simulado con puente nativo y VR móvil |
 | `tools/test-pad-suite.js` | Casos P01–P14 y M01–M08 |
 | `docs/vr-box-preview.md` | Este documento |

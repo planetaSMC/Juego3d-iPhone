@@ -1,4 +1,4 @@
-# UI durante el gameplay (fase V17)
+# UI durante el gameplay (fases V17 y V18)
 
 Renovación de la interfaz que aparece **dentro de la partida**: marcador, reloj,
 pedido, “llevás”, avisos, pista de interacción, botón **JUGAR / RECOGER /
@@ -158,6 +158,11 @@ renderizado estereoscópico.
 | `tools/test-vr-suite.js` | V08c reforzado y V08e |
 | `tools/test-web.js` | captura `ui-01-jugar.png` y chequeo de JUGAR/HUD en horizontal |
 
+En la fase V18 se suman `game.js` (datos, panel y API `RasmaticGame.ui`),
+`android-game.css` (variables por elemento y panel `#rg-ui`), `test-suite.js`
+(T26–T30), `test-vr-suite.js` (V26) y `test-web.js` (capturas `ui-02` y `ui-03`).
+El detalle está en `docs/ui-personalization.md`.
+
 Las copias `web/mobile/` y `ios/RasmaticLugar3D/www/` se regeneran con
 `node tools/build-ios.js`; `check-xcode` exige que sean idénticas byte a byte.
 
@@ -167,8 +172,8 @@ Las copias `web/mobile/` y `ios/RasmaticLugar3D/www/` se regeneran con
 
 | Suite | Resultado |
 |---|---|
-| `node tools/test-web.js` | **25/25** + horizontal + offline, consola sin errores |
-| `node tools/test-vr.js` | **33/33** |
+| `node tools/test-web.js` | **30/30** + horizontal + offline, consola sin errores |
+| `node tools/test-vr.js` | **34/34** |
 | `node tools/test-pad.js` | **21/21** |
 | `node tools/check-xcode.js` | **123/123** |
 | `npm test` (windows-calibrator) | **62/62** |
@@ -184,11 +189,16 @@ Tests nuevos o ampliados:
   oculto, paneles dentro del área segura y fuentes ≥ 32/30 px.
 - **V08e** — JUGAR espejado, centrado en cada ojo, en la mitad inferior, dentro
   del área segura y con el original oculto.
+- **T26–T30** — tamaño, posición y límites, persistencia versionada, separación
+  de perfiles/restauración y aplicación en vivo sin romper la partida (V18).
+- **V26** — la personalización VR se duplica 1:1 en ambos ojos, el perfil normal
+  no altera la vista VR y no cambia IPD ni convergencia (V18).
 - **Horizontal** — además del canvas a pantalla completa, JUGAR centrado sin
   tapar el joystick y reloj/marcador sin solaparse.
 
-Evidencias nuevas: `docs/evidencias/ui-01-jugar.png` (JUGAR centrado) y
-`docs/evidencias/ios-04-horizontal.png` regenerada.
+Evidencias nuevas: `docs/evidencias/ui-01-jugar.png` (JUGAR centrado),
+`docs/evidencias/ui-02-personalizacion.png` y `ui-03-personalizacion-vr.png`
+(panel de personalización en ambos modos) e `ios-04-horizontal.png` regenerada.
 
 ---
 

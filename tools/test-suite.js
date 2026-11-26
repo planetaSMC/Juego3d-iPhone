@@ -410,6 +410,165 @@
       fuentes: { marcador: fontPx(scoreB), reloj: fontPx(timeEl), pedido: fontPx(reqB) },
       pista_sin_corte: noClip(hintEl) });
 
+  /* T26: tamaño individual del HUD por API (panel y tipografía). */
+  const uiBefore = window.RasmaticGame.ui.state();
+  const uiKeyBefore = localStorage.getItem('rasmatic.ui.v1');
+  const scoreEl = document.getElementById('rg-score');
+  const pointsEl = document.querySelector('#rg-score .rg-team b');
+  window.RasmaticGame.ui.reset('normal', null, { save: false });
+  window.RasmaticGame.ui.reset('vr', null, { save: false });
+  await sleep(80);
+  const scoreRect0 = scoreEl.getBoundingClientRect();
+  const pointsFont0 = parseFloat(getComputedStyle(pointsEl).fontSize);
+  window.RasmaticGame.ui.set('normal', 'score', { scale: 1.35 }, { save: false });
+  window.RasmaticGame.ui.set('normal', 'points', { scale: 1.3 }, { save: false });
+  await sleep(80);
+  const scoreRect1 = scoreEl.getBoundingClientRect();
+  const pointsFont1 = parseFloat(getComputedStyle(pointsEl).fontSize);
+  const grewPanel = scoreRect1.width > scoreRect0.width * 1.15 &&
+    scoreRect1.height > scoreRect0.height * 1.1;
+  const grewFont = pointsFont1 > pointsFont0 * 1.2;
+  ok('T26 tamano individual del HUD (escala y tipografia)',
+    grewPanel && grewFont,
+    { panel: { antes: [Math.round(scoreRect0.width), Math.round(scoreRect0.height)],
+               despues: [Math.round(scoreRect1.width), Math.round(scoreRect1.height)] },
+      fuente: { antes: +pointsFont0.toFixed(1), despues: +pointsFont1.toFixed(1) } });
+
+  /* T27: posición horizontal/vertical y límites del área visible. */
+  window.RasmaticGame.ui.reset('normal', null, { save: false });
+  await sleep(60);
+  const scoreBase = scoreEl.getBoundingClientRect();
+  window.RasmaticGame.ui.set('normal', 'score', { dx: 20, dy: 15 }, { save: false });
+  await sleep(60);
+  const scoreMoved = scoreEl.getBoundingClientRect();
+  const moveX = scoreMoved.left - scoreBase.left;
+  const moveY = scoreMoved.top - scoreBase.top;
+  const movedOk = Math.abs(moveX - 20) <= 2 && Math.abs(moveY - 15) <= 2;
+  window.RasmaticGame.ui.set('normal', 'score', { dx: -40, dy: -40 }, { save: false });
+  window.RasmaticGame.ui.set('normal', 'time', { dx: 40, dy: 40 }, { save: false });
+  await sleep(80);
+  const scoreEdge = scoreEl.getBoundingClientRect();
+  const timeEdge = timeEl.getBoundingClientRect();
+  const safeOk = scoreEdge.left >= -0.5 && scoreEdge.top >= -0.5 &&
+    timeEdge.right <= innerWidth + 0.5 && timeEdge.bottom <= innerHeight + 0.5;
+  ok('T27 posicion horizontal/vertical y limite de pantalla',
+    movedOk && safeOk,
+    { desplazamiento: { x: +moveX.toFixed(1), y: +moveY.toFixed(1) },
+      marcador: [Math.round(scoreEdge.left), Math.round(scoreEdge.top)],
+      reloj: [Math.round(timeEdge.right), Math.round(timeEdge.bottom)],
+      ventana: [innerWidth, innerHeight] });
+
+  /* T28: persistencia versionada y tolerancia a datos inválidos. */
+  window.RasmaticGame.ui.set('normal', 'time',
+    { scale: 1.2, dx: 8, dy: -6 }, { save: true, apply: true });
+  let storedUi = null;
+  try { storedUi = JSON.parse(localStorage.getItem('rasmatic.ui.v1') || 'null'); } catch (e) { storedUi = null; }
+  const persisted = !!storedUi && storedUi.v === 1 && !!storedUi.profiles &&
+    !!storedUi.profiles.normal && !!storedUi.profiles.normal.time &&
+    storedUi.profiles.normal.time.scale === 1.2;
+  window.RasmaticGame.ui.set('normal', 'time', { scale: 1 }, { save: false });
+  const reloadedUi = window.RasmaticGame.ui.load();
+  const reloadedOk = reloadedUi.normal.time.scale === 1.2;
+  localStorage.setItem('rasmatic.ui.v1',
+    '{"v":1,"profiles":{"normal":{"time":{"scale":99,"dx":"x","dy":null}},"vr":null}}');
+  const recoveredUi = window.RasmaticGame.ui.load();
+  const recoveredOk = recoveredUi.normal.time.scale >= 0.6 &&
+    recoveredUi.normal.time.scale <= 1.5 && recoveredUi.normal.time.dx === 0 &&
+    recoveredUi.vr.time.scale === 1;
+  ok('T28 persistencia versionada y datos invalidos',
+    persisted && reloadedOk && recoveredOk,
+    { clave: 'rasmatic.ui.v1', version: storedUi && storedUi.v,
+      guardado: storedUi && storedUi.profiles && storedUi.profiles.normal &&
+        storedUi.profiles.normal.time && storedUi.profiles.normal.time.scale,
+      recargado: reloadedUi.normal.time.scale,
+      recuperado: recoveredUi.normal.time });
+
+  /* T29: perfiles normal y VR separados; restauración por elemento y perfil. */
+  window.RasmaticGame.ui.reset('normal', null, { save: false });
+  window.RasmaticGame.ui.reset('vr', null, { save: false });
+  window.RasmaticGame.ui.set('normal', 'score', { scale: 1.25 }, { save: false });
+  window.RasmaticGame.ui.set('vr', 'score', { scale: 0.8 }, { save: false });
+  const pNormal = window.RasmaticGame.ui.get('normal').score.scale;
+  const pVr = window.RasmaticGame.ui.get('vr').score.scale;
+  const rootStyle = getComputedStyle(document.documentElement);
+  const separate = pNormal === 1.25 && pVr === 0.8 &&
+    rootStyle.getPropertyValue('--ui-score-s').trim() === '1.25' &&
+    rootStyle.getPropertyValue('--ui-score-sv').trim() === '0.8';
+  window.RasmaticGame.ui.reset('normal', 'score', { save: false });
+  const afterEl = window.RasmaticGame.ui.get('normal').score.scale;
+  const vrStill = window.RasmaticGame.ui.get('vr').score.scale;
+  window.RasmaticGame.ui.reset('vr', null, { save: false });
+  const vrReset = window.RasmaticGame.ui.get('vr').score.scale;
+  ok('T29 perfiles separados y restauracion por elemento/perfil',
+    separate && afterEl === 1 && vrStill === 0.8 && vrReset === 1,
+    { normal: pNormal, vr: pVr, tras_elemento: afterEl,
+      vr_intacto: vrStill, vr_restablecido: vrReset });
+
+  /* T30: aplicar en vivo sin romper partida, joystick ni gamepad. */
+  const stateBefore = D().state;
+  const scoreBefore = D().score.player;
+  const timeBefore = D().time;
+  const stickEl2 = document.getElementById('ras-stick');
+  const padApi = typeof navigator.getGamepads === 'function';
+  window.RasmaticGame.ui.set('normal', 'toast',
+    { scale: 1.2, dx: 12, dy: 20 }, { save: false });
+  window.RasmaticGame.ui.set('normal', 'hint',
+    { scale: 1.1, dy: -10 }, { save: false });
+  window.RasmaticGame.ui.set('normal', 'act', { scale: 1.1 }, { save: false });
+  await sleep(300);
+  const stateAfter = D().state;
+  const sceneOk = stateAfter === stateBefore && stateAfter === 'playing' &&
+    D().score.player === scoreBefore && D().time <= timeBefore;
+  const stickOk = !!stickEl2 && getComputedStyle(stickEl2).display !== 'none';
+  const openedUi = window.RasmaticGame.ui.open();
+  const uiPanel = document.getElementById('rg-ui');
+  const panelVisible = !!uiPanel && uiPanel.classList.contains('on');
+  const needBtns = ['rg-ui-apply', 'rg-ui-cancel', 'rg-ui-reset-el',
+    'rg-ui-reset-all', 'rg-ui-preview-btn'];
+  const panelButtons = needBtns.every((id) => !!document.getElementById(id));
+  const previewBtn = document.getElementById('rg-ui-preview-btn');
+  if (previewBtn) previewBtn.click();
+  const previewOff = !!(uiPanel && uiPanel.classList.contains('no-preview'));
+  if (previewBtn) previewBtn.click();
+  const previewOnAgain = !(uiPanel && uiPanel.classList.contains('no-preview'));
+  const beforeCancel = window.RasmaticGame.ui.get('normal').score.scale;
+  const scaleInput = document.getElementById('rg-ui-scale');
+  if (scaleInput) {
+    scaleInput.value = '140';
+    scaleInput.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  const cancelBtn = document.getElementById('rg-ui-cancel');
+  if (cancelBtn) cancelBtn.click();
+  const afterCancel = window.RasmaticGame.ui.get('normal').score.scale;
+  const cancelOk = afterCancel === beforeCancel &&
+    !(uiPanel && uiPanel.classList.contains('on'));
+  const reopenedUi = window.RasmaticGame.ui.open();
+  const vrTab = uiPanel && uiPanel.querySelector('[data-uiprofile="vr"]');
+  if (vrTab) vrTab.click();
+  const vrTabOn = !!(vrTab && vrTab.classList.contains('on'));
+  const applyBtn = document.getElementById('rg-ui-apply');
+  if (applyBtn) applyBtn.click();
+  const panelClosed = !(uiPanel && uiPanel.classList.contains('on'));
+  const sceneStill = D().state === 'playing';
+  ok('T30 aplicar en vivo sin romper partida ni controles',
+    sceneOk && stickOk && padApi && openedUi && panelVisible && panelButtons &&
+    previewOff && previewOnAgain && cancelOk && reopenedUi && vrTabOn &&
+    panelClosed && sceneStill,
+    { estado: stateAfter, tiempo: D().time, joystick: stickOk,
+      gamepad_api: padApi, abierto: openedUi, panel: panelVisible,
+      botones: panelButtons, vista_previa: previewOff && previewOnAgain,
+      cancelar_descarta: cancelOk, reabierto: reopenedUi,
+      pestana_vr: vrTabOn, cerrado: panelClosed, escena: sceneStill });
+
+  /* Restaura la configuración de interfaz previa del equipo de prueba. */
+  if (uiKeyBefore === null) {
+    localStorage.removeItem('rasmatic.ui.v1');
+    window.RasmaticGame.ui.load();
+  } else {
+    window.RasmaticGame.ui.setProfile('normal', uiBefore.profiles.normal);
+    window.RasmaticGame.ui.setProfile('vr', uiBefore.profiles.vr);
+  }
+
   /* Restaura la preferencia previa del equipo de prueba. */
   if (diffBefore) window.RasmaticGame.setDifficulty(diffBefore);
   else { window.RasmaticGame.setDifficulty('normal'); localStorage.removeItem('rasmatic.botDifficulty'); }
