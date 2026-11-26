@@ -251,6 +251,13 @@ async function main() {
     await sleep(2500);
     await shot('ios-01-inicio.png');
 
+    /* Cuenta regresiva real. */
+    await evaluate('document.getElementById("v21-start-btn").click()');
+    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().state')) === 'countdown', 5000, 'cuenta regresiva');
+    await sleep(450);
+    await shot('ios-02-countdown.png');
+    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().state')) === 'playing', 10000, 'partida');
+
     /* Panel de personalización de interfaz (V18): se abre desde Opciones. */
     await evaluate('document.getElementById("rg-opts-btn").click()');
     await sleep(350);
@@ -264,36 +271,17 @@ async function main() {
     await evaluate('window.RasmaticGame.ui.close(false)');
     await sleep(250);
 
-    await evaluate('(function(){var g=window.RasmaticCore.game;' +
-      'g.player.x=21.9;g.player.z=14.0;return true;})()');
-    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().ui.action')) === 'JUGAR', 20000, 'aviso JUGAR');
-    await sleep(500);
-    await shot('ui-01-jugar.png');
-    await evaluate('window.RasmaticGame.interact()');
-    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().state')) === 'playing', 20000, 'partida');
-    /* Espera al primer cliente: la captura muestra la partida en curso. */
+    /* Apuntar al pedido: la captura muestra la mira, el contorno y RECOGER. */
     await waitFor(async () => (await evaluate('window.RasmaticGame.debug().customer')) === true, 60000, 'primer cliente');
-    /* Ir a la estación del color pedido: la captura muestra el aviso RECOGER
-       con el pedido en el HUD. */
-    await evaluate(`(function(){
-      var d = window.RasmaticGame.debug();
-      var ph = window.RasmaticPharmacyApi;
-      var s = ph && ph.stations ? ph.stations.filter(function (x) {
-        return x.color === d.request;
-      })[0] : null;
-      if (!s) return false;
-      var g = window.RasmaticCore.game;
-      g.player.x = s.x; g.player.z = s.z;
-      return true;
-    })()`);
+    await evaluate('window.RasmaticGame._test.aimAtStation(window.RasmaticGame.debug().request)');
     await waitFor(async () => (await evaluate('window.RasmaticGame.debug().ui.action')) === 'RECOGER', 30000, 'aviso RECOGER');
     await sleep(600);
-    await shot('ios-02-partida.png');
+    await shot('ios-03-partida.png');
 
     await evaluate('window.RasmaticGame._test.timeLeft(1)');
     await waitFor(async () => (await evaluate('window.RasmaticGame.debug().state')) === 'over', 20000, 'fin de partida');
     await sleep(1200);
-    await shot('ios-03-final.png');
+    await shot('ios-04-final.png');
 
     /* Rotacion: Android usa fullSensor, iOS admite las cuatro orientaciones.
        Se comprueba que en horizontal la escena sigue a pantalla completa y
@@ -305,9 +293,11 @@ async function main() {
     await cdp.send('Page.navigate', { url });
     await waitFor(async () => evaluate('window.__ready === true'), 60000, 'horizontal');
     await sleep(1500);
-    await evaluate('(function(){var g=window.RasmaticCore.game;' +
-      'g.player.x=21.9;g.player.z=14.0;return true;})()');
-    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().ui.action')) === 'JUGAR', 20000, 'JUGAR horizontal');
+    await evaluate('window.RasmaticGame._test.startNow()');
+    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().state')) === 'playing', 10000, 'partida horizontal');
+    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().customer')) === true, 30000, 'cliente horizontal');
+    await evaluate('window.RasmaticGame._test.aimAtStation(window.RasmaticGame.debug().request)');
+    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().ui.action')) === 'RECOGER', 20000, 'RECOGER horizontal');
     await sleep(500);
     const land = await evaluate(`(function(){
       var de = document.documentElement, cv = document.querySelector('canvas');
@@ -343,7 +333,7 @@ async function main() {
       'JUGAR centrado y HUD sin solapes en horizontal ' +
       JSON.stringify({ act: land && land.act, stick: land && land.stick, hud: land && land.hud }));
     if (!landOk || !actLandOk || !stickGap || !hudLandOk) exitCode = 1;
-    await shot('ios-04-horizontal.png');
+    await shot('ios-05-horizontal.png');
 
     if (consoleErrors.length) {
       console.log('\nErrores de consola (' + consoleErrors.length + '):');

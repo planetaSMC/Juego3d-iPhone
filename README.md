@@ -1,4 +1,4 @@
-# RASMATIC VR · versión iPhone (V20)
+# RASMATIC VR · versión iPhone (V21)
 
 Port del juego **RASMATIC Lugar 3D** a **una sola app iOS**:
 
@@ -8,7 +8,8 @@ Port del juego **RASMATIC Lugar 3D** a **una sola app iOS**:
 | Bundle ID | `com.rasmatic.lugar3d` |
 | Target / esquema | `RasmaticVR` |
 | Artefacto | `dist/RASMATIC-VR-unsigned.ipa` |
-| Rama de desarrollo | `v20` |
+| Rama de desarrollo | `v21-gameplay-animation` |
+| Base | V20.1 (`fix/v20.1-core-motion`, `b008e34`) |
 | Punto de recuperación V19 | rama `v19-recovery` (commit `53f410b`) |
 
 La app incluye:
@@ -26,6 +27,19 @@ La app incluye:
   puntuación, victoria/derrota y al bot con el CNC.
 - **Joystick táctil opcional** y **mando Bluetooth** independiente.
 - **VR SBS**: dos ojos, IPD, convergencia, distorsión, zoom y HUD por ojo.
+
+V21 añade:
+
+- **Mira central** con raycast, contorno en la caja apuntada y sin etiquetas
+  flotantes sobre los medicamentos.
+- **Pedido por imagen**: el HUD muestra la caja real del medicamento solicitado.
+- **Entrega por cinta**: la caja viaja por la cinta en L, el empleado la recoge,
+  se la entrega al cliente y recién ahí se valida el pedido.
+- **Fila de tres clientes** con pedidos, espera, avance, recepción y salida.
+- **Menú de inicio INICIAR** con cuenta regresiva **3, 2, 1** y reloj congelado.
+- **Animaciones** de clientes, empleado, cajas y cinta.
+- **FARMACIA RASMATIC** en el cartel; cajas de colores; personajes a escala
+  humana; cinta de la máquina eliminada.
 
 V20 **reemplaza por completo** el mapa anterior (góndolas, productos y logo del
 almacén). No quedan elementos ocultos ni superpuestos.
@@ -54,8 +68,12 @@ node tools/verify-ipa.js dist/RASMATIC-VR-unsigned.ipa \
   --expect com.rasmatic.lugar3d --variant v20
 ```
 
-> Sin macOS/Xcode no se generó un `.ipa` real en este entorno. El verificador
-> se probó con un `.ipa` sintético. Ver `docs/v20/limitations.md`.
+> La compilación real se hizo en GitHub Actions con Xcode 16.4: **BUILD
+> SUCCEEDED** (runs 45809544456 y 45809851662). IPA sin firmar de 829.907
+> bytes. El SHA-256 puede variar por marcas de tiempo entre compilaciones
+> (observados: `7778E6B4…01273` y `8FE2D696…FD55E`); el contenido y el tamaño
+> son los mismos. La firma e instalación en iPhone siguen pendientes. Ver
+> `docs/v20/v20.1-core-motion-fix.md` y `docs/v20/limitations.md`.
 
 ---
 
@@ -179,7 +197,7 @@ Hace:
 
 1. `tools/make-icons.ps1` → iconos de PWA y de la app.
 2. `tools/build-ios.js` → `manifest.webmanifest`, `sw.js` y espejo iOS.
-3. `tools/check-xcode.js` → **135 comprobaciones** (target único, plist,
+3. `tools/check-xcode.js` → **154 comprobaciones** (target único, plist,
    permisos, iconos, escena V20, precache y espejo).
 
 Para empaquetar el proyecto:
@@ -193,6 +211,7 @@ powershell -ExecutionPolicy Bypass -File tools/package.ps1
 ## 8. Pruebas
 
 ```powershell
+node tools/test-v21.js     # menú, mira, cinta, fila, escenario V21, VR
 node tools/test-v20.js     # escena, modos, dificultades, HT, puente Windows
 node tools/test-web.js     # juego, HUD, joystick, mando, offline
 node tools/test-vr.js      # SBS, IPD, convergencia, panel, rendimiento
@@ -204,7 +223,7 @@ Resultados de la última ejecución (2026-11-26, Windows + Edge headless):
 
 | Suite | Resultado |
 |---|---|
-| `check-xcode.js` | **135/135** |
+| `check-xcode.js` | **154/154** |
 | `test-v20.js` | **18/18** |
 | `test-web.js` | **30/30** + horizontal |
 | `test-vr.js` | **34/34** |
@@ -228,7 +247,13 @@ Capturas en `docs/evidencias/` y `docs/evidencias/v20/`.
 | `docs/v20/rea-integration-plan.md` | plan y criterios de aceptación |
 | `docs/v20/windows-headtracking-config.md` | configuración Windows-iPhone |
 | `docs/v20/testing-report.md` | pruebas y evidencias |
-| `docs/v20/limitations.md` | límites de la validación |
+| `docs/v20/limitations.md` | límites de la validación V20 |
+| `docs/v21/README.md` | resumen de gameplay y archivos V21 |
+| `docs/v21/aim-and-queue.md` | mira, contorno, pedido y fila |
+| `docs/v21/conveyor-delivery.md` | recorrido y validación de la cinta |
+| `docs/v21/start-menu.md` | menú y cuenta regresiva |
+| `docs/v21/testing-report.md` | pruebas V21 |
+| `docs/v21/limitations.md` | límites de V21 |
 | `docs/instalar-en-iphone.md` | instalación con Sideloadly/AltStore |
 | `docs/vr-box-preview.md` | VR Box y calibración |
 | `docs/mando-bluetooth.md` | mando Bluetooth |
@@ -245,16 +270,23 @@ Implementado y probado en simulación:
 - tres modos, tres dificultades, partida completa, bot/CNC;
 - joystick opcional, mando simulado, Head Tracking configurable;
 - SBS/IPD/convergencia y panel VR;
-- sincronización Windows-iPhone por protocolo con persistencia y `ack`.
+- sincronización Windows-iPhone por protocolo con persistencia y `ack`;
+- V21: menú/cuenta, mira con contorno, pedido por imagen, cinta funcional,
+  fila de clientes y animaciones.
+
+**Compilación iOS:** V21 compiló en GitHub Actions con Xcode 16.4
+(`BUILD SUCCEEDED`, runs 45880086744 y 45880239776). IPA sin firmar de 840.012
+bytes; el SHA-256 varía por marcas de tiempo (observados `4287E5FE…` y
+`66714AB0…`), verificado con `verify-ipa.js`.
 
 **Pendiente de validación física** (no se afirma que funcione en hardware):
 
-- compilar/firmar con Xcode e instalar en un iPhone;
+- firmar el IPA e instalar en un iPhone;
 - Core Motion real, mando Bluetooth real, VR Box real;
 - Wi-Fi entre PC e iPhone reales;
 - FPS y consumo en la GPU del iPhone.
 
-Antes de publicar V20 como terminada hay que completar esos puntos. Ver
-**`docs/v20/limitations.md`**.
+Antes de publicar V21 como terminada hay que completar esos puntos. Ver
+**`docs/v21/limitations.md`** y **`docs/v20/limitations.md`**.
 
 `main` no se modifica hasta que la validación física esté aprobada.

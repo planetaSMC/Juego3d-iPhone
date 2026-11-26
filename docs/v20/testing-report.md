@@ -1,5 +1,8 @@
 # V20 · Informe de pruebas
 
+> **V21:** este informe conserva los resultados de V20/V20.1. Las pruebas y
+> evidencias de la fase de gameplay están en `docs/v21/testing-report.md`.
+
 Fecha de ejecución: **2026-11-26**.
 
 ## 1. Entorno
@@ -22,7 +25,7 @@ ni sensores físicos; ver `limitations.md`.
 
 | Suite | Comando | Resultado |
 |---|---|---|
-| Estructura y app única | `node tools/check-xcode.js` | **135 / 135** |
+| Estructura y app única | `node tools/check-xcode.js` | **139 / 139** |
 | Juego y HUD (PWA) | `node tools/test-web.js` | **30 / 30** + horizontal OK |
 | Escena, modos y Head Tracking | `node tools/test-v20.js` | **18 / 18** |
 | VR SBS / IPD / panel | `node tools/test-vr.js` | **34 / 34** |
@@ -30,7 +33,7 @@ ni sensores físicos; ver `limitations.md`.
 | Calibrador Windows | `cd windows-calibrator && npm test` | **62 / 62** |
 | Verificador de `.ipa` | `node tools/verify-ipa.js <ipa> --variant v20` | **OK (18 comprobaciones)** |
 
-## 3. `check-xcode.js` — 135/135
+## 3. `check-xcode.js` — 139/139
 
 Comprueba sin Xcode:
 
@@ -157,6 +160,9 @@ v20, escena de farmacia y recursos del `index.html`).
 Esto valida el verificador y la estructura del contenido, **no** una
 compilación real de Xcode.
 
+Después de la corrección V20.1, GitHub Actions generó un **IPA real** con
+Xcode 16.4 y el mismo verificador lo aprobó. Detalle y hash en la sección 12.
+
 ## 10. Rendimiento observado
 
 | Métrica | HTML original | V20 en la app |
@@ -184,3 +190,39 @@ FPS de un iPhone.
 
 No se afirma que estos puntos funcionen físicamente: solo están implementados y
 cubiertos por simulación/emulación.
+
+## 12. V20.1 · corrección de compilación Core Motion
+
+El primer workflow de V20 falló en Xcode 16.4 con `.xArbitrary` (valor
+inexistente) y, tras el primer intento, con `.xmagneticNorthZVertical`
+(minúscula incorrecta). La corrección final usa
+`CMMotionManager.availableAttitudeReferenceFrames()` y solo los cuatro marcos
+reales, con manejo seguro si no hay ninguno.
+
+| Validación | Resultado |
+|---|---|
+| `check-xcode.js` | **139/139** |
+| `test-v20.js` | **18/18** |
+| `test-web.js` | **30/30** + horizontal |
+| `test-vr.js` | **34/34** |
+| `test-pad.js` | **21/21** |
+| Calibrador Windows | **62/62** |
+| GitHub Actions, Xcode 16.4 / iPhoneOS 18.5 | **BUILD SUCCEEDED** |
+| `verify-ipa.js` sobre el IPA real | **OK** |
+
+Run: https://github.com/planetaSMC/Juego3d-iPhone/actions/runs/45809544456
+
+IPA real sin firmar:
+
+- `RASMATIC-VR-unsigned.ipa`
+- 829.907 bytes
+- SHA-256 del run de código:
+  `7778E6B44FB98D99FE20E3E5E4B0033FA1FD6963B256D2577CE89BA7CA801273`
+- SHA-256 del run final del PR:
+  `8FE2D696801AD9C359BA9262A797DCFC52DC55C62518F525606A90E58A9FD55E`
+- El hash puede variar por marcas de tiempo entre compilaciones; el tamaño y el
+  contenido son los mismos.
+- artefacto `rasmatic-v20-ipa`
+- copia local ignorada por Git: `dist/RASMATIC-VR-unsigned.ipa`
+
+La instalación y las pruebas en iPhone físico siguen pendientes.

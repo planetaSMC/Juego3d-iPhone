@@ -39,14 +39,14 @@
 
   try {
   /* La escena tarda en construirse: esperar el estado inicial. */
-  for (let i = 0; i < 120 && (!window.__ready || !window.RasmaticGame || D().state !== 'idle'); i++) {
+  for (let i = 0; i < 120 && (!window.__ready || !window.RasmaticGame || D().state !== 'menu'); i++) {
     await sleep(250);
   }
 
-  /* T01: arranque y puente iOS */
+  /* T01: arranque con menú y puente iOS */
   const ios = window.RasmaticIOS ? window.RasmaticIOS.debug() : null;
-  ok('T01 arranque en idle con puente iOS',
-    window.__ready === true && D().state === 'idle' &&
+  ok('T01 arranque con menú y puente iOS',
+    window.__ready === true && D().state === 'menu' &&
     !!ios && ios.ios === true && ios.version === 'ios-1.1' &&
     document.documentElement.classList.contains('ras-android'),
     { ready: window.__ready, state: D().state, ios });
@@ -61,19 +61,24 @@
   ok('T02 HUD completo (3:00, marcador, pedido)',
     hud.score && hud.time === '3:00' && hud.req && hud.act === 'JUGAR', hud);
 
-  /* T03: aviso al acercarse al encargado (mostrador del HTML). */
-  tp(21.9, 13.6);
-  await until(() => D().ui.action === 'JUGAR', 10000);
-  ok('T03 aviso de interaccion', D().ui.action === 'JUGAR' &&
-    D().ui.hint === 'Interactuar para jugar', D().ui);
+  /* T03: menú de inicio (V21, ya no se arranca en el mostrador). */
+  const menuEl = document.getElementById('v21-start');
+  const startBtn = document.getElementById('v21-start-btn');
+  ok('T03 menú de inicio con INICIAR',
+    D().state === 'menu' && menuEl && menuEl.classList.contains('on') &&
+    startBtn && startBtn.textContent.trim() === 'INICIAR',
+    { state: D().state, menu: menuEl && menuEl.className,
+      boton: startBtn && startBtn.textContent });
 
-  /* T04: iniciar partida */
-  tp(21.9, 14.0);
-  await until(() => D().ui.action === 'JUGAR', 10000);
-  const started = window.RasmaticGame.interact();
-  await until(() => D().state === 'playing', 5000);
-  ok('T04 inicia la partida', started === true && D().state === 'playing',
-    { state: D().state });
+  /* T04: iniciar con cuenta regresiva y temporizador congelado */
+  startBtn.click();
+  await until(() => D().state === 'countdown', 3000);
+  const cdState = D().state;
+  const cdTime = D().time;
+  await until(() => D().state === 'playing', 7000);
+  ok('T04 INICIAR + cuenta regresiva y partida',
+    cdState === 'countdown' && cdTime === 180 && D().state === 'playing',
+    { countdown: cdState, tiempo_congelado: cdTime, state: D().state });
 
   /* T05: primer cliente y color pedido */
   await until(() => D().customer === true && D().request >= 0, 20000);
@@ -85,58 +90,61 @@
   if (req < 0) {
     skip('T06 recoger sin sumar', 'no hay pedido activo');
   } else {
-  tp(STA[req].x, STA[req].z);
+  window.RasmaticGame._test.aimAtStation(req);
   await until(() => D().ui.action === 'RECOGER', 10000);
   const promptTake = D().ui.action;
+  const aimAt = D().aim;
   const got = window.RasmaticGame.interact();
   await until(() => D().carrying === req, 5000);
-  ok('T06 recoger sin sumar', got === true && D().carrying === req &&
-    D().score.player === 0 && promptTake === 'RECOGER',
-    { prompt: promptTake, carrying: D().carrying, score: D().score.player });
+  ok('T06 recoger con la mira sin sumar', got === true && D().carrying === req &&
+    D().score.player === 0 && promptTake === 'RECOGER' && !!aimAt,
+    { prompt: promptTake, carrying: D().carrying, score: D().score.player,
+      mira: aimAt });
   }
 
-  /* T07: entregar el color correcto */
-  tp(21.9, 14.6);
-  await until(() => D().ui.action === 'ENTREGAR', 10000);
+  /* T07: entregar por la cinta y validar el color correcto */
+  window.RasmaticGame._test.config({ beltSpeed: 7 });
+  const entry = window.RasmaticPharmacyApi.conveyor.entry;
+  tp(entry.x + 1.8, entry.z);
+  await until(() => D().ui.action === 'COLOCAR', 8000);
   const promptGive = D().ui.action;
   const gave = window.RasmaticGame.interact();
-  await until(() => D().score.player === 1, 5000);
-  ok('T07 entrega correcta +1', gave === true && D().score.player === 1 &&
-    D().carrying === -1 && promptGive === 'ENTREGAR',
-    { prompt: promptGive, score: D().score.player });
+  await until(() => D().score.player === 1, 16000);
+  ok('T07 entrega correcta por cinta +1', gave === true && D().score.player === 1 &&
+    D().carrying === -1 && promptGive === 'COLOCAR',
+    { prompt: promptGive, score: D().score.player, cinta: D().belt });
 
   /* T08: nuevo cliente tras la entrega */
   await until(() => D().request >= 0 && D().customer === true, 20000);
   ok('T08 nuevo cliente', D().request >= 0 && D().customer === true,
     { request: D().request, customer: D().customer });
 
-  /* T09: entregar un color equivocado no suma */
+  /* T09: un color equivocado no suma y vuelve al stock */
   const req2 = D().request;
   let wrong = -1;
   for (let off = 1; off < 6 && wrong < 0; off++) {
     const cand = (req2 + off) % 6;
-    tp(STA[cand].x, STA[cand].z);
-    await until(() => D().ui.action === 'RECOGER', 4000);
+    window.RasmaticGame._test.aimAtStation(cand);
+    await until(() => D().ui.action === 'RECOGER', 5000);
     if (D().ui.action !== 'RECOGER') continue;
     window.RasmaticGame.interact();
-    await until(() => D().carrying >= 0, 4000);
+    await until(() => D().carrying >= 0, 5000);
     if (D().carrying === cand) wrong = cand;
-    else if (D().carrying >= 0) {
-      /* El radio de recogida enganchó otra caja: se devuelve al estante. */
-      tp(21.9, 14.6);
-      await sleep(200);
-    }
   }
   if (wrong < 0) {
     skip('T09 entrega incorrecta', 'no se pudo aislar una caja equivocada');
   } else {
     const stockBefore = D().stockP[wrong];
-    tp(21.9, 14.6);
-    await until(() => D().ui.action === 'ENTREGAR', 10000);
-    const bad = window.RasmaticGame.interact();
-    await until(() => D().carrying === -1, 5000);
-    ok('T09 entrega incorrecta', bad === true && D().score.player === 1 &&
-      D().carrying === -1 && D().stockP[wrong] === stockBefore + 1,
+    window.RasmaticGame._test.config({ beltSpeed: 7 });
+    const placed = window.RasmaticGame._test.placeBeltNow();
+    let restored = false;
+    const tw = Date.now();
+    while (Date.now() - tw < 20000) {
+      if (D().stockP[wrong] === stockBefore + 1) { restored = true; break; }
+      await sleep(300);
+    }
+    ok('T09 entrega incorrecta por cinta', placed === true && restored &&
+      D().score.player === 1 && D().carrying === -1,
       { score: D().score.player, stock: D().stockP[wrong], antes: stockBefore,
         equivocado: wrong, pedido: req2 });
   }
@@ -244,7 +252,7 @@
   window.RasmaticGame._test.timeLeft(0.4);
   await until(() => D().state === 'over', 15000);
   if (D().state === 'over') window.RasmaticGame.onBack();
-  await until(() => D().state === 'idle', 5000);
+  await until(() => D().state === 'menu', 5000);
   const idleState = D().state;
 
   const buttons = [];
@@ -255,6 +263,15 @@
   };
   window.__rasFakePad = fake;
   window.dispatchEvent(new Event('touchstart'));
+
+  /* A en el menú inicia la cuenta regresiva. */
+  buttons[0] = { pressed: true, value: 1 };
+  await sleep(500);
+  const startedByPad = D().state;
+  buttons[0] = { pressed: false, value: 0 };
+  await sleep(250);
+  window.RasmaticGame._test.startNow();
+  await until(() => D().state === 'playing', 5000);
 
   /* Stick izquierdo arriba -> avance (my = 1). */
   tp(20, 26);
@@ -281,18 +298,9 @@
   /* El aviso de conexion oculta el joystick tactil (igual que en Android). */
   const padClass = document.body.classList.contains('ras-pad-on');
 
-  /* Boton A (indice 0) -> interactuar. En idle junto al encargado inicia. */
-  tp(21.9, 14.0);
-  await sleep(700);
-  buttons[0] = { pressed: true, value: 1 };
-  await sleep(600);
-  const startedByPad = D().state;
-  buttons[0] = { pressed: false, value: 0 };
-  await sleep(300);
-
   ok('T17 mando fisico (Gamepad API)', padState.my === 1 && zPad1 < zPad0 - 0.3 &&
     runOn === true && runOff === false && padClass === true &&
-    idleState === 'idle' && startedByPad === 'playing',
+    idleState === 'menu' && startedByPad === 'countdown',
     { my: padState.my, z0: +zPad0.toFixed(2), z1: +zPad1.toFixed(2),
       runOn, runOff, padClass, idleState, startedByPad });
 
@@ -377,12 +385,11 @@
     { boton: !!optsBtn, opciones: diffBtns.length, abierto: opened,
       elegido: dhard.id, marcado: marked, cerrado: closed });
 
-  /* T24: JUGAR centrado, comodo y sin tapar el joystick en retrato. */
+  /* T24: acción de la mira centrada, cómoda y sin tapar el joystick. */
   const reqNow = D().request;
-  const stNow = reqNow >= 0 ? STA[reqNow] : STA[0];
-  tp(stNow.x, stNow.z);
+  if (reqNow >= 0) window.RasmaticGame._test.aimAtStation(reqNow);
   const nearAct = await until(
-    () => ['RECOGER', 'ENTREGAR', 'JUGAR'].indexOf(D().ui.action) >= 0, 12000);
+    () => ['RECOGER', 'COLOCAR', 'ENTREGAR'].indexOf(D().ui.action) >= 0, 12000);
   await sleep(500);
   /* El mando falso de T17 ya no existe: el joystick tactil debe volver. */
   window.dispatchEvent(new Event('touchstart'));
@@ -400,7 +407,7 @@
   const actSafe = actRect.left >= 8 && actRect.right <= innerWidth - 8 &&
     actRect.top >= 8 && actRect.bottom <= innerHeight - 8;
   const touchable = actRect.width >= 120 && actRect.height >= 50;
-  ok('T24 JUGAR centrado, con area tactil y sin tapar el joystick',
+  ok('T24 acción de la mira centrada, táctil y sin tapar el joystick',
     nearAct && actEl.classList.contains('on') && centered && actSafe &&
     touchable && !overlapsStick,
     { aviso: D().ui.action, centro: +actCx.toFixed(1), ventana: innerWidth,
@@ -423,17 +430,22 @@
     return inView(rectById(id), 6);
   });
   const scoreB = document.querySelector('#rg-score .rg-team b');
-  const reqB = document.querySelector('#rg-req .rg-req-txt b');
+  const reqImg = document.getElementById('rg-req-img');
+  const reqImgRect = reqImg ? reqImg.getBoundingClientRect() : null;
   const timeEl = document.getElementById('rg-time');
   const hintEl = document.getElementById('rg-hint');
   const fontPx = (el) => el ? parseFloat(getComputedStyle(el).fontSize) : 0;
   const noClip = (el) => !el || el.scrollWidth <= el.clientWidth + 1;
   const leftCol = document.getElementById('rg-left');
-  ok('T25 textos legibles y sin desbordes en el area segura',
+  const reqImgOk = !!reqImgRect && reqImgRect.width >= 60 && reqImgRect.height >= 38 &&
+    !!reqImg.getAttribute('src');
+  ok('T25 textos legibles, imagen de pedido y área segura',
     !!leftCol && panelsIn && fontPx(scoreB) >= 28 && fontPx(timeEl) >= 26 &&
-    fontPx(reqB) >= 20 && noClip(hintEl) && noClip(reqB),
+    reqImgOk && noClip(hintEl),
     { paneles: panelsIn, columna: !!leftCol,
-      fuentes: { marcador: fontPx(scoreB), reloj: fontPx(timeEl), pedido: fontPx(reqB) },
+      fuentes: { marcador: fontPx(scoreB), reloj: fontPx(timeEl) },
+      pedido_img: reqImgRect && [Math.round(reqImgRect.width), Math.round(reqImgRect.height)],
+      tiene_src: !!(reqImg && reqImg.getAttribute('src')),
       pista_sin_corte: noClip(hintEl) });
 
   /* T26: tamaño individual del HUD por API (panel y tipografía). */

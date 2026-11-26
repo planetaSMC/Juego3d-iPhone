@@ -2309,6 +2309,18 @@
     disable: disable,
     toggle: toggle,
     isActive: function () { return active; },
+    /* V21: direccion real de la camara para la mira. En VR incluye el
+       offset de Head Tracking; fuera de VR es la camara normal. */
+    aimQuaternion: function () {
+      var q = gameCamera.quaternion.clone();
+      if (active) {
+        var htq = headQuat();
+        if (htq) {
+          q.premultiply(htq.yaw).multiply(htq.pitch).multiply(htq.roll);
+        }
+      }
+      return q;
+    },
     isDesktop: function () { return DESKTOP; },
     isMobile: function () { return MOBILE; },
     /* Vista central / diagnostico para el calibrador de Windows. */

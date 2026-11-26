@@ -1,5 +1,9 @@
 # V20 · RASMATIC VR unificado
 
+> **V21 continúa esta fase.** El gameplay, la mira, la cinta funcional, la fila
+> de clientes y el menú de inicio se documentan en `docs/v21/README.md`.
+> V20.1 conserva la app única y el escenario de farmacia; V21 los reutiliza.
+
 V20 unifica las dos apps V19 en una sola app iOS:
 
 - **Nombre visible:** RASMATIC VR
@@ -78,10 +82,16 @@ node tools/verify-ipa.js dist/RASMATIC-VR-unsigned.ipa \
 
 ## Estado
 
-- Rama de desarrollo: `v20`.
+- Rama V20 original: `v20`.
+- Corrección de compilación: rama `fix/v20.1-core-motion` y PR #2.
 - Punto de recuperación V19: rama `v19-recovery` (commit `53f410b`).
-- `main` no se modifica hasta aprobar la validación física.
-- Resultados de simulación: **135/135** estructura, **30/30** juego,
+- `main` conserva V20 fusionado; V20.1 está en PR y no se fusiona
+  automáticamente.
+- Resultados de simulación: **139/139** estructura, **30/30** juego,
   **18/18** V20, **34/34** VR, **21/21** mando y **62/62** calibrador Windows.
-- Pendiente: compilación/firma real, iPhone, Core Motion, Bluetooth y VR Box
-  físicos. Ver `limitations.md`.
+- Compilación real: **BUILD SUCCEEDED** en Xcode 16.4 / iPhoneOS 18.5
+  (runs 45809544456 y 45809851662). IPA sin firmar de 829.907 bytes; el
+  SHA-256 varía por marcas de tiempo entre builds (`7778E6B4…01273` y
+  `8FE2D696…FD55E`).
+- Pendiente: firma, instalación en iPhone, Core Motion, Bluetooth y VR Box
+  físicos. Ver `limitations.md` y `v20.1-core-motion-fix.md`.
