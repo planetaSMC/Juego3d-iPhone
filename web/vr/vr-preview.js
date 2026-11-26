@@ -96,6 +96,18 @@
     guides: false,
     vignette: false,
     testMode: false,
+    /* Head Tracking (V20). Windows escribe estos valores por el enlace
+       existente; el iPhone también puede cambiarlos localmente. */
+    htEnabled: true,
+    htSensX: 1.0,
+    htSensY: 1.0,
+    htSensRoll: 1.0,
+    htSmoothing: 0.12,
+    htResponse: 1.0,
+    htInvertX: false,
+    htInvertY: false,
+    htRecenter: 0,
+    htCalibrate: 0,
     /* per-eye: una copia del HUD dentro de cada ojo (VR real).
        flat: una sola copia recortada al marco (vista previa de escritorio).
        off: sin HUD. */
@@ -143,7 +155,14 @@
     contrast: [0.5, 1.8, 0.01],
     saturation: [0, 2, 0.01],
     gamma: [0.5, 2.2, 0.01],
-    sharpness: [0, 1, 0.01]
+    sharpness: [0, 1, 0.01],
+    htSensX: [0.2, 2.5, 0.05],
+    htSensY: [0.2, 2.5, 0.05],
+    htSensRoll: [0.2, 2.5, 0.05],
+    htSmoothing: [0.03, 0.45, 0.01],
+    htResponse: [0.5, 2, 0.05],
+    htRecenter: [0, 1, 1],
+    htCalibrate: [0, 1, 1]
   };
 
   /* Definicion de cada control: etiqueta, limites, formato y ayuda breve. */
@@ -210,7 +229,17 @@
     gamma: { g: 'image', label: 'Gamma', min: 0.5, max: 2.2, step: 0.01, dec: 2, suffix: '',
       help: 'Corrige los tonos medios. Más de 1 aclara las sombras sin quemar los blancos.' },
     sharpness: { g: 'image', label: 'Nitidez', min: 0, max: 1, step: 0.01, dec: 2, suffix: '',
-      help: 'Realce suave de bordes. Valores altos generan halos; 0,15–0,35 suele alcanzar.' }
+      help: 'Realce suave de bordes. Valores altos generan halos; 0,15–0,35 suele alcanzar.' },
+    htSensX: { g: 'ht', label: 'Sensibilidad horizontal', min: 0.2, max: 2.5, step: 0.05, dec: 2, suffix: '×',
+      help: 'Multiplica el giro izquierda/derecha de la cabeza.' },
+    htSensY: { g: 'ht', label: 'Sensibilidad vertical', min: 0.2, max: 2.5, step: 0.05, dec: 2, suffix: '×',
+      help: 'Multiplica la inclinación arriba/abajo.' },
+    htSensRoll: { g: 'ht', label: 'Sensibilidad de inclinación lateral', min: 0.2, max: 2.5, step: 0.05, dec: 2, suffix: '×',
+      help: 'Multiplica el roll (inclinar la cabeza a un lado).' },
+    htSmoothing: { g: 'ht', label: 'Suavizado', min: 0.03, max: 0.45, step: 0.01, dec: 2, suffix: ' s',
+      help: 'Tiempo del filtro. Más suave = menos vibración, más latencia.' },
+    htResponse: { g: 'ht', label: 'Velocidad de respuesta', min: 0.5, max: 2, step: 0.05, dec: 2, suffix: '×',
+      help: 'Más alto responde antes; más bajo es más estable.' }
   };
 
   var GROUPS = {
@@ -221,11 +250,14 @@
     screen: { label: 'Pantalla', keys: ['profile', 'customW', 'customH', 'zoom', 'gap', 'stageX', 'stageY',
       'aspect', 'distortion', 'hudMode', 'guides', 'vignette'] },
     image: { label: 'Imagen', keys: ['brightness', 'contrast', 'saturation', 'gamma', 'sharpness'] },
+    ht: { label: 'Head Tracking', keys: ['htEnabled', 'htSensX', 'htSensY', 'htSensRoll',
+      'htSmoothing', 'htResponse', 'htInvertX', 'htInvertY'] },
     profiles: { label: 'Perfiles', keys: [] }
   };
 
   var TABS = [
-    ['cam', 'Cámara'], ['stereo', '3D'], ['left', 'Lente izq.'], ['right', 'Lente der.'],
+    ['cam', 'Cámara'], ['stereo', '3D'], ['ht', 'HEAD TRACKING'],
+    ['left', 'Lente izq.'], ['right', 'Lente der.'],
     ['screen', 'Pantalla'], ['image', 'Imagen'], ['profiles', 'Perfiles']
   ];
 
@@ -297,6 +329,9 @@
       s.guides = !!src.guides;
       s.vignette = !!src.vignette;
       s.testMode = !!src.testMode;
+      s.htEnabled = src.htEnabled !== false;
+      s.htInvertX = !!src.htInvertX;
+      s.htInvertY = !!src.htInvertY;
       if (src.hudMode === 'per-eye' || src.hudMode === 'flat' || src.hudMode === 'off') s.hudMode = src.hudMode;
     }
     return s;
@@ -442,6 +477,34 @@
     if (!q) return;
     camQuatEff.premultiply(q.yaw).multiply(q.pitch).multiply(q.roll);
     lastHeadQuat = camQuatEff.clone();
+  }
+
+  /* Puente entre la configuracion VR (Windows/telefono) y Core Motion. */
+  function applyHeadSettings() {
+    var ht = window.RasmaticHeadTracking;
+    if (!ht || typeof ht.applyConfig !== 'function') return;
+    try {
+      ht.applyConfig({
+        enabled: !!settings.htEnabled,
+        sensitivityX: settings.htSensX,
+        sensitivityY: settings.htSensY,
+        sensitivityRoll: settings.htSensRoll,
+        smoothing: settings.htSmoothing,
+        response: settings.htResponse,
+        invertX: !!settings.htInvertX,
+        invertY: !!settings.htInvertY
+      });
+    } catch (e) { /* la escena sigue funcionando */ }
+    if (settings.htRecenter === 1) {
+      try { ht.recenter(); } catch (e) { /* nada */ }
+      settings.htRecenter = 0;
+      save();
+    }
+    if (settings.htCalibrate === 1) {
+      try { ht.calibrate(); } catch (e) { /* nada */ }
+      settings.htCalibrate = 0;
+      save();
+    }
   }
 
   function needsRT() {
@@ -1084,6 +1147,22 @@
     '</section>';
   }
 
+  function headTrackingHTML() {
+    return '<section class="vr-tab-panel" data-panel="ht">' +
+      '<label class="vr-switch"><input type="checkbox" id="vr-ht-enabled"><span>Head Tracking activado</span></label>' +
+      controlHTML('htSensX') + controlHTML('htSensY') + controlHTML('htSensRoll') +
+      controlHTML('htSmoothing') + controlHTML('htResponse') +
+      '<div class="vr-checks">' +
+        '<label><input type="checkbox" id="vr-ht-inv-x"> Invertir eje horizontal</label>' +
+        '<label><input type="checkbox" id="vr-ht-inv-y"> Invertir eje vertical</label>' +
+      '</div>' +
+      '<button type="button" id="vr-ht-recenter" class="vr-reset">Recentrar cabeza</button>' +
+      '<button type="button" id="vr-ht-calibrate" class="vr-reset">Calibrar cabeza</button>' +
+      '<p class="vr-note">Estos valores también se pueden cambiar desde Windows. ' +
+        'Si Windows no está conectado, se conserva la última configuración local.</p>' +
+    '</section>';
+  }
+
   function profilesHTML() {
     return '<section class="vr-tab-panel" data-panel="profiles">' +
       '<div class="vr-card">' +
@@ -1176,6 +1255,7 @@
           GROUPS.right.keys.map(controlHTML).join('') + resetBtn('right', 'lente derecha') +
         '</section>' +
         screenHTML() +
+        headTrackingHTML() +
         '<section class="vr-tab-panel" data-panel="image">' +
           GROUPS.image.keys.map(controlHTML).join('') + resetBtn('image', 'Imagen') +
           '<p class="vr-note">Los ajustes de imagen activan el postproceso. Con todo en neutro ' +
@@ -1271,8 +1351,11 @@
     ui.cfgText = panel.querySelector('#vr-cfg-text');
     ui.cfgStatus = panel.querySelector('#vr-cfg-status');
     ui.tabs = panel.querySelector('#vr-tabs');
+    ui.htEnabled = panel.querySelector('#vr-ht-enabled');
+    ui.htInvX = panel.querySelector('#vr-ht-inv-x');
+    ui.htInvY = panel.querySelector('#vr-ht-inv-y');
 
-    /* V19: controles de head tracking dentro del panel VR. */
+    /* V19/V20: controles de head tracking dentro del panel VR. */
     if (htApi) {
       var htToggle = panel.querySelector('#vr-ht-toggle');
       var htCenter = panel.querySelector('#vr-ht-center');
@@ -1295,6 +1378,28 @@
       });
       if (typeof htApi.onChange === 'function') htApi.onChange(paintHt);
       else paintHt(htApi.state());
+
+      if (ui.htEnabled) ui.htEnabled.addEventListener('change', function () {
+        set('htEnabled', ui.htEnabled.checked);
+      });
+      if (ui.htInvX) ui.htInvX.addEventListener('change', function () {
+        set('htInvertX', ui.htInvX.checked);
+      });
+      if (ui.htInvY) ui.htInvY.addEventListener('change', function () {
+        set('htInvertY', ui.htInvY.checked);
+      });
+      var htRec = panel.querySelector('#vr-ht-recenter');
+      if (htRec) htRec.addEventListener('click', function (e) {
+        e.preventDefault();
+        htApi.recenter();
+        setStatus('Cabeza recentrada.');
+      });
+      var htCal = panel.querySelector('#vr-ht-calibrate');
+      if (htCal) htCal.addEventListener('click', function (e) {
+        e.preventDefault();
+        htApi.calibrate();
+        setStatus('Calibración inicial aplicada.');
+      });
     }
 
     /* Todos los sliders y sus botones de precision. */
@@ -1462,6 +1567,9 @@
     ui.hudMode.value = settings.hudMode;
     ui.vigChk.checked = settings.vignette;
     ui.testChk.checked = settings.testMode;
+    if (ui.htEnabled) ui.htEnabled.checked = !!settings.htEnabled;
+    if (ui.htInvX) ui.htInvX.checked = !!settings.htInvertX;
+    if (ui.htInvY) ui.htInvY.checked = !!settings.htInvertY;
     ui.toggle.textContent = active ? 'Salir de VR' : 'Activar VR';
     ui.toggle.classList.toggle('on', active);
     document.body.classList.toggle('vr-hud-off', active && settings.hudMode === 'off');
@@ -1949,7 +2057,8 @@
         if (typeof v !== 'number' || !isFinite(v)) continue;
         settings[k] = Math.round(clamp(v, 320, 4096));
         keys.push(k);
-      } else if (k === 'guides' || k === 'vignette' || k === 'testMode') {
+      } else if (k === 'guides' || k === 'vignette' || k === 'testMode' ||
+        k === 'htEnabled' || k === 'htInvertX' || k === 'htInvertY') {
         if (typeof v !== 'boolean') continue;
         settings[k] = v;
         keys.push(k);
@@ -1959,6 +2068,7 @@
     settings = sanitize(settings);
     save();
     syncUI();
+    if (keys.some(function (k) { return k.indexOf('ht') === 0; })) applyHeadSettings();
     notifyChange(origin || 'remote', keys);
     return true;
   }
@@ -2002,11 +2112,13 @@
     }
     if (!has(DEFAULTS, key)) return false;
     if (!canWrite()) return false;
-    if (key === 'testMode' || key === 'guides' || key === 'vignette') value = !!value;
+    if (key === 'testMode' || key === 'guides' || key === 'vignette' ||
+      key === 'htEnabled' || key === 'htInvertX' || key === 'htInvertY') value = !!value;
     settings[key] = value;
     settings = sanitize(settings);
     save();
     syncUI();
+    if (key.indexOf('ht') === 0) applyHeadSettings();
     notifyChange('ui', [key]);
     return true;
   }
@@ -2290,5 +2402,6 @@
   /* ---------------- arranque ---------------- */
   if (EMBED) document.body.classList.add('ras-embed');
   buildUI();
+  applyHeadSettings();
   if (FORCE) enable();
 })();

@@ -32,12 +32,10 @@ const { verifyIpa } = require('./verify-ipa');
 const ROOT = path.resolve(__dirname, '..');
 const API = 'https://api.github.com';
 const WORKFLOW = 'ios-ipa.yml';
-const ARTIFACT = 'rasmatic-v19-ipas';
+const ARTIFACT = 'rasmatic-v20-ipa';
 const EXPECTED = [
-  { file: 'RASMATIC-HeadTracking-unsigned.ipa',
-    bundle: 'com.rasmatic.lugar3d.headtracking', variant: 'headtracking' },
-  { file: 'RASMATIC-Classic-unsigned.ipa',
-    bundle: 'com.rasmatic.lugar3d.classic', variant: 'classic' }
+  { file: 'RASMATIC-VR-unsigned.ipa',
+    bundle: 'com.rasmatic.lugar3d', variant: 'v20' }
 ];
 
 /* ---------------- argumentos ---------------- */
@@ -246,7 +244,7 @@ async function main() {
   })).data;
 
   const commit = (await api('POST', repoApi + '/git/commits', {
-    message: 'V19: Add independent VR Head Tracking and Classic iOS apps',
+    message: 'V20: unified RASMATIC VR with pharmacy scene and Windows head tracking',
     tree: tree.sha,
     parents: parentSha ? [parentSha] : []
   })).data;
@@ -351,8 +349,8 @@ async function main() {
     console.log('     SHA-256 ' + sha256(ipa));
     console.log('     ' + verified.info.entries + ' entradas, juego completo adentro');
   }
-  console.log('\nSiguiente paso: instalar los dos con Sideloadly/AltStore (docs/instalar-en-iphone.md).');
-  console.log('Se pueden tener instalados a la vez: los bundle ids son distintos.');
+  console.log('\nSiguiente paso: instalar con Sideloadly/AltStore (docs/instalar-en-iphone.md).');
+  console.log('App única: RASMATIC VR · com.rasmatic.lugar3d');
 }
 
 main().catch((e) => {

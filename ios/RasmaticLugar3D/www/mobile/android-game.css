@@ -431,6 +431,95 @@ body.ras-arena {
 }
 #rg-opts .rg-opts-ok:active { transform: scale(.985); }
 
+/* ---------- V19: joystick y head tracking en Opciones ---------- */
+#rg-opts .rg-opt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .12);
+}
+#rg-opts .rg-opt-row[hidden] { display: none; }
+#rg-opts .rg-opt-row > span {
+  font-size: 12px;
+  letter-spacing: .1em;
+  font-weight: 800;
+  opacity: .82;
+}
+#rg-opts .rg-switch {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  min-width: 118px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: .06em;
+  color: #cfe0f7;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .18);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+#rg-opts .rg-switch b { font-weight: 900; }
+#rg-opts .rg-switch.on {
+  color: #08203f;
+  background: linear-gradient(160deg, #6ff0b4, #2fbf86);
+  border-color: transparent;
+}
+#rg-opts .rg-opt-slider {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0 0 10px;
+  padding: 9px 12px 7px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .1);
+  font-size: 11px;
+  letter-spacing: .08em;
+  font-weight: 800;
+  color: #cfe0f7;
+}
+#rg-opts .rg-opt-slider[hidden] { display: none; }
+#rg-opts .rg-opt-slider input[type="range"] {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: #2f8bff;
+  touch-action: manipulation;
+}
+#rg-opts .rg-opt-slider output {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  opacity: .85;
+}
+#rg-opts .rg-opts-center {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: .06em;
+  color: #dcecff;
+  background: rgba(47, 139, 255, .22);
+  border: 1px solid rgba(120, 190, 255, .45);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+#rg-opts .rg-opts-center[hidden] { display: none; }
+#rg-opts .rg-opts-center:active { transform: scale(.985); }
+
 /* ---------- final de partida ---------- */
 #rg-end {
   position: fixed;
@@ -527,6 +616,7 @@ body.ras-arena {
 /* ---------- retrato angosto: JUGAR por encima del joystick ---------- */
 @media (max-width: 560px) and (orientation: portrait) {
   body.ras-arena { --rg-act-lift: clamp(124px, 34vmin, 172px); }
+  body.ras-arena.ras-no-joystick { --rg-act-lift: clamp(78px, 20vmin, 112px); }
 }
 
 /* ============================================================

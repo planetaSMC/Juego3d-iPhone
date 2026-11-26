@@ -1,7 +1,6 @@
-/* Generado por tools/build-ios.js - no editar a mano.
-   Variante: headtracking
-   Build: e9b7b839ed4c96a7 */
-const CACHE = 'rasmatic-ht-e9b7b839ed4c96a7';
+/* Generado por tools/build-ios.js (V20) - no editar a mano.
+   Build: 8a3d4b1effa2392a */
+const CACHE = 'rasmatic-v20-8a3d4b1effa2392a';
 const PRECACHE = [
   "./",
   "./index.html",
@@ -14,18 +13,21 @@ const PRECACHE = [
   "./mobile/android-controls.css",
   "./ios/ios.css",
   "./ios/ios-bridge.js",
+  "./headtracking/head-tracking.css",
+  "./headtracking/head-tracking.js",
   "./vr/vr-preview.css",
   "./vr/vr-preview.js",
   "./net/vr-link.css",
   "./net/vr-link.js",
+  "./v20/pharmacy.css",
+  "./v20/pharmacy-scene.js",
+  "./v20/pharmacy-core.js",
   "./fonts/fonts.css",
   "./fonts/google-fonts.css",
   "./icons/icon-180.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-1024.png",
-  "./headtracking/head-tracking.css",
-  "./headtracking/head-tracking.js",
   "./fonts/font01.woff2",
   "./fonts/font02.woff2",
   "./fonts/font03.woff2",

@@ -3,16 +3,11 @@
 
     Origen: Juego3d/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png (192x192)
 
-    Destinos:
-      web/icons/                                              -> PWA Head Tracking
-      web/icons-classic/                                      -> PWA Classic
-      ios/RasmaticHeadTracking/Assets.xcassets/AppIcon...     -> app Head Tracking
-      ios/RasmaticClassic/Assets.xcassets/AppIcon...          -> app Classic
-      ios/RasmaticLugar3D/Assets.xcassets/AppIcon...          -> app heredada (sin banda)
+    Destino V20 (una sola app):
+      web/icons/                                              -> PWA RASMATIC VR
+      ios/RasmaticLugar3D/Assets.xcassets/AppIcon...          -> app RASMATIC VR
 
-    La identidad visual se distingue con una banda inferior:
-      Head Tracking: azul, texto HT
-      Classic:       ámbar, texto CL
+    La identidad visual usa una banda inferior azul con el texto VR.
 
     Uso: powershell -ExecutionPolicy Bypass -File tools/make-icons.ps1
 #>
@@ -137,24 +132,11 @@ $cyan = [System.Drawing.Color]::FromArgb(27, 95, 214)
 $amber = [System.Drawing.Color]::FromArgb(180, 83, 9)
 $legacy = [System.Drawing.Color]::FromArgb(27, 95, 214)
 
-# App Head Tracking
-Write-AppIconSet -Image $source `
-  -WebDir (Join-Path $root 'web\icons') `
-  -AssetDir (Join-Path $root 'ios\RasmaticHeadTracking\Assets.xcassets\AppIcon.appiconset') `
-  -Badge 'HT' -BadgeColor $cyan
-
-# App Classic. Los iconos fuente viven fuera de web/ para no espejarse
-# dentro de la app Head Tracking.
-Write-AppIconSet -Image $source `
-  -WebDir (Join-Path $root 'assets\icons-classic') `
-  -AssetDir (Join-Path $root 'ios\RasmaticClassic\Assets.xcassets\AppIcon.appiconset') `
-  -Badge 'CL' -BadgeColor $amber
-
-# App heredada: se conserva tal cual estaba (sin banda), para no reemplazarla.
+# RASMATIC VR (V20): una sola identidad.
 Write-AppIconSet -Image $source `
   -WebDir (Join-Path $root 'web\icons') `
   -AssetDir (Join-Path $root 'ios\RasmaticLugar3D\Assets.xcassets\AppIcon.appiconset') `
-  -Badge '' -BadgeColor $legacy -SkipWeb
+  -Badge 'VR' -BadgeColor $cyan
 
 $source.Dispose()
 Write-Host ''

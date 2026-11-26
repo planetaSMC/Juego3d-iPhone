@@ -107,7 +107,7 @@ const ENUMS = {
     'iphone-se-landscape', 'vrbox-16-9', 'vrbox-2-1', 'custom'],
   hudMode: ['per-eye', 'flat', 'off']
 };
-const BOOLS = ['guides', 'vignette', 'testMode'];
+const BOOLS = ['guides', 'vignette', 'testMode', 'htEnabled', 'htInvertX', 'htInvertY'];
 const INTS = {
   customW: [320, 4096],
   customH: [320, 4096]

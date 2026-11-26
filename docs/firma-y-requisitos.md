@@ -60,12 +60,11 @@ cuenta Apple.
 El flujo `.github/workflows/ios-ipa.yml` hace:
 
 1. `xcodebuild -version` (deja constancia de la versión real).
-2. `node tools/check-xcode.js` (246 comprobaciones del proyecto).
-3. `node tools/check-parity.js` (paridad del núcleo entre las dos apps).
-4. `./tools/build-ipa.sh` (compila sin firma y arma los dos `.ipa`).
-5. `node tools/verify-ipa.js ... --variant ...` (estructura, Mach-O, bundle id,
+2. `node tools/check-xcode.js` (135 comprobaciones del proyecto único).
+3. `./tools/build-ipa.sh` (compila sin firma y arma el `.ipa`).
+4. `node tools/verify-ipa.js ... --variant v20` (estructura, Mach-O, bundle id,
    permisos y juego completo).
-6. Sube `dist/*.ipa` como artefacto `rasmatic-v19-ipas`.
+5. Sube `dist/RASMATIC-VR-unsigned.ipa` como artefacto `rasmatic-v20-ipa`.
 
 ### Para firmar e instalar
 
@@ -130,11 +129,10 @@ La firma cubre:
 ### Opción A — GitHub Actions (sin Mac)
 
 1. Subir el proyecto a un repositorio de GitHub.
-2. **Actions → iOS apps V19 (dos .ipa sin firmar) → Run workflow**.
+2. **Actions → iOS app V20 (RASMATIC VR) → Run workflow**.
 3. Esperar ~10–15 minutos.
-4. Descargar el artefacto **`rasmatic-v19-ipas`**.
-5. Descomprimirlo: adentro están `RASMATIC-HeadTracking-unsigned.ipa` y
-   `RASMATIC-Classic-unsigned.ipa`.
+4. Descargar el artefacto **`rasmatic-v20-ipa`**.
+5. Descomprimirlo: adentro está `RASMATIC-VR-unsigned.ipa`.
 
 Si preferís no usar la web, `tools/publish-github.js` hace todo por API (crear
 repo, subir, compilar, esperar, descargar y verificar). Necesita un **token
@@ -153,17 +151,14 @@ terminar.
 ```bash
 chmod +x tools/build-ipa.sh
 ./tools/build-ipa.sh
-# deja dist/RASMATIC-HeadTracking-unsigned.ipa
-# y    dist/RASMATIC-Classic-unsigned.ipa
+# deja dist/RASMATIC-VR-unsigned.ipa
 ```
 
 ### Verificación
 
 ```powershell
-node tools/verify-ipa.js dist/RASMATIC-HeadTracking-unsigned.ipa `
-  --expect com.rasmatic.lugar3d.headtracking --variant headtracking
-node tools/verify-ipa.js dist/RASMATIC-Classic-unsigned.ipa `
-  --expect com.rasmatic.lugar3d.classic --variant classic
+node tools/verify-ipa.js dist/RASMATIC-VR-unsigned.ipa `
+  --expect com.rasmatic.lugar3d --variant v20
 ```
 
 Comprueba, leyendo el ZIP real:
@@ -200,7 +195,7 @@ PRODUCT_BUNDLE_IDENTIFIER = com.tunombre.rasmatic;
 Después hay que volver a compilar y verificar con:
 
 ```powershell
-node tools/verify-ipa.js dist/RASMATIC-HeadTracking-unsigned.ipa --expect com.tunombre.rasmatic.headtracking --variant headtracking
+node tools/verify-ipa.js dist/RASMATIC-VR-unsigned.ipa --expect com.tunombre.rasmatic --variant v20
 ```
 
 El **Team** se elige en Xcode → *Signing & Capabilities*. Para Sideloadly o

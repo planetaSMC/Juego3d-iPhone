@@ -88,7 +88,7 @@
       { inicio: homeSent, dock: dockSent, acciones: seen });
 
     /* ---------------- P05: A inicia la partida ---------------- */
-    tp(0, 24.6, 0, 0);
+    tp(21.9, 14.0, 0, 0);
     await until(() => D().ui.action === 'JUGAR', 12000);
     const started = N().press('interact');
     const playing = await until(() => D().state === 'playing', 8000);
@@ -97,7 +97,7 @@
       { accion: started, estado: D().state });
 
     /* ---------------- P06: stick izquierdo mueve ---------------- */
-    tp(5, 30, 0, 0);
+    tp(20, 26, 0, 0);
     await sleep(150);
     const z0 = D().player.z;
     N().raw('0,1000,0,0,0');
@@ -109,7 +109,7 @@
       { z_antes: z0, z_despues: z1, avance: +(z0 - z1).toFixed(2) });
 
     /* ---------------- P07: stick derecho gira la camara ---------------- */
-    tp(5, 30, 0, 0);
+    tp(20, 26, 0, 0);
     await sleep(120);
     const yaw0 = G().player.yaw;
     N().raw('0,0,1000,0,0');
@@ -121,7 +121,7 @@
       { yaw_antes: +yaw0.toFixed(3), yaw_despues: +yaw1.toFixed(3) });
 
     /* ---------------- P08: L1/L2 correr ---------------- */
-    tp(5, 34, 0, 0);
+    tp(20, 26, 0, 0);
     await sleep(150);
     const zw0 = D().player.z;
     N().raw('0,1000,0,0,0');
@@ -129,7 +129,7 @@
     N().raw('0,0,0,0,0');
     const walk = zw0 - D().player.z;
 
-    tp(5, 34, 0, 0);
+    tp(20, 26, 0, 0);
     await sleep(150);
     const zr0 = D().player.z;
     N().raw('0,1000,0,0,1');

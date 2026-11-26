@@ -136,6 +136,11 @@ class Store {
   /* ---------------- calibracion ---------------- */
   setCalibration(values) {
     this.data.calibration = Object.assign({}, this.data.calibration, values);
+    /* V20: recentrar y calibrar son acciones de un solo uso. Se emiten a los
+       clientes, pero no quedan guardadas en 1 (si no, cada reconexión
+       volvería a recentrar la cabeza). */
+    if (this.data.calibration.htRecenter) this.data.calibration.htRecenter = 0;
+    if (this.data.calibration.htCalibrate) this.data.calibration.htCalibrate = 0;
     this.save();
     return this.data.calibration;
   }

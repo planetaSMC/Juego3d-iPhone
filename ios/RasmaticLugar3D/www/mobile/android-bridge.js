@@ -34,6 +34,12 @@
     return document.body.classList.contains('ras-arena');
   }
 
+  /* V19: el joystick tactil se puede desactivar desde Opciones. Desactivado
+     no se dibuja y sus entradas se ignoran; el mando fisico sigue igual. */
+  function stickAllowed() {
+    return !document.body.classList.contains('ras-no-joystick');
+  }
+
   /* Solo los paneles que de verdad detienen la experiencia bloquean al
      personaje: bienvenida, pausa y modo juego. El menu de destinos y el panel
      de informacion son no modales en el original (se puede seguir caminando
@@ -68,11 +74,15 @@
        si esta en reposo, manda el joystick tactil. Sumarlos duplicaba la
        velocidad y podia producir diagonales inesperadas. */
     const menu = blockingMenu();
+    const stick = stickAllowed();
     const padActive = Math.hypot(pad.mx, pad.my) > 0.001;
     const running = !menu && (touch.run || pad.run);
+    /* El mando físico manda siempre que su stick no esté en reposo. La
+       opción de joystick solo apaga el TÁCTIL: si el mando está activo,
+       su movimiento debe seguir llegando al juego. */
     core.input({
-      mx: menu ? 0 : (padActive ? pad.mx : touch.mx),
-      my: menu ? 0 : (padActive ? pad.my : touch.my),
+      mx: menu ? 0 : (padActive ? pad.mx : (stick ? touch.mx : 0)),
+      my: menu ? 0 : (padActive ? pad.my : (stick ? touch.my : 0)),
       lx: menu ? 0 : pad.lx,
       ly: menu ? 0 : pad.ly,
       run: running
@@ -118,6 +128,12 @@
   }
 
   function updateStick(clientX, clientY) {
+    if (!stickAllowed()) {
+      touch.mx = 0;
+      touch.my = 0;
+      applyInput();
+      return;
+    }
     let dx = (clientX - view.cx) / view.radius;
     let dy = (clientY - view.cy) / view.radius;
     const m = Math.hypot(dx, dy);
@@ -158,7 +174,7 @@
     stickEl.appendChild(knobEl);
 
     stickEl.addEventListener('pointerdown', function (e) {
-      if (view.paused || blockingMenu()) return;
+      if (view.paused || blockingMenu() || !stickAllowed()) return;
       /* Un segundo dedo no debe robar el joystick ya activo. */
       if (view.stickId !== null) return;
       const r = stickEl.getBoundingClientRect();
@@ -453,6 +469,7 @@
         paused: view.paused,
         manualPause: view.manualPause,
         stickId: view.stickId,
+        joystick: stickAllowed(),
         blocking: blockingMenu(),
         dockOpen: dockOpen(),
         resync: !!(native && typeof native.resyncGamepad === 'function')
@@ -638,6 +655,11 @@
     installTapFallback();
     installResizeGuard();
     installMenuGuard();
+    /* V19: al desactivar el joystick se sueltan sus entradas en el acto. */
+    document.addEventListener('rasmatic:joystick', function () {
+      if (!stickAllowed()) resetStick();
+      applyInput();
+    });
     /* En tactil las ayudas de teclado del cartel de bienvenida no aplican. */
     const keys = document.querySelector('#intro .keys');
     if (keys) {

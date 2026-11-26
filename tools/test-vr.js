@@ -247,7 +247,7 @@ async function main() {
     console.log('\nControl de camara con el mouse:');
     await evaluate(`(function(){
       var g = window.RasmaticCore.game;
-      g.player.x = 0; g.player.z = 30; g.player.yaw = 0; g.player.pitch = 0;
+      g.player.x = 20; g.player.z = 26; g.player.yaw = 0; g.player.pitch = 0;
       window.RasmaticVR.enable();
       return true;
     })()`);
@@ -275,7 +275,7 @@ async function main() {
        la vista sea simetrica y se pueda comparar plana vs. estereo. */
     await evaluate(`(function(){
       var g = window.RasmaticCore.game;
-      g.player.x = 0; g.player.z = 24.6; g.player.yaw = 0; g.player.pitch = 0;
+      g.player.x = 21.9; g.player.z = 14.0; g.player.yaw = 0; g.player.pitch = 0;
       return true;
     })()`);
     await waitFor(async () => (await evaluate('window.RasmaticGame.debug().ui.action')) === 'JUGAR', 20000, 'aviso JUGAR');
@@ -284,7 +284,7 @@ async function main() {
     await waitFor(async () => (await evaluate('window.RasmaticGame.debug().customer')) === true, 60000, 'primer cliente');
     await evaluate(`(function(){
       var g = window.RasmaticCore.game;
-      g.player.x = 0; g.player.z = -26; g.player.yaw = 0; g.player.pitch = 0;
+      g.player.x = 30; g.player.z = 20; g.player.yaw = 0; g.player.pitch = 0;
       return true;
     })()`);
     await sleep(900);

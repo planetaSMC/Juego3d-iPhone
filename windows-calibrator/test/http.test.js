@@ -81,7 +81,8 @@ test('/api/spec entrega la especificación real sin secretos', async (t) => {
   assert.strictEqual(spec.defaults.ipd, 64);
   assert.deepStrictEqual(spec.spec.ipd, [50, 75, 1]);
   assert.strictEqual(spec.keys.length >= 25, true);
-  assert.strictEqual(spec.tabs.length, 7);
+  assert.strictEqual(spec.tabs.length, 8);
+  assert.ok(spec.groups.ht && spec.groups.ht.keys.indexOf('htEnabled') >= 0);
   const text = JSON.stringify(spec);
   assert.ok(text.indexOf('token') < 0);
   assert.ok(text.indexOf('pinHash') < 0);
