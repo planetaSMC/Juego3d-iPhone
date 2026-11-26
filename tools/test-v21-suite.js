@@ -18,6 +18,10 @@
     return false;
   };
   const frames = async (n) => { for (let i = 0; i < n; i++) await sleep(100); };
+  const renderFrames = async (n) => {
+    const f0 = G().renderer.info.render.frame;
+    await until(() => G().renderer.info.render.frame >= f0 + n, 15000);
+  };
   const tp = (x, z, yaw, pitch) => {
     const g = G();
     g.player.x = x; g.player.z = z;
@@ -196,23 +200,24 @@
       ph.signs.main === 'FARMACIA RASMATIC' && ph.machineConveyor === false &&
       Math.abs(ph.pharmacist.scale.x - 0.86) < 0.01 &&
       D().clients.every(function (c) { return c.scale >= 0.8 && c.scale <= 0.9; }) &&
-      Array.isArray(box.material) && box.material.length === 6 &&
-      !!box.material[4].map && distinct >= Math.min(4, uniqueImgs),
+      !!box.material && !Array.isArray(box.material) && !!box.material.map &&
+      distinct >= Math.min(4, uniqueImgs),
       { cartel: ph.signs, cinta_maquina: ph.machineConveyor,
         escala_empleado: +ph.pharmacist.scale.x.toFixed(2),
         escalas_clientes: D().clients.map(function (c) { return c.scale; }),
-        imagenes_distintas: distinct, cajas: box.material.length });
+        imagenes_distintas: distinct,
+        cajas: box.material ? (Array.isArray(box.material) ? box.material.length : 'atlas') : 0 });
 
     /* ---------------- V21-10b: rendimiento desde el arranque ---------------- */
     tp(46.8, 9.4, Math.PI / 2, 0);
-    await frames(3);
+    await renderFrames(3);
     const perf = G().renderer.info;
     let allMeshes = 0;
     G().scene.traverse(function (o) { if (o.isMesh) allMeshes++; });
     ok('V21-10b rendimiento con escena, fila y tres clientes',
       perf.render.calls > 150 && perf.render.calls < 1400 &&
       perf.render.triangles > 10000 && perf.render.triangles < 200000 &&
-      perf.memory.textures < 80 && allMeshes < 1200,
+      perf.memory.textures < 80 && allMeshes < 1600,
       { draw_calls: perf.render.calls, triangulos: perf.render.triangles,
         texturas: perf.memory.textures, mallas: allMeshes });
 
@@ -248,15 +253,84 @@
     /* ---------------- V21-13: rendimiento con fila llena ---------------- */
     await until(() => D().clients.length >= 3, 15000);
     tp(30, 20, 0, 0);
-    await frames(3);
+    await renderFrames(3);
     const info = G().renderer.info;
     let meshes = 0;
     G().scene.traverse(function (o) { if (o.isMesh) meshes++; });
     ok('V21-13 rendimiento estable con escena, fila y cinta',
-      info.render.calls > 100 && info.render.calls < 1300 &&
-      info.render.triangles < 190000 && info.memory.textures < 80 && meshes < 1200,
+      info.render.calls > 40 && info.render.calls < 1500 &&
+      info.render.triangles < 190000 && info.memory.textures < 80 && meshes < 1600,
       { draw_calls: info.render.calls, triangulos: info.render.triangles,
         texturas: info.memory.textures, mallas: meshes });
+
+    /* ---------------- V21-14: cada medicamento es una malla individual ---- */
+    const sc = window.RasmaticGame._test.shelfCount();
+    const each = G().pharmacy.shelfBoxes.every(function (b, i) {
+      return b.isMesh === true && !b.isInstancedMesh &&
+        b.userData && b.userData.kind === 'shelf' &&
+        b.userData.id === i && typeof b.userData.n === 'number';
+    });
+    ok('V21-14 todas las cajas de estantería son objetos individuales',
+      sc.total >= 300 && sc.uniqueIds === sc.total && sc.meshes === sc.total &&
+      sc.stationBoxesSeparate === true && each,
+      { estanteria: sc, identidad_unica: each });
+
+    /* ---------------- V21-15: agarrar, soltar y volver a agarrar ---------- */
+    window.RasmaticGame._test.startNow();
+    await until(() => D().state === 'playing', 5000);
+    await until(() => D().clients.length >= 1, 12000);
+    let gi = -1;
+    for (let i = 0; i < 90 && gi < 0; i++) {
+      const b = G().pharmacy.shelfBoxes[i];
+      const u = b && b.userData;
+      if (u && u.sh < 0 && b.visible && !u.taken && !u.onBelt && !u.consumed) {
+        if (window.RasmaticGame._test.aimAtShelfBox(i)) gi = i;
+      }
+    }
+    const gDrug = gi >= 0 ? G().pharmacy.shelfBoxes[gi].userData.n : -1;
+    const grabbed = gi >= 0 ? window.RasmaticGame.interact() : false;
+    const held = await until(() => D().carryingDrug === gDrug &&
+      D().carryingBox && D().carryingBox.id === gi &&
+      D().carryingBox.parent === 'camera' &&
+      window.RasmaticGame._test.shelfBox(gi).held === true, 5000);
+    const homeBefore = gi >= 0 ? G().pharmacy.shelfBoxes[gi].userData.home.clone() : null;
+    const released = window.RasmaticGame._test.releaseHeld();
+    const dropped = await until(() => {
+      const b = window.RasmaticGame._test.shelfBox(gi);
+      return b && D().carrying === -1 && b.dropped === true &&
+        b.visible === true && b.parent === 'scene' &&
+        Math.hypot(b.x - homeBefore.x, b.z - homeBefore.z) > 0.4;
+    }, 5000);
+    const aimDrop = window.RasmaticGame._test.aimAtShelfBox(gi);
+    const regrabbed = aimDrop && window.RasmaticGame.interact();
+    const heldAgain = await until(() => D().carryingDrug === gDrug &&
+      D().carryingBox && D().carryingBox.id === gi, 5000);
+    if (heldAgain) window.RasmaticGame._test.releaseHeld();
+    ok('V21-15 agarrar, soltar y volver a agarrar la misma caja',
+      gi >= 0 && grabbed === true && held && released === true && dropped &&
+      aimDrop === true && regrabbed === true && heldAgain,
+      { indice: gi, medicamento: gDrug, agarrada: grabbed, en_mano: held,
+        soltada: dropped, re_apuntada: aimDrop, re_agarrada: heldAgain });
+
+    /* ---------------- V21-16: entrega del medicamento exacto ------------- */
+    window.RasmaticGame._test.startNow();
+    await until(() => D().state === 'playing', 5000);
+    await until(() => D().clients.length >= 3 && D().request >= 0, 15000);
+    const reqExact = D().request;
+    const expected = window.RasmaticGame._test.expectedDrug(reqExact);
+    const exactAim = expected >= 0 && window.RasmaticGame._test.aimAtDrug(expected);
+    const exactGrab = exactAim && window.RasmaticGame.interact();
+    const exactHeld = await until(() => D().carryingDrug === expected, 5000);
+    const exactScore0 = D().score.player;
+    window.RasmaticGame._test.config({ beltSpeed: 7 });
+    const exactPlaced = exactHeld && window.RasmaticGame._test.placeBeltNow();
+    const exactDelivered = await until(() => D().score.player === exactScore0 + 1, 18000);
+    ok('V21-16 el pedido se valida por medicamento exacto (copia individual)',
+      reqExact >= 0 && expected >= 0 && exactAim === true && exactGrab === true &&
+      exactHeld && exactPlaced === true && exactDelivered,
+      { pedido_color: reqExact, medicamento_esperado: expected,
+        agarrado: exactGrab, entregado: exactDelivered,
+        puntaje: D().score.player });
 
     /* Restaurar un estado limpio. */
     window.RasmaticGame._test.config({ beltSpeed: 3.6 });

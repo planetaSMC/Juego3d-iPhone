@@ -147,6 +147,39 @@
       { caminando: +walk.toFixed(2), corriendo: +run.toFixed(2),
         ratio: +(run / walk).toFixed(2) });
 
+    /* ---------------- P08b: A selecciona, agarra y suelta ---------------- */
+    const cGrab = D().request >= 0 ? D().request : 0;
+    const aimedPad = window.RasmaticGame._test.aimAtStation(cGrab);
+    const grabSent = N().press('interact');
+    const grabbedPad = await until(() => D().carrying === cGrab &&
+      D().carryingBox && D().carryingBox.parent === 'camera', 5000);
+    const dropSent = N().press('interact');
+    const droppedPad = await until(() => D().carrying === -1 &&
+      D().shelf && D().shelf.dropped >= 1, 5000);
+    ok('P08b A selecciona, agarra y suelta la caja apuntada',
+      aimedPad === true && grabSent === true && grabbedPad &&
+      dropSent === true && droppedPad,
+      { color: cGrab, apuntada: aimedPad, agarrada: grabbedPad,
+        soltada: droppedPad, estanteria: D().shelf });
+
+    /* ---------------- P08c: lo mismo dentro de VR Box ---------------- */
+    const cVr = (cGrab + 2) % 6;
+    VR.enable();
+    await sleep(350);
+    const aimedVr = window.RasmaticGame._test.aimAtStation(cVr);
+    const grabVr = N().press('interact');
+    const heldVr = await until(() => D().carrying === cVr &&
+      D().carryingBox && D().carryingBox.parent === 'camera', 5000);
+    const dropVr = N().press('interact');
+    const releasedVr = await until(() => D().carrying === -1, 5000);
+    VR.disable();
+    await sleep(250);
+    ok('P08c con VR Box el mando sigue apuntando, agarrando y soltando',
+      aimedVr === true && grabVr === true && heldVr &&
+      dropVr === true && releasedVr && VR.isActive() === false,
+      { color: cVr, apuntada: aimedVr, agarrada: heldVr,
+        soltada: releasedVr, vr: VR.isActive() });
+
     /* ---------------- P09: B/Start = atras ---------------- */
     N().press('pause');
     await until(() => {

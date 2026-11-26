@@ -6,8 +6,8 @@ mira, pedido visual, cinta funcional, fila de clientes, animaciones y menú de
 inicio con cuenta regresiva.
 
 - **App:** RASMATIC VR · `com.rasmatic.lugar3d`
-- **Rama:** `v21-gameplay-animation`
-- **Base:** V20.1 (`fix/v20.1-core-motion`, commit `b008e34`)
+- **Rama V21.1:** `v21.1-individual-medications`
+- **Base:** V21 en `main` (merge de V20.1 + V21)
 - **Motor:** Three.js r128, WebGL, WKWebView
 - **VR:** SBS, IPD, convergencia, distorsión y Head Tracking intactos
 
@@ -26,6 +26,10 @@ La caja apuntada se rodea con un **contorno amarillo** (carcasa BackSide +
 aristas). Al mirar afuera el contorno desaparece; al apuntar a otra caja se
 traslada. No hay etiquetas flotantes sobre los medicamentos.
 
+V21.1: **cada una de las 330 cajas de las estanterías es una malla individual**.
+Se puede apuntar, agarrar, soltar en el piso y volver a agarrar por separado.
+Ver `individual-medications.md`.
+
 ### Pedido por imagen
 El HUD muestra la **imagen real de la caja** del medicamento pedido, generada
 desde la misma textura del producto. No se muestra el nombre como elemento
@@ -36,8 +40,9 @@ cliente.
 El jugador recoge la caja con la mira y la coloca en la cinta. La caja viaja por
 el recorrido en L, sube la rampa y llega al mostrador. El empleado la recoge,
 hace la animación de entrega y se la pasa al cliente. La validación ocurre al
-final: si el color no coincide, no suma, vuelve al stock y el cliente sigue
-esperando. Si coincide, sube el puntaje y la fila avanza.
+final: se compara el **medicamento exacto**, no solo el color. Si no coincide,
+no suma, la caja vuelve a su lugar y el cliente sigue esperando. Si coincide,
+sube el puntaje y la fila avanza.
 
 ### Fila de clientes
 Tres clientes ocupan posiciones fijas frente al mostrador, cada uno con su
@@ -75,8 +80,8 @@ cliente nuevo. Tienen espera, caminata, recepción y salida animadas.
 
 | Archivo | Cambio |
 |---|---|
-| `web/mobile/game.js` | mira, pedido por imagen, cinta, cola, menú, cuenta, animaciones |
-| `web/v20/pharmacy-scene.js` | carteles, cajas de color, escala, cinta de máquina eliminada, API de cinta/imagen |
+| `web/mobile/game.js` | mira, agarre/soltura por caja real, pedido por imagen, cinta, cola, menú, cuenta, animaciones |
+| `web/v20/pharmacy-scene.js` | cajas individuales, atlas por medicamento, carteles, escala, cinta de máquina eliminada, API de cinta/imagen |
 | `web/v20/pharmacy-core.js` | bloqueo de movimiento en menú/cuenta; cámara intacta |
 | `web/vr/vr-preview.js` | `aimQuaternion()` para la mira con Head Tracking |
 | `web/v21/v21.css` | mira, menú, cuenta regresiva y pedido visual |
@@ -111,11 +116,13 @@ node tools/test-pad.js
 cd windows-calibrator; npm test
 ```
 
-Resultados de la última ejecución: ver `testing-report.md`.
+Resultados de la última ejecución local: `test-v21` **17/17**, `test-pad`
+**23/23**, `test-v20` **18/18**, `test-web` **30/30**, `test-vr` **34/34**,
+`check-xcode` **162/162** y calibrador Windows **62/62**. Ver `testing-report.md`.
 
-Compilación real: **BUILD SUCCEEDED** en GitHub Actions (Xcode 16.4, run
-45880086744). IPA sin firmar de 840.012 bytes, SHA-256
-`4287E5FE…533588`, con `www/v21/v21.css` verificado. La firma e instalación en
+La compilación iOS de V21.1 dio **BUILD SUCCEEDED** en GitHub Actions (run
+45890568451, Xcode 16.4): IPA de 843.351 bytes, SHA-256
+`A0F91D19…9101C7D9`, verificado con `verify-ipa.js`. La firma e instalación en
 iPhone siguen pendientes.
 
 ## 6. Documentos V21
@@ -123,5 +130,6 @@ iPhone siguen pendientes.
 - `conveyor-delivery.md` — recorrido, velocidad, validación y animaciones.
 - `start-menu.md` — menú, cuenta regresiva y congelación del reloj.
 - `aim-and-queue.md` — mira, contorno, pedido por imagen y fila.
+- `individual-medications.md` — cajas individuales, agarre/soltura y mandos.
 - `testing-report.md` — pruebas y evidencias.
 - `limitations.md` — lo que no se validó en hardware real.

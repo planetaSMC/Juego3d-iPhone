@@ -1,4 +1,4 @@
-# RASMATIC VR · versión iPhone (V21)
+# RASMATIC VR · versión iPhone (V21.1)
 
 Port del juego **RASMATIC Lugar 3D** a **una sola app iOS**:
 
@@ -8,8 +8,8 @@ Port del juego **RASMATIC Lugar 3D** a **una sola app iOS**:
 | Bundle ID | `com.rasmatic.lugar3d` |
 | Target / esquema | `RasmaticVR` |
 | Artefacto | `dist/RASMATIC-VR-unsigned.ipa` |
-| Rama de desarrollo | `v21-gameplay-animation` |
-| Base | V20.1 (`fix/v20.1-core-motion`, `b008e34`) |
+| Rama de desarrollo | `v21.1-individual-medications` |
+| Base | `main` (V21 ya integrada) |
 | Punto de recuperación V19 | rama `v19-recovery` (commit `53f410b`) |
 
 La app incluye:
@@ -40,6 +40,15 @@ V21 añade:
 - **Animaciones** de clientes, empleado, cajas y cinta.
 - **FARMACIA RASMATIC** en el cartel; cajas de colores; personajes a escala
   humana; cinta de la máquina eliminada.
+
+V21.1 añade:
+
+- **Cada medicamento de las estanterías es una malla individual** (330 cajas):
+  se puede apuntar, agarrar, soltar en el piso y volver a agarrar por separado.
+- La caja real se lleva en la mano; no se sustituye por un cubo genérico.
+- La entrega valida el **medicamento exacto**, no solo el color.
+- El mando físico permite mover, apuntar, seleccionar, agarrar, colocar y
+  soltar, tanto con VR Box como sin VR.
 
 V20 **reemplaza por completo** el mapa anterior (góndolas, productos y logo del
 almacén). No quedan elementos ocultos ni superpuestos.
@@ -238,10 +247,11 @@ Resultados de la última ejecución (2026-11-26, Windows + Edge headless):
 | Suite | Resultado |
 |---|---|
 | `check-xcode.js` | **162/162** |
+| `test-v21.js` | **17/17** |
 | `test-v20.js` | **18/18** |
 | `test-web.js` | **30/30** + horizontal |
 | `test-vr.js` | **34/34** |
-| `test-pad.js` | **21/21** |
+| `test-pad.js` | **23/23** |
 | calibrador Windows | **62/62** |
 | `verify-ipa.js` (IPA sintético) | **OK** |
 
@@ -264,6 +274,7 @@ Capturas en `docs/evidencias/` y `docs/evidencias/v20/`.
 | `docs/v20/limitations.md` | límites de la validación V20 |
 | `docs/v21/README.md` | resumen de gameplay y archivos V21 |
 | `docs/v21/aim-and-queue.md` | mira, contorno, pedido y fila |
+| `docs/v21/individual-medications.md` | cajas individuales, agarre/soltura y mandos |
 | `docs/v21/conveyor-delivery.md` | recorrido y validación de la cinta |
 | `docs/v21/start-menu.md` | menú y cuenta regresiva |
 | `docs/v21/testing-report.md` | pruebas V21 |
@@ -287,11 +298,16 @@ Implementado y probado en simulación:
 - sincronización Windows-iPhone por protocolo con persistencia y `ack`;
 - V21: menú/cuenta, mira con contorno, pedido por imagen, cinta funcional,
   fila de clientes y animaciones.
+- V21.1: 330 medicamentos individuales, agarre/soltura de la caja real y
+  validación por medicamento exacto; controles de mando verificados en VR y
+  fuera de VR (simulación).
 
-**Compilación iOS:** V21 compiló en GitHub Actions con Xcode 16.4
-(`BUILD SUCCEEDED`, runs 45880086744 y 45880239776). IPA sin firmar de 840.012
-bytes; el SHA-256 varía por marcas de tiempo (observados `4287E5FE…` y
-`66714AB0…`), verificado con `verify-ipa.js`.
+**Compilación iOS:** V21.1 compiló en GitHub Actions con Xcode 16.4
+(`BUILD SUCCEEDED`, run 45890568451). IPA sin firmar de **843.351 bytes**,
+SHA-256 `A0F91D19A4DAAC2BB025A58A0578DCCFE1206F343804968283ECCB8C9101C7D9`,
+verificado con `verify-ipa.js`; el contenido de `www/` coincide con `web/`
+(normalizando CRLF/LF). V21 ya había compilado en `main` (runs 45880086744 y
+45880239776).
 
 **Pendiente de validación física** (no se afirma que funcione en hardware):
 
@@ -300,7 +316,8 @@ bytes; el SHA-256 varía por marcas de tiempo (observados `4287E5FE…` y
 - Wi-Fi entre PC e iPhone reales;
 - FPS y consumo en la GPU del iPhone.
 
-Antes de publicar V21 como terminada hay que completar esos puntos. Ver
+Antes de publicar V21.1 como terminada hay que completar esos puntos. Ver
 **`docs/v21/limitations.md`** y **`docs/v20/limitations.md`**.
 
-`main` no se modifica hasta que la validación física esté aprobada.
+`main` contiene V21; V21.1 se desarrolla en `v21.1-individual-medications` y
+requiere recompilar el IPA antes de integrarse.

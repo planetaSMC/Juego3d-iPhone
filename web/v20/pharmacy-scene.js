@@ -113,11 +113,61 @@ function drugImageURL(d){
   if(!DRUG_IMG[key]) DRUG_IMG[key]=frontCanvas(d).toDataURL('image/png');
   return DRUG_IMG[key];
 }
-const MC=[];
-function drugKit(d){const i=DRUGS.indexOf(d);if(!MC[i]){const f=makeBoxFront(d),sd=makeBoxSide(d);
-  const mk=(map,col)=>new THREE.MeshStandardMaterial(map?{map,roughness:.6,color:0xffffff}:{color:col,roughness:.6});
-  MC[i]={f,m:[mk(sd),mk(sd),mk(null,d.top),mk(null,d.band),mk(f),mk(sd)]};}return MC[i];}
-function makeDrugMats(d){return drugKit(d).m;}
+const MC = {};
+const ATLAS_W = 1024, ATLAS_H = 320;
+const ATLAS_RECT = {
+  front: [0, 0, 512, 320],
+  side: [512, 0, 256, 320],
+  top: [768, 0, 256, 160],
+  bottom: [768, 160, 256, 160]
+};
+function sideCanvas(d){
+  if(!SIDE_CANVAS[d.name]) makeBoxSide(d);
+  return SIDE_CANVAS[d.name];
+}
+function boxAtlas(d){
+  if(MC[d.name] && MC[d.name].canvas) return MC[d.name].canvas;
+  const c=document.createElement('canvas');c.width=ATLAS_W;c.height=ATLAS_H;
+  const x=c.getContext('2d');
+  x.fillStyle=d.top;x.fillRect(0,0,ATLAS_W,ATLAS_H);
+  x.drawImage(frontCanvas(d),0,0);
+  x.drawImage(sideCanvas(d),512,0);
+  x.fillStyle=d.top;x.fillRect(768,0,256,160);
+  x.fillStyle=d.band;x.fillRect(768,160,256,160);
+  x.fillStyle='rgba(255,255,255,.14)';x.fillRect(768,0,256,18);
+  x.fillStyle=d.band;x.fillRect(768,140,256,20);
+  const rec = MC[d.name] || (MC[d.name] = {});
+  rec.canvas = c;
+  return c;
+}
+function drugMaterial(d){
+  if(!MC[d.name] || !MC[d.name].mat){
+    const tex=new THREE.CanvasTexture(boxAtlas(d));
+    tex.anisotropy=8;
+    MC[d.name] = MC[d.name] || {};
+    MC[d.name].mat = new THREE.MeshStandardMaterial({map:tex,roughness:.6,color:0xffffff});
+  }
+  return MC[d.name].mat;
+}
+function atlasBoxGeometry(w,h,d){
+  const g=new THREE.BoxGeometry(w,h,d);
+  const uv=g.attributes.uv;
+  const faces=['side','side','top','bottom','front','side'];
+  g.groups.forEach(function(grp){
+    const r=ATLAS_RECT[faces[grp.materialIndex] || 'side'];
+    for(let i=grp.start;i<grp.start+grp.count;i++){
+      const vi=g.index.getX(i);
+      const u=uv.getX(vi), v=uv.getY(vi);
+      uv.setXY(vi,
+        (r[0]+u*r[2])/ATLAS_W,
+        1-((r[1]+(1-v)*r[3])/ATLAS_H));
+    }
+  });
+  uv.needsUpdate=true;
+  return g;
+}
+function drugKit(d){return {m:drugMaterial(d)};}
+function makeDrugMats(d){return drugMaterial(d);}
 
 /* â•â•â•â•â•â• MOTOR 3D â•â•â•â•â•â• */
 const GOAL=5, BG=0xbcd3c8, EYE=3.6;
@@ -208,7 +258,7 @@ const SIGN_SUB='SAN RAFAEL Â· MENDOZA  â€”  SALUD Y BIENESTAR';
 const shelfMat=std(0xdfe9e4,.5,.05), frameMat=std(0xb78a5b,.65), greenM=std(0x1fa070,.5,.1);
 const ledStripM=new THREE.MeshBasicMaterial({color:0x9ff5d8});
 const steel=std(0xb9c2c7,.3,.85);
-const SB=[], BOXG=new THREE.BoxGeometry(1.15,.95,.5);
+const SB=[], BOXG=atlasBoxGeometry(1.15,.95,.5);
 function signMesh(t,w,col){
   const c=document.createElement('canvas');c.width=640;c.height=110;const q=c.getContext('2d');
   q.fillStyle=col;q.fillRect(0,0,640,110);q.fillStyle='rgba(255,255,255,.2)';q.fillRect(0,0,640,10);
@@ -225,7 +275,13 @@ function stockRow(g,ly,list,span,zf,fy,off,sh=SHP.length-1){
     const b=new THREE.Mesh(BOXG,makeDrugMats(DRUGS[di]));
     b.position.copy(g.localToWorld(new THREE.Vector3(-span/2+.65+i*1.3,ly+.54,zf)));
     b.rotation.y=g.rotation.y+fy;
-    b.userData={home:b.position.clone(),n:di,ry:b.rotation.y,sh:sh};
+    /* Cada caja es una malla independiente: se puede apuntar, agarrar,
+       soltar y volver a tomar por separado. No se fusiona ninguna. */
+    b.userData={
+      home:b.position.clone(), q:b.quaternion.clone(), n:di, ry:b.rotation.y,
+      sh:sh, id:SB.length, kind:'shelf', taken:false, dropped:false,
+      onBelt:false, held:false, consumed:false
+    };
     scene.add(b);SB.push(b);
   }
 }
@@ -480,7 +536,7 @@ const MB=[];
 SY.forEach((y,l)=>{
   for(let k=0;k<6;k++){
     const dIdx=(l*6+k)%DRUGS.length;
-    const geo=new THREE.BoxGeometry(.9,.8,.5);
+    const geo=atlasBoxGeometry(.9,.8,.5);
     const m=new THREE.Mesh(geo,makeDrugMats(DRUGS[dIdx]));
     m.position.set(-2.4+k*1.2,y+.45,.3);
     m.userData={home:m.position.clone(),n:dIdx,mb:true};
@@ -498,57 +554,12 @@ const pad=new THREE.Group(); car.add(pad);
 bx(.28,.28,.9,aluM,0,0,.45,pad); bx(.9,.78,.08,darkM,0,0,0,pad);
 
 
-    /* ---------------- optimizaciÃ³n de estanterÃ­as ----------------
-       El HTML usa 330 cajas con 6 materiales cada una (~1.980 draw calls).
-       Se fusionan las cajas decorativas por material; las 6 cajas de las
-       estaciones RASMATIC se mantienen separadas para poder ocultarlas
-       cuando se agota el stock. */
+    /* ---------------- cajas individuales ----------------
+       V21.1: ninguna caja de estantería se fusiona. Cada medicamento es una
+       malla independiente con su propia identidad (userData.id, n) para poder
+       apuntarla, agarrarla, soltarla y volver a tomarla. El atlas por
+       medicamento mantiene una sola llamada de dibujo por caja. */
     const OCCLUDERS = [];
-    function mergeShelfBoxes(boxes, keep) {
-      const groups = new Map();
-      const geom = BOXG;
-      const pos = geom.attributes.position;
-      const nor = geom.attributes.normal;
-      const uv = geom.attributes.uv;
-      const idx = geom.index;
-      const keepSet = new Set(keep || []);
-      boxes.forEach(function (b) {
-        if (keepSet.has(b)) return;
-        b.updateMatrixWorld(true);
-        const mats = b.material;
-        const arr = Array.isArray(mats) ? mats : [mats];
-        const m = b.matrixWorld;
-        geom.groups.forEach(function (grp) {
-          const mat = arr[grp.materialIndex] || arr[0];
-          let data = groups.get(mat);
-          if (!data) {
-            data = { pos: [], nor: [], uv: [] };
-            groups.set(mat, data);
-          }
-          for (let i = 0; i < grp.count; i++) {
-            const vi = idx.getX(grp.start + i);
-            const v = new THREE.Vector3(pos.getX(vi), pos.getY(vi), pos.getZ(vi)).applyMatrix4(m);
-            const n = new THREE.Vector3(nor.getX(vi), nor.getY(vi), nor.getZ(vi)).transformDirection(m);
-            data.pos.push(v.x, v.y, v.z);
-            data.nor.push(n.x, n.y, n.z);
-            data.uv.push(uv.getX(vi), uv.getY(vi));
-          }
-        });
-        b.visible = false;
-        if (b.parent) b.parent.remove(b);
-      });
-      groups.forEach(function (data, mat) {
-        const g = new THREE.BufferGeometry();
-        g.setAttribute('position', new THREE.Float32BufferAttribute(data.pos, 3));
-        g.setAttribute('normal', new THREE.Float32BufferAttribute(data.nor, 3));
-        g.setAttribute('uv', new THREE.Float32BufferAttribute(data.uv, 2));
-        const merged = new THREE.Mesh(g, mat);
-        merged.frustumCulled = false;
-        scene.add(merged);
-        OCCLUDERS.push(merged);
-      });
-      return groups.size;
-    }
 
     /* ---------------- colisiones del HTML ---------------- */
     function blocked(x, z) {
@@ -636,14 +647,12 @@ bx(.28,.28,.9,aluM,0,0,.45,pad); bx(.9,.78,.08,darkM,0,0,0,pad);
       if (!box) return;
       const pos = new THREE.Vector3();
       box.getWorldPosition(pos);
+      box.userData.stationColor = ci;
       stations.push({
         color: ci, drug: box.userData.n, box: box, home: box.userData.home.clone(),
         x: pos.x, y: pos.y, z: pos.z
       });
     });
-
-    const stationBoxes = stations.map(function (s) { return s.box; });
-    mergeShelfBoxes(SB, stationBoxes);
 
     const mats = {
       coat: TM(0xf4f8f6), skin: TM(0xf1cfae), hair: TM(0x2b1b12),
@@ -700,6 +709,26 @@ bx(.28,.28,.9,aluM,0,0,.45,pad); bx(.9,.78,.08,darkM,0,0,0,pad);
       getSpeed: function () { return beltSpeed; }
     };
 
+    function drugColor(n) {
+      const st = stations.filter(function (s) { return s.drug === n; })[0];
+      return st ? st.color : ((n % 6) + 6) % 6;
+    }
+    function resetShelfBoxes() {
+      SB.forEach(function (b) {
+        const u = b.userData;
+        if (b.parent !== scene) scene.attach(b);
+        b.position.copy(u.home);
+        if (u.q) b.quaternion.copy(u.q);
+        b.scale.set(1, 1, 1);
+        b.visible = true;
+        u.taken = false;
+        u.dropped = false;
+        u.onBelt = false;
+        u.held = false;
+        u.consumed = false;
+      });
+    }
+
     const api = {
       THREE: THREE, scene: scene, camera: cam, renderer: R,
       playerStart: { x: 46.8, z: 9.4, yaw: Math.PI / 2, pitch: -0.05 },
@@ -708,6 +737,8 @@ bx(.28,.28,.9,aluM,0,0,.45,pad); bx(.9,.78,.08,darkM,0,0,0,pad);
       drugs: DRUGS, cats: CATS, customers: CUST, colors: COLORS,
       shelfBoxes: SB, machineBoxes: MB, shelves: SHP, deco: DECO,
       machine: machine, counter: counter, stations: stations,
+      drugColor: drugColor, resetShelfBoxes: resetShelfBoxes,
+      drugGeometry: function (w, h, d) { return atlasBoxGeometry(w, h, d); },
       mats: mats, makePerson: makePerson, makeDrugMats: makeDrugMats,
       drugKit: drugKit, signMesh: signMesh, std: std, TM: TM,
       pharmacist: AT, conveyor: conveyor, occluders: OCCLUDERS,
