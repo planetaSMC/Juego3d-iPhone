@@ -54,8 +54,11 @@ node tools/verify-ipa.js dist/RASMATIC-VR-unsigned.ipa \
   --expect com.rasmatic.lugar3d --variant v20
 ```
 
-> Sin macOS/Xcode no se generó un `.ipa` real en este entorno. El verificador
-> se probó con un `.ipa` sintético. Ver `docs/v20/limitations.md`.
+> La compilación real se hizo en GitHub Actions con Xcode 16.4: **BUILD
+> SUCCEEDED** (run 45809544456). IPA sin firmar de 829.907 bytes, SHA-256
+> `7778E6B44FB98D99FE20E3E5E4B0033FA1FD6963B256D2577CE89BA7CA801273`.
+> La firma e instalación en iPhone siguen pendientes. Ver
+> `docs/v20/v20.1-core-motion-fix.md` y `docs/v20/limitations.md`.
 
 ---
 
@@ -249,7 +252,7 @@ Implementado y probado en simulación:
 
 **Pendiente de validación física** (no se afirma que funcione en hardware):
 
-- compilar/firmar con Xcode e instalar en un iPhone;
+- firmar el IPA e instalar en un iPhone;
 - Core Motion real, mando Bluetooth real, VR Box real;
 - Wi-Fi entre PC e iPhone reales;
 - FPS y consumo en la GPU del iPhone.

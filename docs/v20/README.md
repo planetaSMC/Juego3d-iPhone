@@ -78,10 +78,15 @@ node tools/verify-ipa.js dist/RASMATIC-VR-unsigned.ipa \
 
 ## Estado
 
-- Rama de desarrollo: `v20`.
+- Rama V20 original: `v20`.
+- Corrección de compilación: rama `fix/v20.1-core-motion` y PR #2.
 - Punto de recuperación V19: rama `v19-recovery` (commit `53f410b`).
-- `main` no se modifica hasta aprobar la validación física.
+- `main` conserva V20 fusionado; V20.1 está en PR y no se fusiona
+  automáticamente.
 - Resultados de simulación: **139/139** estructura, **30/30** juego,
   **18/18** V20, **34/34** VR, **21/21** mando y **62/62** calibrador Windows.
-- Pendiente: compilación/firma real, iPhone, Core Motion, Bluetooth y VR Box
-  físicos. Ver `limitations.md`.
+- Compilación real: **BUILD SUCCEEDED** en Xcode 16.4 / iPhoneOS 18.5
+  (run 45809544456). IPA sin firmar de 829.907 bytes, SHA-256
+  `7778E6B4…01273`.
+- Pendiente: firma, instalación en iPhone, Core Motion, Bluetooth y VR Box
+  físicos. Ver `limitations.md` y `v20.1-core-motion-fix.md`.

@@ -6,15 +6,21 @@ Este documento separa lo **implementado y probado en simulación** de lo que
 
 ## 1. Compilación y firma
 
-- **No hay macOS ni Xcode en este entorno.** No se ejecutó `xcodebuild`, no se
-  creó un `.app` real y no se firmó nada.
-- El `.ipa` de V20 **no se generó localmente**. El workflow
-  `.github/workflows/ios-ipa.yml` está preparado para producirlo en macOS.
-- El verificador `tools/verify-ipa.js` se probó con un `.ipa` **sintético**
-  (Mach-O de prueba + `www/` real). Eso valida estructura y contenido, no la
-  compilación de Swift ni la firma.
+- **No hay macOS ni Xcode en el equipo local.** La compilación real se ejecutó
+  en GitHub Actions con Xcode 16.4 / iPhoneOS 18.5 y terminó en
+  **BUILD SUCCEEDED** (run 45809544456).
+- Sí existe un `.ipa` real **sin firmar**: `RASMATIC-VR-unsigned.ipa`,
+  829.907 bytes, SHA-256
+  `7778E6B44FB98D99FE20E3E5E4B0033FA1FD6963B256D2577CE89BA7CA801273`.
+  Queda como artefacto `rasmatic-v20-ipa` del run y como copia local ignorada
+  por Git en `dist/`.
+- **No se firmó** el IPA ni se instaló en un iPhone. Sideloadly/AltStore/Xcode
+  siguen siendo necesarios para instalarlo.
+- El verificador `tools/verify-ipa.js` se probó primero con un `.ipa`
+  **sintético** y después con el IPA real de Actions; ambos pasaron.
 - `check-xcode.js` revisa el proyecto, el plist, los permisos y los espejos,
-  pero no sustituye a Xcode.
+  pero no sustituye a Xcode. La compilación real se usa como validación final
+  de Swift.
 
 ## 2. Sensores y Head Tracking
 
@@ -82,7 +88,8 @@ Este documento separa lo **implementado y probado en simulación** de lo que
 
 | Función | Estado |
 |---|---|
-| Compilar y firmar la app | pendiente de macOS/Xcode |
+| Compilar la app | hecho en GitHub Actions (Xcode 16.4) |
+| Firmar el IPA | pendiente (cuenta Apple) |
 | Instalar en iPhone | pendiente |
 | Core Motion real | pendiente |
 | Mando Bluetooth real | pendiente |
@@ -106,8 +113,8 @@ Este documento separa lo **implementado y probado en simulación** de lo que
 
 ## 9. Recomendación antes de publicar
 
-1. Compilar en macOS con el workflow y revisar los logs de `xcodebuild`.
-2. Instalar en un iPhone y confirmar `NSMotionUsageDescription`.
+1. Firmar el IPA compilado y revisar que instale en un iPhone.
+2. Confirmar en el dispositivo el permiso `NSMotionUsageDescription`.
 3. Probar Head Tracking con el teléfono quieto, giros lentos y giros rápidos.
 4. Probar el mando Bluetooth con el joystick táctil apagado.
 5. Medir FPS con el escenario completo y VR activo.
