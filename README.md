@@ -270,7 +270,13 @@ Implementado y probado en simulación:
 - tres modos, tres dificultades, partida completa, bot/CNC;
 - joystick opcional, mando simulado, Head Tracking configurable;
 - SBS/IPD/convergencia y panel VR;
-- sincronización Windows-iPhone por protocolo con persistencia y `ack`.
+- sincronización Windows-iPhone por protocolo con persistencia y `ack`;
+- V21: menú/cuenta, mira con contorno, pedido por imagen, cinta funcional,
+  fila de clientes y animaciones.
+
+**Compilación iOS:** V21 compiló en GitHub Actions con Xcode 16.4
+(`BUILD SUCCEEDED`, run 45880086744). IPA sin firmar de 840.012 bytes,
+SHA-256 `4287E5FE…533588`, verificado con `verify-ipa.js`.
 
 **Pendiente de validación física** (no se afirma que funcione en hardware):
 
@@ -279,7 +285,7 @@ Implementado y probado en simulación:
 - Wi-Fi entre PC e iPhone reales;
 - FPS y consumo en la GPU del iPhone.
 
-Antes de publicar V20 como terminada hay que completar esos puntos. Ver
-**`docs/v20/limitations.md`**.
+Antes de publicar V21 como terminada hay que completar esos puntos. Ver
+**`docs/v21/limitations.md`** y **`docs/v20/limitations.md`**.
 
 `main` no se modifica hasta que la validación física esté aprobada.

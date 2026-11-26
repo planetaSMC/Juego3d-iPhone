@@ -113,6 +113,11 @@ cd windows-calibrator; npm test
 
 Resultados de la última ejecución: ver `testing-report.md`.
 
+Compilación real: **BUILD SUCCEEDED** en GitHub Actions (Xcode 16.4, run
+45880086744). IPA sin firmar de 840.012 bytes, SHA-256
+`4287E5FE…533588`, con `www/v21/v21.css` verificado. La firma e instalación en
+iPhone siguen pendientes.
+
 ## 6. Documentos V21
 
 - `conveyor-delivery.md` — recorrido, velocidad, validación y animaciones.

@@ -7,8 +7,10 @@ V21 está implementada y probada en simulación. No se probó en un iPhone físi
 - No hay macOS/Xcode en el equipo local.
 - La rama V21 es un cambio de web/JS/CSS; el target Swift y el bundle siguen
   siendo los de V20.1 (`com.rasmatic.lugar3d`, esquema `RasmaticVR`).
-- No se generó un `.ipa` de V21 en esta sesión. El workflow de V20.1 sigue
-  disponible y compiló en verde con Xcode 16.4.
+- **Sí se compiló V21 en GitHub Actions** (run 45880086744, Xcode 16.4):
+  `BUILD SUCCEEDED`, IPA de 840.012 bytes, SHA-256
+  `4287E5FEDBAD064EECA6E1B8D7C96B2C866B30623A86C6250232EF9FFB533588`,
+  verificado con `verify-ipa.js`.
 - No se instaló ni firmó la app.
 
 ## 2. Sensores y VR

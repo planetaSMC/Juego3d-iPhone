@@ -85,10 +85,23 @@ duplican). No se crean geometrías ni materiales por fotograma:
 - El rayo no modifica `PP.yaw/pitch` ni la posición del jugador.
 - `test-vr` sigue verificando IPD, convergencia, HUD por ojo e intensidad 3D.
 
-## 6. Qué no se probó
+## 6. Compilación iOS
 
-- Compilación real en GitHub Actions de esta rama V21 (el cambio es web/JS y CSS;
-  el target Swift es el de V20.1 que ya compiló).
+V21 se compiló en GitHub Actions con Xcode 16.4:
+
+| Dato | Valor |
+|---|---|
+| Run | [45880086744](https://github.com/planetaSMC/Juego3d-iPhone/actions/runs/45880086744) |
+| Resultado | **BUILD SUCCEEDED** |
+| IPA | `RASMATIC-VR-unsigned.ipa` |
+| Tamaño | **840.012 bytes** |
+| SHA-256 | `4287E5FEDBAD064EECA6E1B8D7C96B2C866B30623A86C6250232EF9FFB533588` |
+| `verify-ipa.js` | **OK** (bundle, Mach-O, 15 archivos clave, `www/v21/v21.css`) |
+
+Copia local ignorada por Git: `dist/RASMATIC-VR-unsigned.ipa`.
+
+## 7. Qué no se probó
+
 - Instalación en iPhone físico.
 - Sensores Core Motion reales, mando Bluetooth físico y VR Box física.
 - FPS y consumo reales en GPU de iPhone.
