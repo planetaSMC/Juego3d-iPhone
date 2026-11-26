@@ -270,7 +270,7 @@ No se afirma que el head tracking esté validado físicamente.
 | `web/index.html` (Head Tracking) | 267.542 | `8E71ED2F2C46EFBFB598A9CA4FABE64212A1F8D725D73790F7C1D5663BF65755` |
 | `web-classic/index.html` (Classic) | 267.445 | `873C357B48ADD1529285B71045981447A539DA9862FDADD3935EC866D60602A3` |
 | `web/mobile/game.js` | — | `87F8C95613A40A655914774C21A3FA554633DD21B159366A720A5D6E12CBAD80` |
-| `web/mobile/android-bridge.js` | — | `4616998E560CD69C85BE918963BFAA61049A6E29C9152EFD843195E1AB9D297A` |
+| `web/mobile/android-bridge.js` | — | `6AD5C69F1CFE5D9557E2B8C77259DF8AE702C2083461F1389CAF1354B32BBC65` |
 | `web/mobile/android-game.css` | — | `58D66AE44655BE7D0EA638371A5FB7116296D0FE764EABE493D50C4EF1A18572` |
 | `web/mobile/android-controls.css` | — | `29C186FA2ADE2F4896BD8A4B664E372531ADF1574A050D5EE1AA5791D228C180` |
 | `web/vr/vr-preview.js` | — | `F7477F9237EC783871CA8348BA1A8C48893BBAE2D290AD68C904A3F73C4CDD7E` |
@@ -279,8 +279,8 @@ No se afirma que el head tracking esté validado físicamente.
 
 Service workers:
 
-- Head Tracking: `rasmatic-ht-fc6b79f9fb4d80d7`
-- Classic: `rasmatic-classic-c1476918ab3dacc5`
+- Head Tracking: `rasmatic-ht-e9b7b839ed4c96a7`
+- Classic: `rasmatic-classic-a196a578abfc51f5`
 
 Estos hashes corresponden a la compilación local del 26/11/2026. Los `.ipa`
 reales se generan en macOS y su SHA-256 lo imprime `tools/build-ipa.sh` y el

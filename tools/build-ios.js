@@ -368,9 +368,16 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) &&
     .update(v.id)
     .update(html)
     .update(fs.readFileSync(path.join(v.web, 'mobile', 'game.js')))
+    .update(fs.readFileSync(path.join(v.web, 'mobile', 'android-bridge.js')))
+    .update(fs.readFileSync(path.join(v.web, 'mobile', 'modes.js')))
     .update(fs.readFileSync(path.join(v.web, 'mobile', 'android-game.css')))
+    .update(fs.readFileSync(path.join(v.web, 'mobile', 'android-controls.css')))
+    .update(fs.readFileSync(path.join(v.web, 'ios', 'ios-bridge.js')))
+    .update(fs.readFileSync(path.join(v.web, 'ios', 'ios.css')))
     .update(fs.readFileSync(path.join(v.web, 'vr', 'vr-preview.js')))
-    .update(fs.readFileSync(path.join(v.web, 'vr', 'vr-preview.css')));
+    .update(fs.readFileSync(path.join(v.web, 'vr', 'vr-preview.css')))
+    .update(fs.readFileSync(path.join(v.web, 'net', 'vr-link.js')))
+    .update(fs.readFileSync(path.join(v.web, 'net', 'vr-link.css')));
   if (v.headTracking) {
     hash.update(fs.readFileSync(path.join(v.web, 'headtracking', 'head-tracking.js')))
       .update(fs.readFileSync(path.join(v.web, 'headtracking', 'head-tracking.css')));

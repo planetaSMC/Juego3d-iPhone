@@ -77,9 +77,12 @@
     const stick = stickAllowed();
     const padActive = Math.hypot(pad.mx, pad.my) > 0.001;
     const running = !menu && (touch.run || pad.run);
+    /* El mando físico manda siempre que su stick no esté en reposo. La
+       opción de joystick solo apaga el TÁCTIL: si el mando está activo,
+       su movimiento debe seguir llegando al juego. */
     core.input({
-      mx: menu || !stick ? 0 : (padActive ? pad.mx : touch.mx),
-      my: menu || !stick ? 0 : (padActive ? pad.my : touch.my),
+      mx: menu ? 0 : (padActive ? pad.mx : (stick ? touch.mx : 0)),
+      my: menu ? 0 : (padActive ? pad.my : (stick ? touch.my : 0)),
       lx: menu ? 0 : pad.lx,
       ly: menu ? 0 : pad.ly,
       run: running

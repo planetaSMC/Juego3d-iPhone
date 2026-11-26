@@ -11,6 +11,7 @@
   const out = [];
   const ok = (name, cond, data) => out.push({ name, pass: !!cond, data });
   const D = () => window.RasmaticGame.debug();
+  const G = () => window.RasmaticCore.game;
   const VR = () => window.RasmaticVR;
   const app = window.RasmaticApp || {};
   const HT = window.RasmaticHeadTracking || null;
@@ -122,18 +123,29 @@
       { key: SKEY('rasmatic.joystick'),
         value: localStorage.getItem(SKEY('rasmatic.joystick')) });
 
-    /* El mando Bluetooth no se ve afectado. */
-    if (window.RasmaticInput) {
-      RasmaticInput.gamepad({ mx: 0.7, my: 0, lx: 0, ly: 0, run: false });
-      await sleep(40);
+    /* El mando Bluetooth no se ve afectado: además del estado del puente,
+       se comprueba que el personaje se mueva de verdad con el joystick
+       táctil desactivado. */
+    if (window.RasmaticInput && G()) {
+      G().player.x = 0;
+      G().player.z = 30;
+      await sleep(250);
+      const z0 = G().player.z;
+      RasmaticInput.gamepad({ mx: 0, my: 1, lx: 0, ly: 0, run: false });
+      let z1 = z0;
+      for (let i = 0; i < 20 && z1 > z0 - 0.3; i++) {
+        await sleep(100);
+        z1 = G().player.z;
+      }
       const pad = RasmaticInput.debug().pad;
-      ok('V19-06 mando Bluetooth sigue funcionando con joystick off',
-        Math.abs(pad.mx - 0.7) < 0.01, pad);
       RasmaticInput.gamepad({ mx: 0, my: 0, lx: 0, ly: 0, run: false });
-      await sleep(30);
+      await sleep(80);
+      ok('V19-06 mando Bluetooth sigue moviendo con joystick off',
+        Math.abs(pad.my - 1) < 0.01 && z1 < z0 - 0.3,
+        { pad, z0: +z0.toFixed(2), z1: +z1.toFixed(2) });
     } else {
-      ok('V19-06 mando Bluetooth sigue funcionando con joystick off', false,
-        { error: 'RasmaticInput no disponible' });
+      ok('V19-06 mando Bluetooth sigue moviendo con joystick off', false,
+        { error: 'RasmaticInput o RasmaticCore.game no disponible' });
     }
 
     /* Reactivar. */
