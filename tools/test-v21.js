@@ -191,6 +191,10 @@ async function main() {
     await sleep(600);
     await shot('v21-aim.png');
     await evaluate('window.RasmaticGame._test.config({ beltSpeed: 7 }); window.RasmaticGame.interact()');
+    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().carrying')) >= 0,
+      5000, 'caja en la mano');
+    await sleep(400);
+    await shot('v21-carry.png');
     await evaluate('window.RasmaticGame._test.placeBeltNow()');
     await sleep(900);
     await shot('v21-belt.png');

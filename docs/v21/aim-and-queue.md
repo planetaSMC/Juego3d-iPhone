@@ -19,12 +19,16 @@ dirección = (0,0,-1) aplicada a:
 ```
 
 - `Raycaster.far = CFG.aimRange` (16).
-- Objetos: las 6 cajas de estación visibles + las mallas fusionadas de las
-  estanterías (`pharmacy.occluders`).
-- Se toma el **primer impacto**. Si el primero es una estantería, no hay
-  selección: una caja detrás de otra no se puede seleccionar.
+- Objetos: **todas las cajas visibles de las estanterías** (`pharmacy.shelfBoxes`),
+  no solo las seis de estación. Cada caja es una malla individual.
+- Se excluyen las cajas que están en la mano, en la cinta o ya entregadas.
+- Se toma el **primer impacto**: ese medicamento es el objetivo, sin etiquetas
+  intermedias ni selección por proximidad.
 - La distancia de interacción es `CFG.aimTake` (5,6). El contorno puede verse a
   más distancia, pero RECOGER solo aparece si el jugador está cerca.
+
+V21.1: al agarrar se usa la malla real; al soltar lejos de la cinta la caja
+queda en el piso y se puede volver a apuntar. Ver `individual-medications.md`.
 
 ### Contorno
 
@@ -95,3 +99,5 @@ Posiciones (`QUEUE`):
 - V21-07: avance de fila y reposición.
 - V21-10: escala de personajes, cartel y cajas de color.
 - V21-11/12: mira y cuenta regresiva en VR.
+- V21-14/15/16: cajas individuales, soltar/volver a agarrar y validación
+  por medicamento exacto.

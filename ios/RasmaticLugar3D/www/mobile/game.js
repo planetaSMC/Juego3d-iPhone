@@ -197,6 +197,14 @@
   let scoreP = 0, scoreB = 0;
   let stockP = [], stockB = [];
   let carrying = -1, requestP = -1, requestB = -1;
+  /* V21.1: se lleva la caja real, no solo un color. carryingDrug y
+     carryingBox permiten validar y manipular cada medicamento por separado. */
+  let carryingDrug = -1, carryingBox = null, carryingFromStock = false;
+  /* Posición de la caja real en la mano. Se mantiene dentro del frustum
+     vertical (390x844) y del horizontal; no tapa la mira ni el pedido. */
+  const HAND_POS = { x: 0.08, y: -0.4, z: -1.6 };
+  const HAND_ROT = { x: -0.12, y: -0.32, z: 0.1 };
+  const HAND_SCALE = 0.5;
   let matchStart = 0, matchEnd = 0;
   let customerWaitUntil = 0, customerHideAt = 0;
   let nextBotAt = 0, bot = null;
@@ -863,11 +871,54 @@
     S.npc = { group: g, p: g.userData.p || {}, head: g.userData.H || null, tag: null };
   }
 
-  function drugLabel(c) {
+  function drugName(idx) {
     const ph = G && G.pharmacy ? G.pharmacy : window.RasmaticPharmacyApi;
-    const st = ph && ph.stations ? ph.stations.filter(function (s) { return s.color === c; })[0] : null;
-    const idx = st ? st.drug : COLOR_DRUGS[c];
-    return ph && ph.drugs && ph.drugs[idx] ? ph.drugs[idx].name.toUpperCase() : COLORS[c].name;
+    if (ph && ph.drugs && ph.drugs[idx]) return ph.drugs[idx].name.toUpperCase();
+    return 'MEDICAMENTO';
+  }
+
+  function drugLabel(c) {
+    const st = stationForColor(c);
+    return drugName(st ? st.drug : COLOR_DRUGS[c]);
+  }
+
+  function stationForColor(c) {
+    const ph = G && G.pharmacy ? G.pharmacy : window.RasmaticPharmacyApi;
+    return ph && ph.stations ? ph.stations.filter(function (s) { return s.color === c; })[0] : null;
+  }
+
+  function stationForBox(box) {
+    for (let i = 0; i < S.stations.length; i++) {
+      if (S.stations[i].box === box) return S.stations[i];
+    }
+    return null;
+  }
+
+  function boxColor(box) {
+    const st = stationForBox(box);
+    if (st) return st.def.c;
+    const n = box && box.userData ? box.userData.n : -1;
+    if (G && G.pharmacy && typeof G.pharmacy.drugColor === 'function') {
+      return G.pharmacy.drugColor(n);
+    }
+    return ((n % COLORS.length) + COLORS.length) % COLORS.length;
+  }
+
+  function targetDrug(t) {
+    if (!t) return -1;
+    if (typeof t.drug === 'number' && t.drug >= 0) return t.drug;
+    if (t.box && t.box.userData && typeof t.box.userData.n === 'number') {
+      return t.box.userData.n;
+    }
+    return t.pharmacy ? t.pharmacy.drug : COLOR_DRUGS[t.def.c];
+  }
+
+  function targetAvailable(t) {
+    if (!t || !t.box) return false;
+    if (t.box.userData && t.box.userData.consumed) return false;
+    const st = stationForBox(t.box);
+    if (st && !t.box.userData.taken && (stockP[st.def.c] || 0) <= 0) return false;
+    return true;
   }
 
   function buildStations() {
@@ -877,10 +928,16 @@
     ph.stations.forEach(function (s) {
       const box = s.box;
       box.visible = true;
+      box.userData.taken = false;
+      box.userData.dropped = false;
+      box.userData.onBelt = false;
+      box.userData.held = false;
+      box.userData.consumed = false;
+      box.userData.stationColor = s.color;
       STATIONS.push({ c: s.color, x: s.x, z: s.z });
       S.stations.push({
         def: { c: s.color, x: s.x, z: s.z }, group: box, box: box,
-        mat: null, edge: null, pharmacy: s
+        mat: null, edge: null, pharmacy: s, drug: s.drug
       });
     });
     updateStationSigns();
@@ -888,11 +945,15 @@
 
   function updateStationSigns() {
     /* V21: sin etiquetas flotantes. La caja se muestra u oculta según stock;
-       la selección se comunica solo con el contorno de la mira. */
+       la selección se comunica solo con el contorno de la mira.
+       V21.1: una caja tomada, en la mano, tirada o en la cinta sigue visible
+       aunque su stock sea 0; solo se oculta al ser entregada (consumed). */
     S.stations.forEach(function (st) {
       const n = stockP[st.def.c] || 0;
-      if (st.box) st.box.visible = n > 0;
-      if (st.edge) st.edge.visible = n > 0;
+      const u = (st.box && st.box.userData) || {};
+      const visible = !u.consumed && (n > 0 || u.taken || u.dropped || u.onBelt || u.held);
+      if (st.box) st.box.visible = visible;
+      if (st.edge) st.edge.visible = visible;
     });
   }
 
@@ -992,7 +1053,7 @@
   function buildHand() {
     /* V21: el jugador lleva una caja de medicamento real, no un cubo de color. */
     handMesh = new T.Mesh(
-      new T.BoxGeometry(0.9, 0.75, 0.4),
+      G.pharmacy.drugGeometry(0.9, 0.75, 0.4),
       new T.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
     );
     handMesh.position.set(0.55, -0.52, -1.25);
@@ -1169,7 +1230,7 @@
      V21 · CINTA DE ENTREGA + EMPLEADO
      ============================================================ */
   function buildBeltPool() {
-    const geo = new T.BoxGeometry(1.15, 0.95, 0.5);
+    const geo = G.pharmacy.drugGeometry(1.15, 0.95, 0.5);
     for (let i = 0; i < 4; i++) {
       const mesh = new T.Mesh(geo, new T.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }));
       mesh.visible = false;
@@ -1225,23 +1286,101 @@
         return false;
       }
     }
-    const mesh = S.beltPool.filter(function (m) { return !m.visible; })[0];
-    if (!mesh) {
-      toast('La cinta está llena', 'bad');
-      return false;
-    }
     const color = carrying;
-    const drug = stationDrug(color);
-    mesh.material = G.pharmacy.drugKit(G.pharmacy.drugs[drug]).m;
-    mesh.visible = true;
-    mesh.scale.set(1, 1, 1);
-    const item = { color: color, drug: drug, mesh: mesh, s: 0, held: false };
+    const drug = carryingDrug >= 0 ? carryingDrug : stationDrug(color);
+    let mesh = carryingBox;
+    if (mesh) {
+      if (mesh.parent !== G.place) G.place.attach(mesh);
+      const p0 = sampleBelt(0);
+      mesh.position.set(p0.x, p0.y + 0.48, p0.z);
+      mesh.rotation.set(0, p0.yaw, 0);
+      mesh.scale.set(1, 1, 1);
+      mesh.visible = true;
+      mesh.userData.held = false;
+      mesh.userData.dropped = false;
+      mesh.userData.onBelt = true;
+    } else {
+      /* Respaldo: si no hay caja real (por ejemplo, una partida restaurada
+         desde una prueba antigua), se usa una caja del pool. */
+      mesh = S.beltPool.filter(function (m) { return !m.visible; })[0];
+      if (!mesh) {
+        toast('La cinta está llena', 'bad');
+        return false;
+      }
+      mesh.material = G.pharmacy.drugKit(G.pharmacy.drugs[drug]).m;
+      mesh.visible = true;
+      mesh.scale.set(1, 1, 1);
+    }
+    const item = {
+      color: color, drug: drug, mesh: mesh, s: 0, held: false,
+      fromStock: !!carryingFromStock
+    };
     belt.items.push(item);
-    carrying = -1;
+    clearCarrying();
     setCarry(-1);
     updateStationSigns();
     toast('Medicamento en la cinta', 'ok');
     return true;
+  }
+
+  function clearCarrying() {
+    carrying = -1;
+    carryingDrug = -1;
+    carryingBox = null;
+    carryingFromStock = false;
+  }
+
+  function returnBoxHome(box) {
+    if (!box) return;
+    const u = box.userData || {};
+    if (!u.home) return;
+    if (box.parent !== G.place) G.place.attach(box);
+    box.position.copy(u.home);
+    if (u.q) box.quaternion.copy(u.q);
+    else box.rotation.set(0, u.ry || 0, 0);
+    box.scale.set(1, 1, 1);
+    box.visible = true;
+    u.taken = false;
+    u.dropped = false;
+    u.onBelt = false;
+    u.held = false;
+    u.consumed = false;
+  }
+
+  function dropCarried() {
+    const box = carryingBox;
+    if (!box) return false;
+    if (!G || !G.player) return false;
+    const p = G.player;
+    const b = G.pharmacy.bounds;
+    const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
+    let x = p.x + fx * 1.45;
+    let z = p.z + fz * 1.45;
+    if (b) {
+      x = Math.max(b.minX + 0.7, Math.min(b.maxX - 0.7, x));
+      z = Math.max(b.minZ + 0.7, Math.min(b.maxZ - 0.7, z));
+    }
+    if (box.parent !== G.place) G.place.attach(box);
+    box.position.set(x, (G.home && G.home.floor ? G.home.floor : 0) + 0.5, z);
+    box.rotation.set(0, p.yaw + Math.PI, 0);
+    box.scale.set(1, 1, 1);
+    box.visible = true;
+    box.userData.held = false;
+    box.userData.dropped = true;
+    box.userData.onBelt = false;
+    clearCarrying();
+    setCarry(-1);
+    updateStationSigns();
+    toast('Soltaste ' + drugName(box.userData.n), 'ok');
+    clearAim();
+    return true;
+  }
+
+  function resetShelfBoxes() {
+    if (G && G.pharmacy && typeof G.pharmacy.resetShelfBoxes === 'function') {
+      G.pharmacy.resetShelfBoxes();
+    }
+    clearCarrying();
   }
 
   function updateBelt(dt, t) {
@@ -1338,15 +1477,32 @@
 
   }
 
+  function returnFailedItem(item) {
+    if (!item) return;
+    if (item.fromStock) stockP[item.color] = (stockP[item.color] || 0) + 1;
+    if (item.mesh && item.mesh.userData && item.mesh.userData.kind === 'shelf') {
+      returnBoxHome(item.mesh);
+    } else if (item.mesh) {
+      item.mesh.visible = false;
+      if (item.mesh.parent === G.place) G.place.remove(item.mesh);
+      if (S.beltPool.indexOf(item.mesh) < 0 && item.mesh.userData) {
+        item.mesh.userData.consumed = false;
+      }
+    }
+    updateStationSigns();
+  }
+
   function resolveBeltDelivery(item) {
     const client = S.queue[0];
     if (!client || requestP < 0) {
-      stockP[item.color]++;
-      updateStationSigns();
+      returnFailedItem(item);
       toast('No hay cliente para ese pedido', 'bad');
       return;
     }
-    if (item.color === client.request) {
+    /* V21.1: se valida el medicamento exacto, no solo su color. Así una caja
+       de otra presentación no cuenta aunque comparta categoría. */
+    const expected = stationDrug(client.request);
+    if (item.drug === expected) {
       scoreP++;
       setScore();
       requestP = -1;
@@ -1354,11 +1510,22 @@
       client.state = 'receiving';
       client.reactAt = now();
       releaseAt = now() + 1.0;
+      if (item.mesh) {
+        const station = stationForBox(item.mesh);
+        if (station && (stockP[item.color] || 0) > 0) {
+          /* Quedan unidades de esta estación: la caja vuelve a su lugar como
+             una unidad nueva (el stock ya se descontó al tomarla). */
+          returnBoxHome(item.mesh);
+        } else {
+          item.mesh.visible = false;
+          item.mesh.userData.onBelt = false;
+          item.mesh.userData.consumed = true;
+        }
+      }
       updateStationSigns();
       toast('¡Correcto! +1', 'ok');
     } else {
-      stockP[item.color]++;
-      updateStationSigns();
+      returnFailedItem(item);
       client.badAt = now();
       toast('Medicamento incorrecto', 'bad');
     }
@@ -1390,8 +1557,25 @@
 
   function clearAim() {
     aim.target = null;
+    aim.drug = -1;
     aim.hitDistance = 0;
     if (aim.outline) aim.outline.visible = false;
+  }
+
+  function aimTargetFor(box) {
+    if (!box) return null;
+    const st = stationForBox(box);
+    const drug = box.userData ? box.userData.n : -1;
+    if (st) {
+      st.drug = drug;
+      return st;
+    }
+    const p = new T.Vector3();
+    box.getWorldPosition(p);
+    return {
+      def: { c: boxColor(box), x: p.x, z: p.z }, group: box, box: box,
+      mat: null, edge: null, pharmacy: null, drug: drug
+    };
   }
 
   function updateAim(t) {
@@ -1411,24 +1595,24 @@
     aimDir.set(0, 0, -1).applyQuaternion(aimQuat).normalize();
     raycaster.set(aimOrigin, aimDir);
     raycaster.far = CFG.aimRange;
+    /* V21.1: todas las cajas de las estanterías son candidatas individuales.
+       Se excluyen solo las que están en la mano, en la cinta o ya entregadas. */
     const objects = [];
-    for (let i = 0; i < S.stations.length; i++) {
-      if (S.stations[i].box && S.stations[i].box.visible) objects.push(S.stations[i].box);
+    const boxes = G.pharmacy.shelfBoxes || [];
+    for (let i = 0; i < boxes.length; i++) {
+      const b = boxes[i];
+      const u = b.userData || {};
+      if (b.visible && !u.held && !u.onBelt && !u.consumed) objects.push(b);
     }
-    const occ = G.pharmacy.occluders || [];
-    for (let j = 0; j < occ.length; j++) objects.push(occ[j]);
     const hits = raycaster.intersectObjects(objects, false);
-    let station = null;
-    if (hits.length) {
-      for (let k = 0; k < S.stations.length; k++) {
-        if (S.stations[k].box === hits[0].object) { station = S.stations[k]; break; }
-      }
-    }
-    if (!station) { clearAim(); return; }
-    aim.target = station;
+    if (!hits.length) { clearAim(); return; }
+    const target = aimTargetFor(hits[0].object);
+    if (!target) { clearAim(); return; }
+    aim.target = target;
+    aim.drug = targetDrug(target);
     aim.hitDistance = hits[0].distance;
-    station.box.getWorldPosition(tmpV);
-    station.box.getWorldQuaternion(tmpQ);
+    target.box.getWorldPosition(tmpV);
+    target.box.getWorldQuaternion(tmpQ);
     aim.outline.position.copy(tmpV);
     aim.outline.quaternion.copy(tmpQ);
     aim.outline.scale.setScalar(1.02);
@@ -1815,25 +1999,28 @@
     nodes.req.classList.add('pop');
   }
 
-  function setCarry(c) {
+  function setCarry(c, drug) {
     if (!nodes.carry) return;
     if (c < 0) {
       nodes.carry.classList.remove('on');
       if (handMesh) handMesh.visible = false;
       return;
     }
-    const col = COLORS[c];
+    const col = COLORS[c] || COLORS[0];
+    const idx = (typeof drug === 'number' && drug >= 0) ? drug : stationDrug(c);
     nodes.carry.classList.add('on');
     nodes.carryDot.style.background = col.css;
-    nodes.carryTxt.textContent = 'Llevas: ' + drugLabel(c);
+    nodes.carryTxt.textContent = 'Llevas: ' + drugName(idx);
     if (handMesh) {
-      handMesh.visible = true;
-      const ph = G && G.pharmacy ? G.pharmacy : window.RasmaticPharmacyApi;
-      const st = ph && ph.stations ? ph.stations.filter(function (s) { return s.color === c; })[0] : null;
-      const drug = st ? st.drug : COLOR_DRUGS[c];
-      if (ph && ph.drugKit && ph.drugs && ph.drugs[drug]) {
-        handMesh.material = ph.drugKit(ph.drugs[drug]).m;
-        handMesh.scale.set(0.78, 0.78, 0.78);
+      /* Normalmente se lleva la caja real (carryingBox). El cubo de mano es
+         solo un respaldo si la escena no expone la malla. */
+      handMesh.visible = !carryingBox;
+      if (!carryingBox) {
+        const ph = G && G.pharmacy ? G.pharmacy : window.RasmaticPharmacyApi;
+        if (ph && ph.drugKit && ph.drugs && ph.drugs[idx]) {
+          handMesh.material = ph.drugKit(ph.drugs[idx]).m;
+          handMesh.scale.set(0.78, 0.78, 0.78);
+        }
       }
     }
   }
@@ -1890,16 +2077,48 @@
     return pick;
   }
 
-  function take(st) {
-    if (!st) return false;
-    const c = st.def.c;
-    if (carrying >= 0 || stockP[c] <= 0) return false;
-    stockP[c]--;
+  function take(target) {
+    if (!target || !target.box) return false;
+    const box = target.box;
+    if (carrying >= 0 || carryingBox) return false;
+    const st = stationForBox(box);
+    const wasTaken = !!(box.userData && box.userData.taken);
+    let c;
+    let fromStock = false;
+    if (st) {
+      c = st.def.c;
+      if (!wasTaken) {
+        if ((stockP[c] || 0) <= 0) return false;
+        stockP[c]--;
+        fromStock = true;
+      } else {
+        fromStock = true;   // ya había descontado stock al tomarla antes
+      }
+      box.userData.stationColor = c;
+    } else {
+      c = boxColor(box);
+    }
+    box.userData.taken = true;
+    box.userData.dropped = false;
+    box.userData.onBelt = false;
+    box.userData.held = true;
     carrying = c;
-    setCarry(c);
+    carryingDrug = box.userData.n;
+    carryingBox = box;
+    carryingFromStock = fromStock;
+
+    /* La caja real se sujeta delante de la cámara. En VR SBS la cámara se
+       desplaza por ojo y la caja la acompaña, por lo que se ve en ambos ojos. */
+    G.camera.attach(box);
+    box.position.set(HAND_POS.x, HAND_POS.y, HAND_POS.z);
+    box.rotation.set(HAND_ROT.x, HAND_ROT.y, HAND_ROT.z);
+    box.scale.setScalar(HAND_SCALE);
+    box.visible = true;
+
+    setCarry(c, carryingDrug);
     updateStationSigns();
     clearAim();
-    toast('Recogiste ' + drugLabel(c), 'ok');
+    toast('Recogiste ' + drugName(carryingDrug), 'ok');
     return true;
   }
 
@@ -1911,7 +2130,7 @@
     if (uiEditor && uiEditor.root.classList.contains('on')) uiClose(false);
     scoreP = 0;
     scoreB = 0;
-    carrying = -1;
+    resetShelfBoxes();
     requestP = -1;
     requestB = -1;
     bot = null;
@@ -1974,6 +2193,7 @@
     setTime(0);
     setAction(null, '');
     setHint(null);
+    resetShelfBoxes();
     setRequest(-1);
     setCarry(-1);
     requestP = -1;
@@ -2029,7 +2249,7 @@
     scoreB = 0;
     requestP = -1;
     requestB = -1;
-    carrying = -1;
+    resetShelfBoxes();
     bot = null;
     clearAim();
     resetClients();
@@ -2070,13 +2290,13 @@
     if (state === 'menu') return startCountdown();
     if (state !== 'playing') return false;
 
-    if (carrying >= 0) {
+    if (carrying >= 0 || carryingBox) {
       if (nearBeltEntry()) return placeOnBelt();
-      return false;
+      return dropCarried();
     }
 
     const st = aim.target;
-    if (st && aim.hitDistance <= CFG.aimTake && stockP[st.def.c] > 0) {
+    if (st && aim.hitDistance <= CFG.aimTake && targetAvailable(st)) {
       return take(st);
     }
     return false;
@@ -2093,20 +2313,20 @@
       setAction(null, '');
       return;
     }
-    if (carrying >= 0) {
+    if (carrying >= 0 || carryingBox) {
       if (nearBeltEntry()) {
         setHint('Colocá el medicamento en la cinta');
         setAction('COLOCAR', 'give');
       } else {
-        setHint('Llevá el medicamento a la cinta');
-        setAction(null, '');
+        setHint('Soltá el medicamento enfrente');
+        setAction('SOLTAR', 'give');
       }
       return;
     }
     const st = aim.target;
     if (st) {
-      if (aim.hitDistance <= CFG.aimTake && stockP[st.def.c] > 0) {
-        setHint('Medicamento seleccionado');
+      if (aim.hitDistance <= CFG.aimTake && targetAvailable(st)) {
+        setHint('Medicamento: ' + drugName(aim.drug));
         setAction('RECOGER', 'take');
       } else {
         setHint('Acercate al medicamento');
@@ -2389,6 +2609,7 @@
       loadJoystick();
       uiLoad();
 
+      resetShelfBoxes();
       resetStocks();
       updateStationSigns();
       resetClients();
@@ -2430,6 +2651,41 @@
     return false;
   }
 
+  /* Solo pruebas: coloca al jugador alrededor de una caja concreta y apunta
+     la mira a esa caja (comprueba que el rayo realmente la alcanza). */
+  function aimAtBoxDebug(box) {
+    if (!G || state !== 'playing' || !box) return false;
+    const dirs = [
+      [0, 2.6], [0, -2.6], [2.6, 0], [-2.6, 0],
+      [1.9, 1.9], [-1.9, 1.9], [1.9, -1.9], [-1.9, -1.9],
+      [0, 3.4], [0, -3.4], [3.4, 0], [-3.4, 0]
+    ];
+    const wp = new T.Vector3();
+    box.getWorldPosition(wp);
+    for (let i = 0; i < dirs.length; i++) {
+      const px = wp.x + dirs[i][0];
+      const pz = wp.z + dirs[i][1];
+      if (G.pharmacy.blocked(px, pz)) continue;
+      G.player.x = px;
+      G.player.z = pz;
+      const dx = wp.x - G.player.x;
+      const dz = wp.z - G.player.z;
+      const dy = wp.y - (G.pharmacy.eye || 3.6);
+      G.player.yaw = Math.atan2(-dx, -dz);
+      G.player.pitch = Math.atan2(dy, Math.hypot(dx, dz));
+      /* Sincroniza la cámara ya mismo: updateAim usa cam.position/quaternion. */
+      G.camera.position.set(G.player.x, (G.pharmacy.eye || 3.6), G.player.z);
+      G.camera.rotation.set(G.player.pitch, G.player.yaw, 0, 'YXZ');
+      G.camera.updateMatrixWorld(true);
+      aim.nextAt = 0;
+      updateAim(now());
+      if (aim.target && aim.target.box === box && aim.hitDistance <= CFG.aimTake) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function debug() {
     const t = now();
     return {
@@ -2438,6 +2694,11 @@
       time: state === 'playing' ? Math.max(0, matchEnd - t)
         : (state === 'over' ? 0 : CFG.duration),
       carrying: carrying,
+      carryingDrug: carryingDrug,
+      carryingBox: carryingBox ? {
+        id: carryingBox.userData.id, drug: carryingBox.userData.n,
+        parent: carryingBox.parent === (G && G.camera) ? 'camera' : 'scene'
+      } : null,
       request: requestP,
       requestBot: requestB,
       stockP: stockP.slice(),
@@ -2451,8 +2712,20 @@
           x: +q.group.position.x.toFixed(2), z: +q.group.position.z.toFixed(2) };
       }),
       aim: aim.target ? {
-        color: aim.target.def.c, distance: +aim.hitDistance.toFixed(2),
+        color: aim.target.def.c, drug: aim.drug,
+        id: aim.target.box ? aim.target.box.userData.id : -1,
+        name: drugName(aim.drug),
+        distance: +aim.hitDistance.toFixed(2),
         visible: !!(aim.outline && aim.outline.visible)
+      } : null,
+      shelf: G && G.pharmacy && G.pharmacy.shelfBoxes ? {
+        total: G.pharmacy.shelfBoxes.length,
+        independent: G.pharmacy.shelfBoxes.filter(function (b) {
+          return b.isMesh === true && b.userData && b.userData.kind === 'shelf';
+        }).length,
+        dropped: G.pharmacy.shelfBoxes.filter(function (b) { return b.userData.dropped; }).length,
+        held: G.pharmacy.shelfBoxes.filter(function (b) { return b.userData.held; }).length,
+        onBelt: G.pharmacy.shelfBoxes.filter(function (b) { return b.userData.onBelt; }).length
       } : null,
       belt: {
         count: belt.items.length, speed: +belt.speed.toFixed(2),
@@ -2524,35 +2797,59 @@
         begin();
         return state === 'playing';
       },
+      aimAtBox: function (box) { return aimAtBoxDebug(box); },
       aimAtStation: function (color) {
-        if (!G || state !== 'playing') return false;
         const st = S.stations.filter(function (s) { return s.def.c === color; })[0];
-        if (!st) return false;
-        st.box.getWorldPosition(tmpV);
-        const dirs = [
-          [0, 2.6], [0, -2.6], [2.6, 0], [-2.6, 0],
-          [1.9, 1.9], [-1.9, 1.9], [1.9, -1.9], [-1.9, -1.9]
-        ];
-        for (let i = 0; i < dirs.length; i++) {
-          const px = tmpV.x + dirs[i][0];
-          const pz = tmpV.z + dirs[i][1];
-          if (!G.pharmacy.blocked(px, pz)) {
-            G.player.x = px;
-            G.player.z = pz;
-            break;
+        return !!st && aimAtBoxDebug(st.box);
+      },
+      aimAtShelfBox: function (index) {
+        const boxes = G && G.pharmacy ? G.pharmacy.shelfBoxes : [];
+        return !!(boxes && boxes[index]) && aimAtBoxDebug(boxes[index]);
+      },
+      aimAtDrug: function (drug) {
+        const boxes = G && G.pharmacy ? G.pharmacy.shelfBoxes : [];
+        for (let i = 0; i < boxes.length; i++) {
+          const b = boxes[i];
+          const u = b.userData || {};
+          if (u.n === drug && b.visible && !u.taken && !u.onBelt && !u.consumed) {
+            if (aimAtBoxDebug(b)) return true;
           }
         }
-        const dx = tmpV.x - G.player.x;
-        const dz = tmpV.z - G.player.z;
-        const dy = tmpV.y - (G.pharmacy.eye || 3.6);
-        G.player.yaw = Math.atan2(-dx, -dz);
-        G.player.pitch = Math.atan2(dy, Math.hypot(dx, dz));
-        aim.nextAt = 0;
-        updateAim(now());
-        return true;
+        return false;
       },
+      grabShelfBox: function (index) {
+        if (!this.aimAtShelfBox(index)) return false;
+        if (!this.interact || typeof window.RasmaticGame.interact !== 'function') return false;
+        return window.RasmaticGame.interact();
+      },
+      releaseHeld: function () { return dropCarried(); },
+      shelfBox: function (index) {
+        const boxes = G && G.pharmacy ? G.pharmacy.shelfBoxes : [];
+        const b = boxes && boxes[index];
+        if (!b) return null;
+        const u = b.userData || {};
+        return {
+          id: u.id, drug: u.n, name: drugName(u.n), visible: b.visible === true,
+          held: !!u.held, dropped: !!u.dropped, onBelt: !!u.onBelt,
+          consumed: !!u.consumed, taken: !!u.taken,
+          parent: b.parent === (G && G.camera) ? 'camera' : 'scene',
+          x: +b.position.x.toFixed(2), y: +b.position.y.toFixed(2), z: +b.position.z.toFixed(2)
+        };
+      },
+      shelfCount: function () {
+        const boxes = G && G.pharmacy ? G.pharmacy.shelfBoxes : [];
+        return {
+          total: boxes.length,
+          uniqueIds: new Set(boxes.map(function (b) { return b.userData && b.userData.id; })).size,
+          meshes: boxes.filter(function (b) { return b.isMesh === true; }).length,
+          stationBoxesSeparate: S.stations.every(function (s) {
+            return boxes.indexOf(s.box) >= 0 && s.box.parent !== undefined;
+          })
+        };
+      },
+      expectedDrug: function (color) { return stationDrug(color); },
       placeBeltNow: function () {
-        if (!G || state !== 'playing' || carrying < 0) return false;
+        if (!G || state !== 'playing' || (carrying < 0 && !carryingBox)) return false;
         G.player.x = G.pharmacy.conveyor.entry.x + 1.8;
         G.player.z = G.pharmacy.conveyor.entry.z;
         return placeOnBelt();

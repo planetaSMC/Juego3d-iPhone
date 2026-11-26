@@ -89,7 +89,7 @@
     ok('V20-05 rendimiento del escenario (menos draw calls que el HTML)',
       info.render.calls > 100 && info.render.calls < 1200 &&
       info.render.triangles < 130000 && sceneMeshes > 300 &&
-      info.memory.textures >= 40,
+      info.memory.textures >= 25,
       { draw_calls: info.render.calls, triangulos: info.render.triangles,
         mallas: sceneMeshes, texturas: info.memory.textures });
 

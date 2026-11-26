@@ -229,7 +229,8 @@ const sceneJs = read(path.join(web, 'v20', 'pharmacy-scene.js'));
 check(/RasmaticPharmacy/.test(sceneJs), 'expone RasmaticPharmacy');
 check(/blocked\(x, z\)/.test(sceneJs), 'colisiones del HTML');
 check(/RASMATIC BOT/.test(sceneJs) || /machine/.test(sceneJs), 'máquina RASMATIC BOT');
-check(/mergeShelfBoxes/.test(sceneJs), 'optimización de estanterías');
+check(/shelfBoxes/.test(sceneJs) && !/mergeShelfBoxes/.test(sceneJs) &&
+  /userData=\{\s*[\s\S]*?id:SB\.length/.test(sceneJs), 'cajas individuales');
 check(/FARMACIA RASMATIC/.test(sceneJs) && !/FARMACIA 16 HORAS/.test(sceneJs),
   'cartel Farmacia RASMATIC sin 16 horas');
 check(/conveyor\s*=\s*\{/.test(sceneJs) && /drugImage/.test(sceneJs),

@@ -43,7 +43,8 @@ entrada (40.4, 7.1)
 - `CFG.beltSpacing` por defecto: **1,5 unidades**.
 - La textura de la cinta se desplaza con la misma velocidad efectiva; cuando no
   hay paquetes, `setSpeed(0)` detiene la superficie.
-- Hay 4 mallas de paquete en un pool; si las 4 están ocupadas, no se acepta otro.
+- V21.1 transporta la **caja real** que el jugador agarró. El pool de 4 mallas
+  queda solo como respaldo para partidas restauradas o pruebas antiguas.
 
 ## 4. Recepción y entrega
 
@@ -52,16 +53,18 @@ entrada (40.4, 7.1)
 3. El empleado levanta la caja desde la cinta hasta su mano
    (0,55 s, con arco).
 4. `handoff`: lleva la caja hasta el cliente (0,7 s).
-5. Se valida el color contra el pedido del cliente activo.
-6. El paquete se oculta y vuelve al pool.
+5. Se valida el **medicamento exacto** contra el pedido del cliente activo.
+6. Si es correcto, la caja entregada se oculta. Si falla, vuelve a su lugar en
+   la estantería (y el stock se restaura si pertenecía a una estación).
 7. El empleado vuelve a su pose de espera (0,45 s).
 
 ### Validación
 
 - **Correcto:** `scoreP++`, se oculta el pedido, el cliente pasa a `receiving`,
   se espera ~1 s, se retira, la fila avanza y se repone un cliente.
-- **Incorrecto:** `stockP[color]++`, se actualiza el stock, el pedido no cambia,
-  el cliente hace un gesto de negación y sigue esperando. No hay puntos.
+- **Incorrecto:** la caja vuelve a su lugar, el stock se restaura solo si salió
+  de una estación, el pedido no cambia, el cliente hace un gesto de negación y
+  sigue esperando. No hay puntos.
 - No existe un camino alternativo que valide sin pasar por la cinta: la única
   función que suma es `resolveBeltDelivery`, llamada por la animación del
   empleado.
@@ -96,7 +99,7 @@ RasmaticGame._test.config({
   beltSpacing: 1.5
 });
 RasmaticGame.debug().belt;
-// { count, speed, total, entry, items:[{color,s}] }
+// { count, speed, total, entry, items:[{color,s}] }  (drug en _test/belt interno)
 ```
 
 Cada paquete guarda color, droga, malla y `s`. No se crean geometrías ni
@@ -107,6 +110,7 @@ caché `drugKit`.
 
 - V21-05: colocar y verificar que `s` avanza y la cinta tiene velocidad.
 - V21-06: entrega validada y cambio de pedido.
-- V21-08: color incorrecto no suma y vuelve al stock.
+- V21-08: medicamento incorrecto no suma y vuelve al stock.
 - V21-09: dos paquetes con separación ≥ 1,5.
+- V21-16: copia individual del medicamento exacto entregada y sumada.
 - V20-09 y test-web T07/T09: integración con la partida.

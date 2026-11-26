@@ -80,7 +80,7 @@ Es el mismo mapeo que `GamepadManager.kt` en Android:
 | **Cruceta** | Mover (se suma al stick izquierdo) |
 | **Stick derecho** | Girar la cámara / mirar |
 | **L1 mantenido** o **L2 a fondo** | Correr (2,4×) |
-| **A**, **R1**, **R2** | Interactuar (hablar, recoger, entregar) |
+| **A**, **R1**, **R2** | Interactuar: iniciar, seleccionar/agarrar la caja apuntada, colocarla en la cinta o soltarla |
 | **B** o **Start/Options** | Pausa; en la partida, “Atrás” |
 | **X** | Abrir/cerrar el panel VR (menú) |
 | **Y** | Volver al inicio |
@@ -118,6 +118,9 @@ Notas:
   valor se considera cero y el personaje no se mueve solo.
 - Un gatillo cuenta como pulsado a partir de **0,5**. L2 a fondo corre; R2 a
   fondo interactúa.
+- V21.1: con la mira sobre una caja, A/R1/R2 agarra **esa** caja. Lejos de la
+  cinta, la misma acción la suelta en el piso; cerca de la entrada, la coloca en
+  la cinta. Funciona igual con VR Box activo y sin VR.
 - La cruceta se suma al stick izquierdo y el resultado se limita a −1…1.
 
 ---
@@ -200,13 +203,13 @@ cada botón).
 
 **Probado (Windows, navegador Chromium con viewport de iPhone):**
 
-- `node tools/test-pad.js` → **21/21** casos (P01–P14 y M01–M08).
+- `node tools/test-pad.js` → **23/23** casos (P01-P14, P08b/P08c y M01-M08).
 - Se inyecta `__RASMATIC_NATIVE__` antes de cargar la página, igual que
   `GameViewController.swift`, y se llama al puente con el mismo protocolo que
   usa Swift (`raw`, `press`, `status`).
 - Cubre: detección, aviso con nombre, sticks, cruceta, correr 2,4×, A/B/X/Y/
   Select, desconexión/reconexión, ausencia de doble entrada, ocultado y
-  restauración del joystick táctil, y VR móvil con mando.
+  restauración del joystick táctil, agarre/soltura con A y VR móvil con mando.
 
 **No probado (requiere hardware):**
 

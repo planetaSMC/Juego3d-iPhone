@@ -46,8 +46,11 @@ V21 está implementada y probada en simulación. No se probó en un iPhone físi
 
 ## 5. Rendimiento
 
-- 681 draw calls / 72.330 triángulos / 1.041 mallas con 3 clientes, medido con
-  SwiftShader.
+- 543 draw calls / 69.786 triángulos / 1.275 mallas / 32 texturas con 3
+  clientes en la vista de arranque, medido con SwiftShader.
+- V21.1 tiene 330 cajas individuales: las mallas suben respecto de V21 (1.041)
+  porque ya no hay fusión decorativa. El atlas por medicamento mantiene una
+  llamada de dibujo por caja y reduce las texturas.
 - No hay FPS reales de iPhone.
 - En VR SBS se renderiza dos veces; el presupuesto de GPU real queda por medir.
 
@@ -66,19 +69,22 @@ V21 está implementada y probada en simulación. No se probó en un iPhone físi
 
 - Menú/cuenta regresiva y reloj congelado.
 - Mira con raycast, contorno, desaparición y sin etiquetas.
-- Pedido por imagen real del medicamento.
+- 330 cajas de estantería individuales: apuntar, agarrar, soltar y re-agarrar.
+- Pedido por imagen real del medicamento y validación por medicamento exacto.
 - Cinta funcional con recorrido, validación, separación y animación del empleado.
 - Fila de tres clientes, avance y reposición.
 - Escenario V21: cartel, cajas de color, escala, cinta de máquina eliminada.
 - VR: mira y cuenta por ojo, Head Tracking en la orientación.
+- Mando: mover, apuntar, seleccionar, agarrar, colocar y soltar, con VR y sin VR
+  (simulado con el puente nativo).
 - Todas las suites V20.1 adaptadas y verdes.
 
 ## 8. Recomendación antes de publicar
 
 1. Revisar el IPA ya compilado en Actions (Xcode 16.4) y firmarlo.
 2. Instalar en un iPhone y probar el menú, la cuenta y el HUD con notch.
-3. Probar la mira y el contorno desde la distancia real de juego.
+3. Probar la mira, el contorno y el agarre/soltura de cajas individuales.
 4. Probar la cinta con 2–3 paquetes y un mando Bluetooth.
-5. Probar VR Box, IPD y Head Tracking con la mira.
-6. Medir FPS reales en el iPhone con la fila llena.
-7. Solo entonces integrar `v21-gameplay-animation` en `main`.
+5. Probar VR Box, IPD y Head Tracking con la mira y la caja en la mano.
+6. Medir FPS reales en el iPhone con la fila llena y las 330 mallas.
+7. Solo entonces integrar `v21.1-individual-medications` en `main`.
