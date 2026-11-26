@@ -1,5 +1,8 @@
 # V20 · Informe de pruebas
 
+> **V21:** este informe conserva los resultados de V20/V20.1. Las pruebas y
+> evidencias de la fase de gameplay están en `docs/v21/testing-report.md`.
+
 Fecha de ejecución: **2026-11-26**.
 
 ## 1. Entorno

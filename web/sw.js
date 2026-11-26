@@ -1,6 +1,6 @@
 /* Generado por tools/build-ios.js (V20) - no editar a mano.
-   Build: 8a3d4b1effa2392a */
-const CACHE = 'rasmatic-v20-8a3d4b1effa2392a';
+   Build: 28211d9fcadef532 */
+const CACHE = 'rasmatic-v21-28211d9fcadef532';
 const PRECACHE = [
   "./",
   "./index.html",
@@ -22,6 +22,7 @@ const PRECACHE = [
   "./v20/pharmacy.css",
   "./v20/pharmacy-scene.js",
   "./v20/pharmacy-core.js",
+  "./v21/v21.css",
   "./fonts/fonts.css",
   "./fonts/google-fonts.css",
   "./icons/icon-180.png",

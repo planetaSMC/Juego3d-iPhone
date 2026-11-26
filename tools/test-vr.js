@@ -273,22 +273,21 @@ async function main() {
 
     /* Partida en curso. La captura se toma en el centro del pasillo para que
        la vista sea simetrica y se pueda comparar plana vs. estereo. */
-    await evaluate(`(function(){
-      var g = window.RasmaticCore.game;
-      g.player.x = 21.9; g.player.z = 14.0; g.player.yaw = 0; g.player.pitch = 0;
-      return true;
-    })()`);
-    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().ui.action')) === 'JUGAR', 20000, 'aviso JUGAR');
-    await evaluate('window.RasmaticGame.interact()');
-    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().state')) === 'playing', 20000, 'partida');
+    await evaluate('window.RasmaticGame._test.startNow()');
+    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().state')) === 'playing', 15000, 'partida');
     await waitFor(async () => (await evaluate('window.RasmaticGame.debug().customer')) === true, 60000, 'primer cliente');
+    await evaluate('window.RasmaticGame._test.aimAtStation(window.RasmaticGame.debug().request)');
+    await waitFor(async () => (await evaluate('window.RasmaticGame.debug().ui.action')) === 'RECOGER', 20000, 'aviso RECOGER');
+    await sleep(700);
+    await shot('vr-01-normal.png');
+
+    /* Volver al centro del pasillo para comparar la vista estéreo. */
     await evaluate(`(function(){
       var g = window.RasmaticCore.game;
       g.player.x = 30; g.player.z = 20; g.player.yaw = 0; g.player.pitch = 0;
       return true;
     })()`);
-    await sleep(900);
-    await shot('vr-01-normal.png');
+    await sleep(500);
 
     await evaluate('window.RasmaticVR.enable()');
     await sleep(900);
