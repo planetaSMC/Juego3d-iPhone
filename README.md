@@ -68,12 +68,26 @@ node tools/verify-ipa.js dist/RASMATIC-VR-unsigned.ipa \
   --expect com.rasmatic.lugar3d --variant v20
 ```
 
-> La compilación real se hizo en GitHub Actions con Xcode 16.4: **BUILD
-> SUCCEEDED** (runs 45809544456 y 45809851662). IPA sin firmar de 829.907
-> bytes. El SHA-256 puede variar por marcas de tiempo entre compilaciones
-> (observados: `7778E6B4…01273` y `8FE2D696…FD55E`); el contenido y el tamaño
-> son los mismos. La firma e instalación en iPhone siguen pendientes. Ver
-> `docs/v20/v20.1-core-motion-fix.md` y `docs/v20/limitations.md`.
+> La compilación real de V21 se hizo en GitHub Actions con Xcode 16.4:
+> **BUILD SUCCEEDED** (run 45884702769). IPA sin firmar de 840.012 bytes,
+> SHA-256 `30B2576843B143A23C235512A0C82862C2A59CF29139DBF392BF538373EF2956`.
+> El hash puede variar por marcas de tiempo entre compilaciones; el contenido
+> y el tamaño son los mismos. La firma e instalación en iPhone siguen
+> pendientes. Ver `docs/v21/testing-report.md` y `docs/v21/limitations.md`.
+
+### Calibrador de Windows
+
+El workflow **Windows VR Calibrator (V21)** compila el instalador NSIS en
+`windows-latest`, ejecuta las 62 pruebas y publica el artefacto
+**`rasmatic-windows-calibrator`**:
+
+1. Actions → **Windows VR Calibrator (V21)** → Run workflow.
+2. Descargar el artefacto `rasmatic-windows-calibrator`.
+3. Ejecutar `RASMATIC VR Calibrator Setup 1.0.0.exe`.
+
+Build verificado: run 45884702784, instalador de 82.022.901 B, SHA-256
+`053C84A4C908C4AA26F805DAC2DC7BD0D8C850DBA12BA88C4E3619A28049946F`.
+Detalle: `docs/WINDOWS_VR_CALIBRATOR.md`.
 
 ---
 

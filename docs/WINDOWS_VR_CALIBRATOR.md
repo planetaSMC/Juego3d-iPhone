@@ -232,6 +232,8 @@ Al reconectar:
 
 ## 9. Instalador
 
+### Local
+
 ```bat
 cd windows-calibrator
 npm run dist
@@ -242,15 +244,33 @@ Genera en `windows-calibrator/release/`:
 - `RASMATIC VR Calibrator Setup 1.0.0.exe` (NSIS, x64).
 - `win-unpacked/` (ejecutable portable para probar).
 
-El instalador permite elegir carpeta, crea accesos en Escritorio y Menú Inicio, y no
-requiere Node. El juego se empaqueta en `resources/game` desde `../web`.
+### GitHub Actions
 
-Verificación del build del 25/11/2026 (juego `0417b73dd1d31bc4`): `release/win-unpacked/RASMATIC VR
-Calibrator.exe --smoke` termina con código 0, `resources/game` coincide byte a
-byte con `web/` y `app.asar` contiene `ws` y `qrcode`. El NSIS x64 resultante
-pesa 82.691.850 B (≈ 78,9 MiB) y no está firmado (no hay certificado de código).
-La instalación real del `.exe` no se ejecutó en esta máquina: se probó el
-`win-unpacked`.
+El workflow **Windows VR Calibrator (V21)** (`.github/workflows/windows-calibrator.yml`)
+hace, en `windows-latest`:
+
+1. `npm ci`.
+2. `npm test` (62/62).
+3. `npm run dist` (NSIS x64, sin firma).
+4. Publica el artefacto **`rasmatic-windows-calibrator`** con
+   `RASMATIC VR Calibrator Setup 1.0.0.exe`.
+
+Se dispara manualmente o con cada push a `main` que toque
+`windows-calibrator/`, `web/` o el propio workflow. El juego se empaqueta en
+`resources/game` desde `../web`.
+
+El instalador permite elegir carpeta, crea accesos en Escritorio y Menú Inicio, y no
+requiere Node.
+
+Verificación del build del 26/11/2026 (commit `b69d6df`, V21):
+
+- `npm test`: **62/62**.
+- Run: 45884702784.
+- `RASMATIC VR Calibrator Setup 1.0.0.exe`: **82.022.901 B**.
+- SHA-256: `053C84A4C908C4AA26F805DAC2DC7BD0D8C850DBA12BA88C4E3619A28049946F`.
+- Sin firma (no hay certificado de código).
+- La instalación real del `.exe` no se ejecutó en esta máquina; se verificó el
+  artefacto generado por Actions.
 
 Si `npm run dist` falla por falta de red o permisos de symlink, `npm run pack` genera
 `win-unpacked/` y se puede usar el `.exe` directamente; documentar el error concreto.

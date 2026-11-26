@@ -103,7 +103,22 @@ V21 se compiló en GitHub Actions con Xcode 16.4:
 
 Copia local ignorada por Git: `dist/RASMATIC-VR-unsigned.ipa`.
 
-## 7. Qué no se probó
+## 7. Compilación Windows
+
+El workflow **Windows VR Calibrator (V21)** se ejecutó en `windows-latest` y
+terminó en verde:
+
+| Dato | Valor |
+|---|---|
+| Run | [45884702784](https://github.com/planetaSMC/Juego3d-iPhone/actions/runs/45884702784) |
+| Pruebas | **62/62** |
+| Instalador | `RASMATIC VR Calibrator Setup 1.0.0.exe` |
+| Tamaño | **82.022.901 bytes** |
+| SHA-256 | `053C84A4C908C4AA26F805DAC2DC7BD0D8C850DBA12BA88C4E3619A28049946F` |
+| Artefacto | `rasmatic-windows-calibrator` |
+| Firma | sin firmar |
+
+## 8. Qué no se probó
 
 - Instalación en iPhone físico.
 - Sensores Core Motion reales, mando Bluetooth físico y VR Box física.

@@ -57,6 +57,10 @@ V21 está implementada y probada en simulación. No se probó en un iPhone físi
 - No se probó con una PC y un iPhone físicos.
 - La configuración de Head Tracking sigue funcionando por el protocolo
   `rev`/`ack` de V20.1.
+- El instalador NSIS del calibrador **sí compiló** en GitHub Actions (run
+  45884702784): 62/62 pruebas, 82.022.901 bytes, SHA-256
+  `053C84A4C908C4AA26F805DAC2DC7BD0D8C850DBA12BA88C4E3619A28049946F`.
+- No se ejecutó la instalación real del `.exe` en esta máquina.
 
 ## 7. Qué sí está cubierto
 
@@ -71,7 +75,7 @@ V21 está implementada y probada en simulación. No se probó en un iPhone físi
 
 ## 8. Recomendación antes de publicar
 
-1. Compilar la rama V21 en GitHub Actions (Xcode 16.4) y revisar el `.ipa`.
+1. Revisar el IPA ya compilado en Actions (Xcode 16.4) y firmarlo.
 2. Instalar en un iPhone y probar el menú, la cuenta y el HUD con notch.
 3. Probar la mira y el contorno desde la distancia real de juego.
 4. Probar la cinta con 2–3 paquetes y un mando Bluetooth.
