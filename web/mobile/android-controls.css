@@ -16,6 +16,9 @@ html.ras-android body:not(.dockmin) #ras-run { display: none; }
    movimiento: se ocultan y queda solo la escena. */
 html.ras-android body.ras-pad-on #ras-stick,
 html.ras-android body.ras-pad-on #ras-run { display: none !important; }
+/* V19: joystick desactivado desde Opciones. Solo se oculta el joystick
+   visual; CORRER, la cámara, la interacción y el mando siguen igual. */
+html.ras-android body.ras-no-joystick #ras-stick { display: none !important; }
 
 #ras-touch {
   /* Capa de posicionamiento, NO un panel a pantalla completa: con inset:0

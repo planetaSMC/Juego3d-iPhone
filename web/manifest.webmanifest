@@ -1,7 +1,8 @@
 {
-  "name": "RASMATIC · Lugar 3D",
-  "short_name": "RASMATIC",
-  "description": "Juego 3D de almacen: recorrido, estaciones, CNC y partida de 3 minutos.",
+  "name": "RASMATIC · VR Head Tracking",
+  "short_name": "RASMATIC HT",
+  "description": "RASMATIC Lugar 3D con seguimiento real de cabeza y modo VR BOX.",
+  "id": "./?app=headtracking",
   "lang": "es",
   "dir": "ltr",
   "start_url": "./index.html",

@@ -1,14 +1,18 @@
 <#
-    Genera los iconos de iPhone/PWA a partir del icono heredado de Android.
+    Genera los iconos de las dos apps V19 a partir del icono heredado de Android.
 
     Origen: Juego3d/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png (192x192)
-    Destinos:
-      web/icons/icon-<n>.png                                  (PWA / Safari)
-      ios/RasmaticLugar3D/Assets.xcassets/AppIcon.appiconset/  (app nativa)
 
-    El icono de Android es de 192 px, asi que las medidas mayores se
-    interpolan (bicubica de alta calidad). No se redibuja: se conserva el
-    mismo arte para que la app se vea igual en las dos plataformas.
+    Destinos:
+      web/icons/                                              -> PWA Head Tracking
+      web/icons-classic/                                      -> PWA Classic
+      ios/RasmaticHeadTracking/Assets.xcassets/AppIcon...     -> app Head Tracking
+      ios/RasmaticClassic/Assets.xcassets/AppIcon...          -> app Classic
+      ios/RasmaticLugar3D/Assets.xcassets/AppIcon...          -> app heredada (sin banda)
+
+    La identidad visual se distingue con una banda inferior:
+      Head Tracking: azul, texto HT
+      Classic:       ámbar, texto CL
 
     Uso: powershell -ExecutionPolicy Bypass -File tools/make-icons.ps1
 #>
@@ -22,11 +26,6 @@ if (-not (Test-Path $src)) {
   throw "No se encontro el icono de origen: $src"
 }
 
-$webIcons = Join-Path $root 'web\icons'
-$appIconSet = Join-Path $root 'ios\RasmaticLugar3D\Assets.xcassets\AppIcon.appiconset'
-New-Item -ItemType Directory -Force -Path $webIcons | Out-Null
-New-Item -ItemType Directory -Force -Path $appIconSet | Out-Null
-
 $source = [System.Drawing.Image]::FromFile($src)
 Write-Host ("Origen: {0} ({1}x{2}, {3} B)" -f $src, $source.Width, $source.Height, (Get-Item $src).Length)
 
@@ -35,13 +34,16 @@ function Resize-Icon {
     [System.Drawing.Image]$Image,
     [int]$Size,
     [string]$Path,
-    [switch]$NoAlpha
+    [switch]$NoAlpha,
+    [string]$Badge = '',
+    [System.Drawing.Color]$BadgeColor = [System.Drawing.Color]::FromArgb(27, 95, 214)
   )
-  # La App Store rechaza el icono 1024 si tiene canal alfa: para el catalogo
-  # de la app se guarda en 24 bpp (sin transparencia).
   $format = if ($NoAlpha) { [System.Drawing.Imaging.PixelFormat]::Format24bppRgb } else { [System.Drawing.Imaging.PixelFormat]::Format32bppArgb }
   $bmp = New-Object System.Drawing.Bitmap($Size, $Size, $format)
   $g = [System.Drawing.Graphics]::FromImage($bmp)
+  $font = $null
+  $brush = $null
+  $fmt = $null
   try {
     $g.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceCopy
     $g.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
@@ -49,7 +51,25 @@ function Resize-Icon {
     $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
     $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
     $g.DrawImage($Image, (New-Object System.Drawing.Rectangle(0, 0, $Size, $Size)))
+
+    if ($Badge) {
+      $g.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceOver
+      $bandH = [int][Math]::Max(3, $Size * 0.24)
+      $rect = New-Object System.Drawing.RectangleF(0, ($Size - $bandH), $Size, $bandH)
+      $brush = New-Object System.Drawing.SolidBrush($BadgeColor)
+      $g.FillRectangle($brush, $rect)
+
+      $fontSize = [single][Math]::Max(5, $Size * 0.17)
+      $font = New-Object System.Drawing.Font("Segoe UI", $fontSize, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
+      $fmt = New-Object System.Drawing.StringFormat
+      $fmt.Alignment = [System.Drawing.StringAlignment]::Center
+      $fmt.LineAlignment = [System.Drawing.StringAlignment]::Center
+      $g.DrawString($Badge, $font, [System.Drawing.Brushes]::White, $rect, $fmt)
+    }
   } finally {
+    if ($fmt) { $fmt.Dispose() }
+    if ($font) { $font.Dispose() }
+    if ($brush) { $brush.Dispose() }
     $g.Dispose()
   }
   $bmp.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
@@ -57,16 +77,6 @@ function Resize-Icon {
   Write-Host ("  {0,-34} {1,4}x{1,-4} {2,8} B" -f (Split-Path -Leaf $Path), $Size, (Get-Item $Path).Length)
 }
 
-Write-Host ''
-Write-Host 'PWA / Safari:'
-foreach ($n in 180, 192, 512, 1024) {
-  Resize-Icon -Image $source -Size $n -Path (Join-Path $webIcons ("icon-{0}.png" -f $n))
-}
-
-Write-Host ''
-Write-Host 'App iOS (Assets.xcassets/AppIcon.appiconset):'
-# Formato clasico de AppIcon (idiom iphone/ipad/ios-marketing): el que aceptan
-# todas las versiones de Xcode. (punto, escala, idiom)
 $iosSizes = @(
   @(20, 2, 'iphone'), @(20, 3, 'iphone'),
   @(29, 2, 'iphone'), @(29, 3, 'iphone'),
@@ -80,32 +90,71 @@ $iosSizes = @(
   @(1024, 1, 'ios-marketing')
 )
 
-$images = @()
-$entries = @()
-foreach ($row in $iosSizes) {
-  $point = $row[0]
-  $scale = $row[1]
-  $idiom = $row[2]
-  $px = [int][Math]::Round($point * $scale)
-  $pointLabel = $point.ToString([System.Globalization.CultureInfo]::InvariantCulture)
-  $file = if ($idiom -eq 'ios-marketing') { 'icon-1024.png' } else { ('icon-{0}-{1}@{2}x.png' -f $idiom, $pointLabel, $scale) }
-  Resize-Icon -Image $source -Size $px -Path (Join-Path $appIconSet $file) -NoAlpha
-  $sizeLabel = if ($idiom -eq 'ios-marketing') { '1024x1024' } else { ('{0}x{0}' -f $pointLabel) }
-  $images += [ordered]@{
-    size = $sizeLabel
-    idiom = $idiom
-    filename = $file
-    scale = ('{0}x' -f $scale)
+function Write-AppIconSet {
+  param(
+    [System.Drawing.Image]$Image,
+    [string]$WebDir,
+    [string]$AssetDir,
+    [string]$Badge = '',
+    [System.Drawing.Color]$BadgeColor = [System.Drawing.Color]::FromArgb(27, 95, 214),
+    [switch]$SkipWeb
+  )
+  New-Item -ItemType Directory -Force -Path $AssetDir | Out-Null
+
+  if (-not $SkipWeb) {
+    New-Item -ItemType Directory -Force -Path $WebDir | Out-Null
+    Write-Host ''
+    Write-Host ("PWA: {0}" -f $WebDir)
+    foreach ($n in 180, 192, 512, 1024) {
+      Resize-Icon -Image $Image -Size $n -Path (Join-Path $WebDir ("icon-{0}.png" -f $n)) `
+        -Badge $Badge -BadgeColor $BadgeColor
+    }
   }
-  $entries += ('    {{ "size": "{0}", "idiom": "{1}", "filename": "{2}", "scale": "{3}x" }}' -f $sizeLabel, $idiom, $file, $scale)
+
+  Write-Host ''
+  Write-Host ("App iOS: {0}" -f $AssetDir)
+  $entries = @()
+  foreach ($row in $iosSizes) {
+    $point = $row[0]
+    $scale = $row[1]
+    $idiom = $row[2]
+    $px = [int][Math]::Round($point * $scale)
+    $pointLabel = $point.ToString([System.Globalization.CultureInfo]::InvariantCulture)
+    $file = if ($idiom -eq 'ios-marketing') { 'icon-1024.png' } else { ('icon-{0}-{1}@{2}x.png' -f $idiom, $pointLabel, $scale) }
+    Resize-Icon -Image $Image -Size $px -Path (Join-Path $AssetDir $file) -NoAlpha `
+      -Badge $Badge -BadgeColor $BadgeColor
+    $sizeLabel = if ($idiom -eq 'ios-marketing') { '1024x1024' } else { ('{0}x{0}' -f $pointLabel) }
+    $entries += ('    {{ "size": "{0}", "idiom": "{1}", "filename": "{2}", "scale": "{3}x" }}' -f $sizeLabel, $idiom, $file, $scale)
+  }
+
+  $json = "{`n  `"images`": [`n" + ($entries -join ",`n") + "`n  ],`n" +
+          "  `"info`": { `"author`": `"xcode`", `"version`": 1 }`n}`n"
+  [System.IO.File]::WriteAllText((Join-Path $AssetDir 'Contents.json'), $json, (New-Object System.Text.UTF8Encoding($false)))
+  Write-Host ("Contents.json escrito ({0} imagenes)." -f $entries.Count)
 }
 
-# JSON con formato estable (ConvertTo-Json de PS 5.1 lo deja ilegible).
-$json = "{`n  `"images`": [`n" + ($entries -join ",`n") + "`n  ],`n" +
-        "  `"info`": { `"author`": `"xcode`", `"version`": 1 }`n}`n"
-[System.IO.File]::WriteAllText((Join-Path $appIconSet 'Contents.json'), $json, (New-Object System.Text.UTF8Encoding($false)))
-Write-Host ''
-Write-Host ("Contents.json escrito ({0} imagenes)." -f $images.Count)
+$cyan = [System.Drawing.Color]::FromArgb(27, 95, 214)
+$amber = [System.Drawing.Color]::FromArgb(180, 83, 9)
+$legacy = [System.Drawing.Color]::FromArgb(27, 95, 214)
+
+# App Head Tracking
+Write-AppIconSet -Image $source `
+  -WebDir (Join-Path $root 'web\icons') `
+  -AssetDir (Join-Path $root 'ios\RasmaticHeadTracking\Assets.xcassets\AppIcon.appiconset') `
+  -Badge 'HT' -BadgeColor $cyan
+
+# App Classic. Los iconos fuente viven fuera de web/ para no espejarse
+# dentro de la app Head Tracking.
+Write-AppIconSet -Image $source `
+  -WebDir (Join-Path $root 'assets\icons-classic') `
+  -AssetDir (Join-Path $root 'ios\RasmaticClassic\Assets.xcassets\AppIcon.appiconset') `
+  -Badge 'CL' -BadgeColor $amber
+
+# App heredada: se conserva tal cual estaba (sin banda), para no reemplazarla.
+Write-AppIconSet -Image $source `
+  -WebDir (Join-Path $root 'web\icons') `
+  -AssetDir (Join-Path $root 'ios\RasmaticLugar3D\Assets.xcassets\AppIcon.appiconset') `
+  -Badge '' -BadgeColor $legacy -SkipWeb
 
 $source.Dispose()
 Write-Host ''

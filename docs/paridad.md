@@ -193,3 +193,28 @@ modelo: la app usa `GameController` (`GamepadBridge.swift`) y entrega los mismos
 valores por `RasmaticNativeGamepad`. El mapeo es idéntico, incluida la zona
 muerta 0,18 y el gatillo 0,5. La diferencia es de plataforma, no de juego.
 Detalle en `docs/mando-bluetooth.md`.
+
+### 4.3 V19: dos apps con el mismo núcleo
+
+Desde V19 el proyecto genera dos sitios y dos apps:
+
+| | Head Tracking | Classic |
+|---|---|---|
+| Núcleo `game.js`, `modes.js`, `android-bridge.js`, CSS, `three.js` | idéntico | idéntico |
+| `vr/`, `net/`, `ios/` | idéntico | idéntico |
+| `headtracking/` | sí | no |
+| Bundle ID | `com.rasmatic.lugar3d.headtracking` | `com.rasmatic.lugar3d.classic` |
+| Almacenamiento | `rasmatic.*` | `rasmatic.classic.*` |
+| Core Motion | sí (3DoF) | no |
+| `NSMotionUsageDescription` | sí | no |
+| Icono | banda azul `HT` | banda ámbar `CL` |
+
+`tools/check-parity.js` compara el núcleo archivo por archivo. Solo permite
+diferencias en `index.html`, `manifest.webmanifest`, `sw.js`, `icons/*` y la
+carpeta `headtracking/`. Cualquier cambio futuro en el juego que se aplique a
+una sola variante falla la comprobación.
+
+La app heredada `RasmaticLugar3D` (`com.rasmatic.lugar3d`) sigue en el proyecto
+como respaldo V18 y no se compila por defecto.
+
+Detalle completo en `docs/v19-dos-apps.md`.

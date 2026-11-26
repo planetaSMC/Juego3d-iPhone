@@ -1,0 +1,140 @@
+/* ============================================================
+   RASMATIC iOS - capa de adaptacion (Safari + WKWebView + PWA)
+
+   No cambia la escena, el HUD ni los controles: solo corrige detalles
+   propios de iOS. Se carga DESPUES de android-game.css y
+   android-controls.css, y solo actua bajo html.ras-ios.
+   ============================================================ */
+
+/* Altura real de la ventana: en iOS 100% se queda corto cuando la barra
+   de Safari esta visible o cuando la app instalada usa la zona segura. */
+html.ras-ios,
+html.ras-ios body {
+  height: 100%;
+  min-height: 100%;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+@supports (height: 100dvh) {
+  html.ras-ios,
+  html.ras-ios body {
+    height: 100dvh;
+  }
+}
+
+/* Sin rebote elastico ni arrastre de la pagina: todo gesto pertenece al juego. */
+html.ras-ios body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  overflow: hidden;
+  -webkit-overflow-scrolling: auto;
+  touch-action: none;
+}
+
+/* Nada de seleccion, menu contextual ni resaltado azul al tocar. */
+html.ras-ios,
+html.ras-ios body,
+html.ras-ios canvas,
+html.ras-ios #ras-touch,
+html.ras-ios #ras-touch * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* El canvas ocupa la ventana completa y no se deforma (mismo criterio que Android). */
+html.ras-ios canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Los controles tactiles deben seguir siendo accionables pese al touch-action:none. */
+html.ras-ios #ras-stick,
+html.ras-ios #ras-run,
+html.ras-ios #act,
+html.ras-ios #dock button,
+html.ras-ios #dockhint,
+html.ras-ios #intro button,
+html.ras-ios #info button,
+html.ras-ios #bar button,
+html.ras-ios #ras-pause button,
+html.ras-ios #ras-game button {
+  touch-action: manipulation;
+}
+
+/* iOS no permite cerrar una app por codigo: el boton "Salir" no tendria
+   efecto. Se oculta en lugar de mostrar una accion muerta. El resto del
+   menu de pausa (Reanudar / Volver al inicio / modos) queda igual. */
+html.ras-ios #ras-pause [data-act="exit"] {
+  display: none !important;
+}
+
+/* En modo instalado (pantalla de inicio) la barra de estado es translucida:
+   el padding de :root ya reserva safe-area-inset-*, esto solo evita que el
+   fondo gris se vea detras de la isla/notch. */
+html.ras-ios body {
+  background-color: #a3b2c7;
+}
+
+/* El menu de destinos y el joystick comparten el borde inferior. En iPhone
+   con la barra de gestos el area segura ya se descuenta en android-controls.css;
+   se refuerza aqui por si el navegador reporta el inset tarde. */
+html.ras-ios #ras-stick {
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+}
+html.ras-ios #ras-run {
+  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Sin transiciones de 300 ms ni "flash" al cambiar de orientacion. */
+html.ras-ios body,
+html.ras-ios canvas {
+  transition: none;
+}
+
+/* Aviso de conexion de mando: misma tipografia que el HUD. */
+html.ras-ios #ras-pad-toast {
+  position: fixed;
+  left: 50%;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  transform: translateX(-50%);
+  z-index: 40;
+  max-width: min(92vw, 460px);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(15, 42, 85, .88);
+  color: #fff;
+  font: 600 13px/1.25 "Exo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .25s;
+}
+html.ras-ios #ras-pad-toast.on {
+  opacity: 1;
+}
+
+/* Modo depuracion (?debug=1): muestra el estado del mando sin alterar el juego. */
+html.ras-ios #ras-pad-debug {
+  position: fixed;
+  right: calc(8px + env(safe-area-inset-right, 0px));
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  z-index: 41;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .55);
+  color: #cfe3ff;
+  font: 500 11px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+  pointer-events: none;
+  white-space: pre;
+}
+/* El menu de pausa (Continuar / Volver al inicio / VR BOX) debe poder abrirse
+   en la app iOS. android-game.css lo oculta con !important porque tambien
+   oculta las capas heredadas; se restaura solo cuando el dialogo esta abierto. */
+html.ras-ios body.ras-paused #ras-pause { display: flex !important; }

@@ -1,9 +1,19 @@
 # Instalar la app en un iPhone
 
-La app ya está escrita: `ios/RasmaticLugar3D.xcodeproj`. Es una app de iOS de
-verdad (icono propio, pantalla completa, sin Safari, funciona sin internet y sin
-la PC). Lo único que falta es **convertirla en un archivo instalable (`.ipa`)**,
+Desde V19 hay **dos apps** en `ios/RasmaticLugar3D.xcodeproj`:
+
+- **RASMATIC VR HEAD TRACKING** · `com.rasmatic.lugar3d.headtracking`
+- **RASMATIC VR CLASSIC** · `com.rasmatic.lugar3d.classic`
+
+Son apps de iOS de verdad (icono propio, pantalla completa, sin Safari,
+funcionan sin internet y sin la PC) y se pueden instalar **las dos a la vez**.
+Lo único que falta es **convertir cada una en un archivo instalable (`.ipa`)**,
 y eso Apple solo lo permite haciendo la compilación en macOS.
+
+La app heredada `RasmaticLugar3D` (`com.rasmatic.lugar3d`) sigue en el proyecto
+como respaldo V18; no se elimina.
+
+Detalle de diferencias, permisos y almacenamiento: `docs/v19-dos-apps.md`.
 
 No hace falta comprar una Mac. Hay cuatro caminos; la guía de 11 pasos por USB
 es la principal.
@@ -23,11 +33,13 @@ es la principal.
 Antes de empezar, el `.ipa` tiene que existir. Si todavía no lo tenés:
 
 1. Subí el proyecto a GitHub.
-2. **Actions → iOS app (ipa sin firmar) → Run workflow**.
-3. Descargá el artefacto `RasmaticLugar3D-ipa` y descomprimilo.
+2. **Actions → iOS apps V19 (dos .ipa sin firmar) → Run workflow**.
+3. Descargá el artefacto `rasmatic-v19-ipas` y descomprimilo.
 
-Adentro está `RasmaticLugar3D-unsigned.ipa`. También podés generarlo en una Mac
-con `./tools/build-ipa.sh`. Detalle en `docs/firma-y-requisitos.md`.
+Adentro están `RASMATIC-HeadTracking-unsigned.ipa` y
+`RASMATIC-Classic-unsigned.ipa`. También podés generarlos en una Mac con
+`./tools/build-ipa.sh`. Detalle en `docs/v19-dos-apps.md` y
+`docs/firma-y-requisitos.md`.
 
 ---
 
@@ -44,7 +56,7 @@ que firma el `.ipa` con tu Apple ID y lo instala sin dejar nada corriendo.
 - iPhone con **iOS 15 o posterior**, desbloqueado y con código de acceso.
 - Una **cuenta Apple** (gratis alcanza). Si tiene doble factor, tené a mano el
   teléfono o el código de 6 dígitos.
-- `RasmaticLugar3D-unsigned.ipa`.
+- `RASMATIC-HeadTracking-unsigned.ipa` y/o `RASMATIC-Classic-unsigned.ipa`.
 - Unos 30–60 minutos la primera vez.
 
 ### Paso 2 — Instalar iTunes e iCloud desde la web de Apple
@@ -89,7 +101,8 @@ intento de instalar una app de desarrollo. Volvé a este paso después del 8.
 ### Paso 6 — Abrir Sideloadly y cargar el `.ipa`
 
 1. Verificar que arriba, en **Device**, esté seleccionado el iPhone.
-2. Arrastrar `RasmaticLugar3D-unsigned.ipa` a la ventana, o tocar el icono del
+2. Arrastrar `RASMATIC-HeadTracking-unsigned.ipa` y/o
+   `RASMATIC-Classic-unsigned.ipa` a la ventana, o tocar el icono del
    clip y elegirlo.
 3. No cambiar el **Bundle ID** salvo que Sideloadly avise que ya existe; en ese
    caso poné uno propio, por ejemplo `com.tunombre.rasmatic`.
@@ -198,7 +211,7 @@ Developer Program (US$99/año); con la cuenta gratis, la app deja de abrir a los
 ```bash
 chmod +x tools/build-ipa.sh
 ./tools/build-ipa.sh
-# deja dist/RasmaticLugar3D-unsigned.ipa
+# deja dist/RASMATIC-HeadTracking-unsigned.ipa y dist/RASMATIC-Classic-unsigned.ipa
 ```
 
 ---
@@ -209,7 +222,8 @@ Requiere **Apple Developer Program** (US$99 al año). Es lo que se usa para
 repartir la app a varias personas.
 
 1. Inscribirse en el programa con el Apple ID (`developer.apple.com/programs`).
-2. En **App Store Connect**, crear la app con bundle id `com.rasmatic.lugar3d`.
+2. En **App Store Connect**, crear una app por variante:
+   `com.rasmatic.lugar3d.headtracking` y `com.rasmatic.lugar3d.classic`.
 3. Compilar y subir: con Xcode en una Mac (▶ **Product → Archive → Distribute
    App → App Store Connect**) o desde la nube (Codemagic, Xcode Cloud o GitHub
    Actions con una clave de App Store Connect).
@@ -274,7 +288,7 @@ el `.ipa` en `dist/`.
    ```
 
    Opciones: `--repo <nombre>`, `--private`, `--no-wait`, `--dry-run`.
-4. Al terminar: `dist/RasmaticLugar3D-unsigned.ipa` con su SHA-256, ya
+4. Al terminar: los dos `.ipa` en `dist/` con su SHA-256, ya
    verificado con `tools/verify-ipa.js` (estructura, Mach-O, bundle id y juego
    completo).
 5. Revocar el token en GitHub cuando ya no se use.

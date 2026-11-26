@@ -1,12 +1,15 @@
-name: iOS app (ipa sin firmar)
+name: iOS apps V19 (dos .ipa sin firmar)
 
-# Compila la app en una Mac de la nube y deja el .ipa como artefacto.
-# No hace falta tener Mac: GitHub presta el runner macOS.
+# Compila las DOS apps en una Mac de la nube y deja los .ipa como artefacto:
+#   RASMATIC-HeadTracking-unsigned.ipa
+#   RASMATIC-Classic-unsigned.ipa
 #
-#   1. Subi esta carpeta a un repositorio de GitHub (puede ser publico).
-#   2. Pestaña "Actions" -> "iOS app (ipa sin firmar)" -> "Run workflow".
-#   3. Al terminar, descargar el artefacto "RasmaticLugar3D-ipa".
-#   4. Instalarlo con AltStore/Sideloadly (ver docs/instalar-en-iphone.md).
+#   1. Subí esta carpeta a un repositorio de GitHub (puede ser público).
+#   2. Actions -> "iOS apps V19" -> Run workflow.
+#   3. Descargar el artefacto "rasmatic-v19-ipas".
+#   4. Instalar cada app con AltStore/Sideloadly (docs/instalar-en-iphone.md).
+#
+# Las dos apps tienen bundle ids distintos y se pueden instalar a la vez.
 
 on:
   workflow_dispatch:
@@ -16,41 +19,58 @@ on:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 25
+    timeout-minutes: 35
 
     steps:
-      - name: Descargar el codigo
+      - name: Descargar el código
         uses: actions/checkout@v4
 
-      - name: Version de Xcode
+      - name: Versión de Xcode
         run: xcodebuild -version
 
-      - name: Comprobar el proyecto antes de compilar
+      - name: Comprobar estructura, targets y permisos
         run: node tools/check-xcode.js
 
-      - name: Compilar el .ipa sin firmar
+      - name: Comprobar paridad del núcleo
+        run: node tools/check-parity.js
+
+      - name: Compilar los dos .ipa sin firmar
         run: |
           chmod +x tools/build-ipa.sh
           ./tools/build-ipa.sh
 
-      - name: Verificar el .ipa (estructura, Mach-O y juego completo)
-        run: node tools/verify-ipa.js dist/RasmaticLugar3D-unsigned.ipa
+      - name: Verificar Head Tracking
+        run: |
+          node tools/verify-ipa.js dist/RASMATIC-HeadTracking-unsigned.ipa \
+            --expect com.rasmatic.lugar3d.headtracking --variant headtracking
+
+      - name: Verificar Classic
+        run: |
+          node tools/verify-ipa.js dist/RASMATIC-Classic-unsigned.ipa \
+            --expect com.rasmatic.lugar3d.classic --variant classic
 
       - name: Resumen
         run: |
           set -euo pipefail
-          IPA=dist/RasmaticLugar3D-unsigned.ipa
-          echo "### .ipa generado" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Apps V19 generadas" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| | |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Tamano | $(wc -c < "$IPA" | tr -d ' ') B |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| SHA-256 | \`$(shasum -a 256 "$IPA" | cut -d' ' -f1)\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| App | Bundle ID | Tamaño | SHA-256 |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          for row in \
+            "Head Tracking|com.rasmatic.lugar3d.headtracking|dist/RASMATIC-HeadTracking-unsigned.ipa" \
+            "Classic|com.rasmatic.lugar3d.classic|dist/RASMATIC-Classic-unsigned.ipa"; do
+            IFS='|' read -r app bundle ipa <<< "$row"
+            size=$(wc -c < "$ipa" | tr -d ' ')
+            hash=$(shasum -a 256 "$ipa" | cut -d' ' -f1)
+            echo "| $app | \`$bundle\` | $size B | \`$hash\` |" >> "$GITHUB_STEP_SUMMARY"
+          done
 
-      - name: Subir el .ipa
+      - name: Subir los dos .ipa
         uses: actions/upload-artifact@v4
         with:
-          name: RasmaticLugar3D-ipa
-          path: dist/*.ipa
+          name: rasmatic-v19-ipas
+          path: |
+            dist/RASMATIC-HeadTracking-unsigned.ipa
+            dist/RASMATIC-Classic-unsigned.ipa
           if-no-files-found: error
           retention-days: 30

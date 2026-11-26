@@ -1,6 +1,7 @@
 /* Generado por tools/build-ios.js - no editar a mano.
-   Build: 0417b73dd1d31bc4 */
-const CACHE = 'rasmatic-0417b73dd1d31bc4';
+   Variante: headtracking
+   Build: fc6b79f9fb4d80d7 */
+const CACHE = 'rasmatic-ht-fc6b79f9fb4d80d7';
 const PRECACHE = [
   "./",
   "./index.html",
@@ -23,6 +24,8 @@ const PRECACHE = [
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-1024.png",
+  "./headtracking/head-tracking.css",
+  "./headtracking/head-tracking.js",
   "./fonts/font01.woff2",
   "./fonts/font02.woff2",
   "./fonts/font03.woff2",
@@ -60,8 +63,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // El documento va a la red primero para recibir actualizaciones; si no hay
-  // red, se sirve la copia en cache (offline).
   if (isNavigation(request)) {
     event.respondWith(
       fetch(request)
@@ -75,7 +76,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Recursos versionados por build: cache primero.
   event.respondWith(
     caches.match(request).then((hit) => {
       if (hit) return hit;

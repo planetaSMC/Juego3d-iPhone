@@ -8,6 +8,9 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const D = () => window.RasmaticGame.debug();
   const G = () => window.RasmaticCore.game;
+  /* V19: cada app puede tener un prefijo de almacenamiento distinto. */
+  const SKEY = (k) => (window.RasmaticStore && typeof RasmaticStore.key === 'function')
+    ? RasmaticStore.key(k) : k;
   const tp = (x, z) => { const g = G(); g.player.x = x; g.player.z = z; };
   const STA = [
     { x: -3.85, z: -28 }, { x: 3.85, z: -36 }, { x: -3.85, z: -44 },
@@ -323,10 +326,10 @@
     { soportado: swSupported, estado: swState, protocolo: location.protocol });
 
   /* T22: dificultad del bot por API y persistencia. */
-  const diffBefore = localStorage.getItem('rasmatic.botDifficulty');
+  const diffBefore = localStorage.getItem(SKEY('rasmatic.botDifficulty'));
   const dset = window.RasmaticGame.setDifficulty('facil');
   const dfacil = window.RasmaticGame.getDifficulty();
-  const dsaved = localStorage.getItem('rasmatic.botDifficulty');
+  const dsaved = localStorage.getItem(SKEY('rasmatic.botDifficulty'));
   ok('T22 dificultad del bot por API y persistencia',
     dset === 'facil' && dfacil.id === 'facil' && dfacil.interval === 12 &&
     dfacil.speed === 0.75 && dsaved === 'facil',
@@ -412,7 +415,7 @@
 
   /* T26: tamaño individual del HUD por API (panel y tipografía). */
   const uiBefore = window.RasmaticGame.ui.state();
-  const uiKeyBefore = localStorage.getItem('rasmatic.ui.v1');
+  const uiKeyBefore = localStorage.getItem(SKEY('rasmatic.ui.v1'));
   const scoreEl = document.getElementById('rg-score');
   const pointsEl = document.querySelector('#rg-score .rg-team b');
   window.RasmaticGame.ui.reset('normal', null, { save: false });
@@ -462,14 +465,14 @@
   window.RasmaticGame.ui.set('normal', 'time',
     { scale: 1.2, dx: 8, dy: -6 }, { save: true, apply: true });
   let storedUi = null;
-  try { storedUi = JSON.parse(localStorage.getItem('rasmatic.ui.v1') || 'null'); } catch (e) { storedUi = null; }
+  try { storedUi = JSON.parse(localStorage.getItem(SKEY('rasmatic.ui.v1')) || 'null'); } catch (e) { storedUi = null; }
   const persisted = !!storedUi && storedUi.v === 1 && !!storedUi.profiles &&
     !!storedUi.profiles.normal && !!storedUi.profiles.normal.time &&
     storedUi.profiles.normal.time.scale === 1.2;
   window.RasmaticGame.ui.set('normal', 'time', { scale: 1 }, { save: false });
   const reloadedUi = window.RasmaticGame.ui.load();
   const reloadedOk = reloadedUi.normal.time.scale === 1.2;
-  localStorage.setItem('rasmatic.ui.v1',
+  localStorage.setItem(SKEY('rasmatic.ui.v1'),
     '{"v":1,"profiles":{"normal":{"time":{"scale":99,"dx":"x","dy":null}},"vr":null}}');
   const recoveredUi = window.RasmaticGame.ui.load();
   const recoveredOk = recoveredUi.normal.time.scale >= 0.6 &&
@@ -477,7 +480,7 @@
     recoveredUi.vr.time.scale === 1;
   ok('T28 persistencia versionada y datos invalidos',
     persisted && reloadedOk && recoveredOk,
-    { clave: 'rasmatic.ui.v1', version: storedUi && storedUi.v,
+    { clave: SKEY('rasmatic.ui.v1'), version: storedUi && storedUi.v,
       guardado: storedUi && storedUi.profiles && storedUi.profiles.normal &&
         storedUi.profiles.normal.time && storedUi.profiles.normal.time.scale,
       recargado: reloadedUi.normal.time.scale,
@@ -562,7 +565,7 @@
 
   /* Restaura la configuración de interfaz previa del equipo de prueba. */
   if (uiKeyBefore === null) {
-    localStorage.removeItem('rasmatic.ui.v1');
+    localStorage.removeItem(SKEY('rasmatic.ui.v1'));
     window.RasmaticGame.ui.load();
   } else {
     window.RasmaticGame.ui.setProfile('normal', uiBefore.profiles.normal);
@@ -571,7 +574,7 @@
 
   /* Restaura la preferencia previa del equipo de prueba. */
   if (diffBefore) window.RasmaticGame.setDifficulty(diffBefore);
-  else { window.RasmaticGame.setDifficulty('normal'); localStorage.removeItem('rasmatic.botDifficulty'); }
+  else { window.RasmaticGame.setDifficulty('normal'); localStorage.removeItem(SKEY('rasmatic.botDifficulty')); }
 
   } catch (e) {
     ok('suite interrumpida', false, { error: String(e && e.message), stack: String(e && e.stack).split('\n').slice(0, 4) });

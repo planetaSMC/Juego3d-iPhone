@@ -41,6 +41,81 @@
   };
   let difficulty = 'normal';
 
+  /* ---------------- Almacenamiento por aplicacion (V19) ----------------
+     La app Head Tracking conserva las claves historicas `rasmatic.*`.
+     La app Classic usa `rasmatic.classic.*` para que las dos puedan
+     convivir en el mismo origen (PWA) sin mezclar preferencias. */
+  function storeGet(key) {
+    try {
+      const s = window.RasmaticStore;
+      if (s && typeof s.getItem === 'function') return s.getItem(key);
+      return localStorage.getItem(key);
+    } catch (e) { return null; }
+  }
+  function storeSet(key, value) {
+    try {
+      const s = window.RasmaticStore;
+      if (s && typeof s.setItem === 'function') s.setItem(key, value);
+      else localStorage.setItem(key, value);
+    } catch (e) { /* modo privado */ }
+  }
+
+  /* ---------------- Joystick tactil opcional (V19) ----------------
+     Desactivado: se oculta el joystick visual y se ignoran sus entradas.
+     El mando Bluetooth, la camara y la interaccion siguen funcionando. */
+  const JOY_KEY = 'rasmatic.joystick';
+  let joystickOn = true;
+
+  function paintJoystick() {
+    const b = nodes.joyBtn;
+    if (b) {
+      b.classList.toggle('on', joystickOn);
+      b.setAttribute('aria-checked', joystickOn ? 'true' : 'false');
+      const t = b.querySelector('b');
+      if (t) t.textContent = joystickOn ? 'ACTIVADO' : 'DESACTIVADO';
+    }
+    document.body.classList.toggle('ras-no-joystick', !joystickOn);
+  }
+
+  function applyJoystick(on, save) {
+    joystickOn = on !== false;
+    if (save) storeSet(JOY_KEY, joystickOn ? 'on' : 'off');
+    paintJoystick();
+    try {
+      document.dispatchEvent(new CustomEvent('rasmatic:joystick', {
+        detail: { enabled: joystickOn }
+      }));
+    } catch (e) { /* navegadores sin CustomEvent */ }
+    return joystickOn;
+  }
+
+  function loadJoystick() {
+    let raw = 'on';
+    try { raw = storeGet(JOY_KEY) || 'on'; } catch (e) { /* nada */ }
+    applyJoystick(raw !== 'off', false);
+  }
+
+  function paintHeadTracking(st) {
+    const b = nodes.htBtn;
+    if (!b) return;
+    const on = !!(st && st.enabled);
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+    const t = b.querySelector('b');
+    if (t) t.textContent = on ? 'ACTIVADO' : 'DESACTIVADO';
+    if (nodes.htCenter) nodes.htCenter.hidden = !on;
+    if (nodes.htSens) {
+      const s = st && typeof st.sensitivity === 'number' ? st.sensitivity : 1;
+      nodes.htSens.value = s;
+      if (nodes.htSensOut) nodes.htSensOut.textContent = s.toFixed(1).replace('.', ',') + '×';
+    }
+    if (nodes.htSmooth) {
+      const m = st && typeof st.smoothing === 'number' ? st.smoothing : 0.12;
+      nodes.htSmooth.value = m;
+      if (nodes.htSmoothOut) nodes.htSmoothOut.textContent = m.toFixed(2).replace('.', ',') + ' s';
+    }
+  }
+
   /* ---------------- Personalización de la interfaz (V18) ----------------
      Cada elemento del HUD tiene su propio tamaño, desplazamiento y, cuando
      corresponde, peso/contraste/fondo. Se guardan dos perfiles (normal y VR)
@@ -155,16 +230,14 @@
     CFG.botInterval = d.interval;
     CFG.botFirst = d.first;
     CFG.botSpeed = d.speed;
-    if (save) {
-      try { localStorage.setItem(DIFF_KEY, key); } catch (e) { /* modo privado */ }
-    }
+    if (save) storeSet(DIFF_KEY, key);
     paintDifficulty();
     return key;
   }
 
   function loadDifficulty() {
     let id = 'normal';
-    try { id = localStorage.getItem(DIFF_KEY) || 'normal'; } catch (e) { /* nada */ }
+    try { id = storeGet(DIFF_KEY) || 'normal'; } catch (e) { /* nada */ }
     applyDifficulty(id, false);
   }
 
@@ -228,7 +301,7 @@
 
   function uiRead() {
     let raw = null;
-    try { raw = JSON.parse(localStorage.getItem(UI_KEY) || 'null'); } catch (e) { raw = null; }
+    try { raw = JSON.parse(storeGet(UI_KEY) || 'null'); } catch (e) { raw = null; }
     if (!raw || typeof raw !== 'object' || !raw.profiles) {
       return { normal: uiDefaultProfile(), vr: uiDefaultProfile() };
     }
@@ -243,7 +316,7 @@
   function uiWrite() {
     if (!uiSaved) return false;
     try {
-      localStorage.setItem(UI_KEY, JSON.stringify({ v: UI_VERSION, profiles: uiSaved }));
+      storeSet(UI_KEY, JSON.stringify({ v: UI_VERSION, profiles: uiSaved }));
       return true;
     } catch (e) {
       return false;   /* modo privado: queda aplicado en memoria */
@@ -1040,6 +1113,25 @@
           '</button>' +
         '</div>' +
         '<p class="rg-opts-note" id="rg-diff-note"></p>' +
+        '<div class="rg-opt-row">' +
+          '<span>JOYSTICK</span>' +
+          '<button type="button" class="rg-switch" id="rg-opt-joy" role="switch" aria-checked="true"><b>ACTIVADO</b></button>' +
+        '</div>' +
+        '<div class="rg-opt-row" id="rg-opt-ht-row" hidden>' +
+          '<span>HEAD TRACKING</span>' +
+          '<button type="button" class="rg-switch" id="rg-opt-ht" role="switch" aria-checked="false"><b>DESACTIVADO</b></button>' +
+        '</div>' +
+        '<label class="rg-opt-slider" id="rg-opt-ht-sens-row" hidden>' +
+          '<span>SENSIBILIDAD</span>' +
+          '<input type="range" id="rg-opt-ht-sens" min="0.2" max="2.5" step="0.1" value="1">' +
+          '<output id="rg-opt-ht-sens-o">1.0×</output>' +
+        '</label>' +
+        '<label class="rg-opt-slider" id="rg-opt-ht-smooth-row" hidden>' +
+          '<span>SUAVIZADO</span>' +
+          '<input type="range" id="rg-opt-ht-smooth" min="0.03" max="0.45" step="0.01" value="0.12">' +
+          '<output id="rg-opt-ht-smooth-o">0.12 s</output>' +
+        '</label>' +
+        '<button type="button" class="rg-opts-center" id="rg-opt-center" hidden>RECENTRAR VISTA</button>' +
         '<button type="button" class="rg-opts-ui" id="rg-opts-ui">PERSONALIZACIÓN DE INTERFAZ</button>' +
         '<button type="button" class="rg-opts-ok" id="rg-opts-ok">LISTO</button>' +
       '</div>';
@@ -1060,6 +1152,53 @@
       e.preventDefault();
       uiOpen();
     });
+
+    /* V19: joystick opcional en las dos apps. */
+    const joyBtn = opts.querySelector('#rg-opt-joy');
+    joyBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      applyJoystick(!joystickOn, true);
+    });
+
+    /* V19: el bloque de Head Tracking solo existe en la app que lo incluye. */
+    const htRow = opts.querySelector('#rg-opt-ht-row');
+    const htBtn = opts.querySelector('#rg-opt-ht');
+    const htCenter = opts.querySelector('#rg-opt-center');
+    const htSensRow = opts.querySelector('#rg-opt-ht-sens-row');
+    const htSens = opts.querySelector('#rg-opt-ht-sens');
+    const htSensOut = opts.querySelector('#rg-opt-ht-sens-o');
+    const htSmoothRow = opts.querySelector('#rg-opt-ht-smooth-row');
+    const htSmooth = opts.querySelector('#rg-opt-ht-smooth');
+    const htSmoothOut = opts.querySelector('#rg-opt-ht-smooth-o');
+    const ht = window.RasmaticHeadTracking || null;
+    if (ht) {
+      htRow.hidden = false;
+      htSensRow.hidden = false;
+      htSmoothRow.hidden = false;
+      htBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (ht.isEnabled()) ht.disable();
+        else ht.enable();
+      });
+      htCenter.addEventListener('click', function (e) {
+        e.preventDefault();
+        ht.recenter();
+      });
+      htSens.addEventListener('input', function () {
+        ht.setSensitivity(Number(htSens.value));
+      });
+      htSmooth.addEventListener('input', function () {
+        ht.setSmoothing(Number(htSmooth.value));
+      });
+      nodes.htBtn = htBtn;
+      nodes.htCenter = htCenter;
+      nodes.htSens = htSens;
+      nodes.htSensOut = htSensOut;
+      nodes.htSmooth = htSmooth;
+      nodes.htSmoothOut = htSmoothOut;
+      if (typeof ht.onChange === 'function') ht.onChange(paintHeadTracking);
+      paintHeadTracking(ht.state());
+    }
 
     const end = document.createElement('div');
     end.id = 'rg-end';
@@ -1086,6 +1225,10 @@
     nodes.act = act;
     nodes.optsBtn = optsBtn;
     nodes.opts = opts;
+    nodes.joyBtn = joyBtn;
+    nodes.htRow = htRow;
+    nodes.htBtn = htBtn;
+    nodes.htCenter = htCenter;
     nodes.diffNote = document.getElementById('rg-diff-note');
     nodes.end = end;
     nodes.endTitle = document.getElementById('rg-end-title');
@@ -1711,6 +1854,7 @@
       hideLegacy();
       buildUI();
       loadDifficulty();
+      loadJoystick();
       uiLoad();
 
       resetStocks();
@@ -1762,6 +1906,8 @@
       customer: !!(S.customer && S.customer.group.visible),
       botCustomer: !!(S.botCustomer && S.botCustomer.group.visible),
       ui: { action: promptLabel, hint: nodes.hint ? nodes.hint._t : null },
+      app: window.RasmaticApp ? window.RasmaticApp.id : null,
+      joystick: joystickOn,
       config: { duration: CFG.duration, botInterval: CFG.botInterval,
         botFirst: CFG.botFirst, botSpeed: CFG.botSpeed, difficulty: difficulty }
     };
@@ -1779,6 +1925,9 @@
       return { id: difficulty, label: DIFFICULTY[difficulty].label,
         interval: CFG.botInterval, first: CFG.botFirst, speed: CFG.botSpeed };
     },
+    /* V19: joystick tactil opcional. El mando Bluetooth no se toca. */
+    setJoystick: function (on) { return applyJoystick(on, true); },
+    getJoystick: function () { return joystickOn; },
     ui: uiApi,
     /* Solo para pruebas automatizadas por CDP. */
     _test: {

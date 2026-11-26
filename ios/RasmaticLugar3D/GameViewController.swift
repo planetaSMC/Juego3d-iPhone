@@ -27,6 +27,20 @@ final class GameViewController: UIViewController {
     private var webView: WKWebView!
     private var schemeHandler: BundleSchemeHandler?
     private var gamepad: GamepadBridge?
+#if RASMATIC_HEAD_TRACKING
+    private var headTracking: HeadTrackingBridge?
+#endif
+
+    /// Variante declarada en el Info.plist de cada target. La app Classic y
+    /// la app heredada no llevan la clave y quedan como "legacy".
+    private static var appVariant: String {
+        (Bundle.main.object(forInfoDictionaryKey: "RASMATICAppVariant") as? String) ?? "legacy"
+    }
+
+    /// Solo el target Head Tracking declara esta clave y compila Core Motion.
+    private static var supportsHeadTracking: Bool {
+        (Bundle.main.object(forInfoDictionaryKey: "RASMATICHeadTracking") as? Bool) ?? false
+    }
 
     // MARK: - Ciclo de vida
 
@@ -50,6 +64,16 @@ final class GameViewController: UIViewController {
         gamepad = bridge
         bridge.start()
 
+#if RASMATIC_HEAD_TRACKING
+        // Core Motion solo se instancia en el target Head Tracking. El target
+        // Classic ni siquiera compila HeadTrackingBridge.swift.
+        if Self.supportsHeadTracking {
+            let head = HeadTrackingBridge(webView: webView)
+            headTracking = head
+            head.start()
+        }
+#endif
+
         webView.load(URLRequest(url: Self.startURL))
     }
 
@@ -59,6 +83,9 @@ final class GameViewController: UIViewController {
         becomeFirstResponder()
         webView.becomeFirstResponder()
         gamepad?.start()
+#if RASMATIC_HEAD_TRACKING
+        headTracking?.start()
+#endif
         // Igual que FLAG_KEEP_SCREEN_ON en Android: la pantalla no se apaga
         // durante la partida.
         UIApplication.shared.isIdleTimerDisabled = true
@@ -68,6 +95,9 @@ final class GameViewController: UIViewController {
         super.viewWillDisappear(animated)
         UIApplication.shared.isIdleTimerDisabled = false
         gamepad?.stop()
+#if RASMATIC_HEAD_TRACKING
+        headTracking?.stop()
+#endif
     }
 
     // Juego inmersivo: sin barra de estado ni indicador de inicio.
@@ -101,9 +131,32 @@ final class GameViewController: UIViewController {
         // Marca de plataforma nativa. El JavaScript la usa para elegir el
         // puente GameController y NO la Gamepad API: asi una misma pulsacion
         // nunca entra dos veces.
+        //
+        // En el target Head Tracking se agrega el receptor de Core Motion.
+        // El target Classic NO define RasmaticNativeHeadTracking y su plist
+        // no declara NSMotionUsageDescription.
+        let variant = Self.appVariant
+        let headTracking = Self.supportsHeadTracking
+#if RASMATIC_HEAD_TRACKING
+        let headStub = headTracking ? """
+          window.RasmaticNativeHeadTracking = {
+            available: true,
+            version: '1.0',
+            _raw: null,
+            _status: null,
+            raw: function (y, p, r) { if (this._raw) this._raw(y, p, r); },
+            status: function (a, n) { this.available = !!a; if (this._status) this._status(a, n); },
+            bind: function (raw, status) { this._raw = raw; this._status = status; }
+          };
+        """ : ""
+#else
+        let headStub = ""
+#endif
         let native = """
         (function () {
-          window.__RASMATIC_NATIVE__ = { app: true, gamepad: true, version: '1.0' };
+          window.__RASMATIC_NATIVE__ = { app: true, gamepad: true,
+            headTracking: \(headTracking), variant: '\(variant)', version: '1.9' };
+        \(headStub)
         })();
         """
         config.userContentController.addUserScript(
@@ -178,6 +231,9 @@ extension GameViewController: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         // La pagina ya tiene RasmaticNativeGamepad: se anuncia el mando actual.
         gamepad?.webViewDidLoad()
+#if RASMATIC_HEAD_TRACKING
+        headTracking?.webViewDidLoad()
+#endif
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {

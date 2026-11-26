@@ -1,0 +1,126 @@
+/* ============================================================
+   RASMATIC · HEAD TRACKING (V19)
+   Barra compacta de estado. No toca el HUD del juego.
+   En VR SBS se oculta: un solo botón fuera de la copia por ojo
+   rompería la simetría. El panel VR tiene sus propios controles.
+   ============================================================ */
+
+#ht-bar,
+#ht-bar * { box-sizing: border-box; }
+
+#ht-bar {
+  position: fixed;
+  right: calc(14px + env(safe-area-inset-right, 0px));
+  top: calc(120px + env(safe-area-inset-top, 0px));
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: min(250px, 62vw);
+  font-family: "Exo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#ht-bar button {
+  pointer-events: auto;
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(150, 210, 255, .5);
+  background: rgba(8, 22, 46, .82);
+  color: #dcecff;
+  font: 800 11px/1 "Exo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: .1em;
+  box-shadow: 0 8px 24px rgba(2, 10, 26, .4);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#ht-bar button:active { transform: scale(.97); }
+#ht-bar button:disabled { opacity: .7; cursor: default; }
+
+#ht-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #8798b3;
+  box-shadow: 0 0 0 3px rgba(135, 152, 179, .18);
+  flex: 0 0 auto;
+}
+
+#ht-bar.ht-on #ht-dot {
+  background: #6ff0b4;
+  box-shadow: 0 0 0 3px rgba(111, 240, 180, .2), 0 0 12px rgba(111, 240, 180, .7);
+}
+
+#ht-bar.ht-active #ht-toggle,
+#ht-bar.ht-starting #ht-toggle {
+  border-color: rgba(111, 240, 180, .75);
+  color: #c9ffe9;
+}
+
+#ht-bar.ht-unsupported #ht-toggle,
+#ht-bar.ht-denied #ht-toggle,
+#ht-bar.ht-timeout #ht-toggle {
+  border-color: rgba(255, 170, 150, .6);
+  color: #ffd2c8;
+}
+
+#ht-bar.ht-unsupported #ht-dot,
+#ht-bar.ht-denied #ht-dot,
+#ht-bar.ht-timeout #ht-dot {
+  background: #ff9b86;
+  box-shadow: 0 0 0 3px rgba(255, 155, 134, .18);
+}
+
+#ht-center {
+  border-color: rgba(120, 190, 255, .55) !important;
+  background: rgba(22, 58, 112, .9) !important;
+  color: #dcecff !important;
+}
+
+#ht-center[hidden] { display: none !important; }
+
+#ht-status {
+  pointer-events: none;
+  display: block;
+  max-width: 100%;
+  padding: 5px 9px;
+  border-radius: 9px;
+  background: rgba(6, 16, 36, .72);
+  color: #cfe0f7;
+  font: 600 10px/1.35 "Exo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: .02em;
+  text-align: right;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+#ht-bar.ht-active #ht-status { color: #bfeeda; }
+#ht-bar.ht-unsupported #ht-status,
+#ht-bar.ht-denied #ht-status,
+#ht-bar.ht-timeout #ht-status { color: #ffd2c8; }
+
+/* En VR SBS la barra se oculta; el panel VR ofrece los mismos controles. */
+body.vr-on #ht-bar { display: none !important; }
+
+/* En pantallas bajas no tapar el HUD superior. */
+@media (max-height: 460px) {
+  #ht-bar { top: calc(64px + env(safe-area-inset-top, 0px)); }
+  #ht-status { display: none; }
+}
+
+@media (max-width: 560px) and (orientation: portrait) {
+  #ht-bar { top: calc(118px + env(safe-area-inset-top, 0px)); max-width: 58vw; }
+}

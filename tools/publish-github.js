@@ -32,7 +32,13 @@ const { verifyIpa } = require('./verify-ipa');
 const ROOT = path.resolve(__dirname, '..');
 const API = 'https://api.github.com';
 const WORKFLOW = 'ios-ipa.yml';
-const ARTIFACT = 'RasmaticLugar3D-ipa';
+const ARTIFACT = 'rasmatic-v19-ipas';
+const EXPECTED = [
+  { file: 'RASMATIC-HeadTracking-unsigned.ipa',
+    bundle: 'com.rasmatic.lugar3d.headtracking', variant: 'headtracking' },
+  { file: 'RASMATIC-Classic-unsigned.ipa',
+    bundle: 'com.rasmatic.lugar3d.classic', variant: 'classic' }
+];
 
 /* ---------------- argumentos ---------------- */
 const argv = process.argv.slice(2);
@@ -240,7 +246,7 @@ async function main() {
   })).data;
 
   const commit = (await api('POST', repoApi + '/git/commits', {
-    message: 'RASMATIC Lugar 3D para iPhone: app iOS + sitio + herramientas',
+    message: 'V19: Add independent VR Head Tracking and Classic iOS apps',
     tree: tree.sha,
     parents: parentSha ? [parentSha] : []
   })).data;
@@ -318,26 +324,35 @@ async function main() {
   const artZip = Buffer.from(await zipRes.arrayBuffer());
   console.log('Artefacto: ' + (artZip.length / 1048576).toFixed(2) + ' MB');
 
-  /* 6. Extraer el .ipa a dist/ */
+  /* 6. Extraer los dos .ipa a dist/ */
   const entries = unzipEntries(artZip);
-  const ipaName = entries.names.find((n) => n.endsWith('.ipa'));
-  if (!ipaName) throw new Error('El artefacto no contiene ningun .ipa');
-  const ipa = entries.read(ipaName);
-
   const dist = path.join(ROOT, 'dist');
   fs.mkdirSync(dist, { recursive: true });
-  const out = path.join(dist, 'RasmaticLugar3D-unsigned.ipa');
-  fs.writeFileSync(out, ipa);
+  const found = entries.names.filter((n) => n.endsWith('.ipa'));
+  if (!found.length) throw new Error('El artefacto no contiene ningun .ipa');
 
-  /* 7. Verificar el .ipa con el mismo comprobador que usa el flujo */
-  const verified = verifyIpa(out, { log: (line) => console.log(line) });
-  if (!verified.ok) throw new Error('El .ipa no paso la verificacion');
+  for (const expected of EXPECTED) {
+    const ipaName = found.find((n) => n.split('/').pop() === expected.file);
+    if (!ipaName) throw new Error('Falta el .ipa ' + expected.file + ' en el artefacto');
+    const ipa = entries.read(ipaName);
+    const out = path.join(dist, expected.file);
+    fs.writeFileSync(out, ipa);
 
-  console.log('\nIPA: ' + out);
-  console.log('     ' + ipa.length + ' B');
-  console.log('     SHA-256 ' + sha256(ipa));
-  console.log('     ' + verified.info.entries + ' entradas, juego completo adentro');
-  console.log('\nSiguiente paso: instalarlo con Sideloadly/AltStore (docs/instalar-en-iphone.md).');
+    /* 7. Verificar cada .ipa con el mismo comprobador que usa el flujo */
+    const verified = verifyIpa(out, {
+      expect: expected.bundle,
+      variant: expected.variant,
+      log: (line) => console.log(line)
+    });
+    if (!verified.ok) throw new Error('El .ipa ' + expected.file + ' no paso la verificacion');
+
+    console.log('\nIPA: ' + out);
+    console.log('     ' + ipa.length + ' B');
+    console.log('     SHA-256 ' + sha256(ipa));
+    console.log('     ' + verified.info.entries + ' entradas, juego completo adentro');
+  }
+  console.log('\nSiguiente paso: instalar los dos con Sideloadly/AltStore (docs/instalar-en-iphone.md).');
+  console.log('Se pueden tener instalados a la vez: los bundle ids son distintos.');
 }
 
 main().catch((e) => {

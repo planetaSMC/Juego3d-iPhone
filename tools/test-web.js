@@ -27,6 +27,7 @@ function argValue(flag, fallback) {
 
 const port = Number(argValue('--port', 8137));
 const debugPort = port + 1000;
+const webRoot = path.resolve(argValue('--root', path.join(root, 'web')));
 const shotsDir = argValue('--shots', path.join(root, 'docs', 'evidencias'));
 const keep = process.argv.includes('--keep');
 
@@ -115,7 +116,8 @@ class CDP {
 /* ---------------- Arranque ---------------- */
 async function main() {
   const browserPath = findBrowser();
-  const server = spawn(process.execPath, [path.join(__dirname, 'serve.js'), '--port', String(port), '--quiet'], {
+  const server = spawn(process.execPath, [path.join(__dirname, 'serve.js'),
+    '--port', String(port), '--root', webRoot, '--quiet'], {
     cwd: root, stdio: ['ignore', 'pipe', 'pipe']
   });
   server.stderr.on('data', (d) => process.stderr.write('[serve] ' + d));

@@ -15,6 +15,8 @@
   const CAM = () => G().camera;
   const R = () => G().renderer;
   const D = () => window.RasmaticGame.debug();
+  const SKEY = (k) => (window.RasmaticStore && typeof RasmaticStore.key === 'function')
+    ? RasmaticStore.key(k) : k;
   const out = [];
   const ok = (name, cond, data) => {
     console.log('[vr] ' + (cond ? 'ok   ' : 'FAIL ') + name);
@@ -623,7 +625,7 @@
     /* ---------------- V23: persistencia ---------------- */
     VR.set('ipd', 68);
     VR.set('camHeight', 0.2);
-    const raw23 = JSON.parse(localStorage.getItem('rasmatic.vr.settings.v2') || '{}');
+    const raw23 = JSON.parse(localStorage.getItem(SKEY('rasmatic.vr.settings.v2')) || '{}');
     VR.disable();
     VR.enable();
     await frames(2);

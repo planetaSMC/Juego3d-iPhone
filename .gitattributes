@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# El script de compilación corre en macOS/bash: siempre LF, también en Windows.
+*.sh text eol=lf

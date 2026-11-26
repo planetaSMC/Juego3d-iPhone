@@ -58,7 +58,10 @@
   /* ---------------- almacenamiento ---------------- */
   function loadStore() {
     try {
-      var raw = localStorage.getItem(STORE);
+      var s = window.RasmaticStore;
+      var raw = s && typeof s.getItem === 'function'
+        ? s.getItem(STORE)
+        : localStorage.getItem(STORE);
       var o = raw ? JSON.parse(raw) : null;
       if (!o || typeof o !== 'object') return;
       if (typeof o.token === 'string') S.token = o.token;
@@ -71,13 +74,16 @@
 
   function saveStore() {
     try {
-      localStorage.setItem(STORE, JSON.stringify({
+      var s = window.RasmaticStore;
+      var value = JSON.stringify({
         token: S.token,
         deviceId: S.deviceId,
         host: S.host,
         port: S.port,
         deviceName: S.deviceName
-      }));
+      });
+      if (s && typeof s.setItem === 'function') s.setItem(STORE, value);
+      else localStorage.setItem(STORE, value);
     } catch (e) { /* sin persistencia */ }
   }
 

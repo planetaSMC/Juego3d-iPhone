@@ -80,6 +80,55 @@ Android.
 
 ---
 
+## 1b. Suite V19 de las dos apps
+
+```powershell
+node tools/test-v19.js
+```
+
+Prueba la app Head Tracking con un puente **Core Motion simulado**
+(`raw/status/bind`, exactamente la superficie que usa `HeadTrackingBridge.swift`),
+la app Classic sin sensores y el fallback web con `DeviceOrientationEvent`.
+
+### Resultado
+
+```
+=== Head Tracking · Core Motion simulado ===
+  16/16 casos superados.
+=== Classic · sin head tracking ===
+  14/14 casos superados.
+=== Head Tracking · fallback web ===
+  16/16 casos superados.
+
+Persistencia independiente:
+  ok   HT conserva on y Classic conserva off
+       {"app":"headtracking","joystick":true,"htKey":"on","classicKey":"off"}
+```
+
+| Caso | Qué comprueba | HT | Classic |
+|---|---|---|---|
+| V19-01 | Identidad `RasmaticApp` y prefijo de almacenamiento | ok | ok |
+| V19-02 | Opción **JOYSTICK** visible y accesible | ok | ok |
+| V19-03 | Joystick activo recibe el toque | ok | ok |
+| V19-04 | Joystick off oculta el stick, ignora entradas y las suelta | ok | ok |
+| V19-05 | La elección se guarda en la clave de esa app | ok | ok |
+| V19-06 | El mando Bluetooth sigue funcionando con joystick off | ok | ok |
+| V19-07 | Joystick on restaura el comportamiento actual | ok | ok |
+| V19-08 | V18, duración, 6 medicamentos, CNC y dificultad intactos | ok | ok |
+| V19-09 | SBS con 2 ojos, HUD duplicado e IPD/convergencia/intensidad | ok | ok |
+| V19-10 | API de head tracking presente / Classic sin API | ok | ok |
+| V19-11 | Girar e inclinar mueve la orientación / Classic sin script | ok | ok |
+| V19-12 | El offset llega al render SBS en los dos ojos / sin controles HT | ok | ok |
+| V19-13 | Recentrar vuelve al frente / Classic ignora sensores | ok | ok |
+| V19-14 | Sensibilidad ajustable / claves Classic aisladas | ok | ok |
+| V19-15 | Suavizado ajustable y persistido | ok | — |
+| V19-16 | Sin datos informa timeout y no simula movimiento | ok | — |
+
+> Los datos de orientación son **simulados** para validar la lógica interna.
+> No son evidencia de funcionamiento físico de los sensores.
+
+---
+
 ## 2. Modo VR en escritorio
 
 ```powershell
@@ -189,68 +238,73 @@ Además, `tools/test-pad.js` comprueba fuera de la suite:
 
 ```powershell
 node tools/check-xcode.js
+node tools/check-parity.js
 ```
 
 ### Resultado
 
 ```
-OK: 123 comprobaciones superadas.
+OK: 246 comprobaciones superadas.          (check-xcode)
+OK: 44 comprobaciones de paridad superadas. (check-parity)
 ```
 
-Cubre:
+`check-xcode.js` cubre:
 
 - `project.pbxproj`: llaves balanceadas, IDs existentes, `rootObject` válido,
   tipo aplicación, `www` como folder reference, WebKit enlazado, target iOS 15,
-  iPhone + iPad, `GamepadBridge.swift` dado de alta en la fase Sources.
-- Esquema compartido apuntando al target correcto.
-- `Info.plist`: XML completo, claves obligatorias, barra de estado oculta,
-  `GCSupportsControllerUserInteraction`, pantalla de arranque y las cuatro
-  orientaciones.
-- `Assets.xcassets`: los 18 iconos existen, miden lo declarado y **no tienen
-  canal alfa** (la App Store rechaza el icono 1024 con alfa).
-- Swift: `@main`, `WKURLSchemeHandler` registrado, URL de arranque
-  `rasmatic://app/index.html` coherente con el handler, sin `file://`, MIME de
-  `woff2`, acceso limitado a `www/`, llaves balanceadas.
-- Mando nativo: `import GameController`, notificaciones de conexión y
-  desconexión, timer de 60 Hz, zona muerta 0,18, gatillo 0,5, envío a
-  `RasmaticNativeGamepad.raw/press/status`, nombre real (`vendorName`),
-  L1/L2 para correr, cruceta sumada al stick y botones A/B/X/Y/Menu/Options.
-- Marcador `__RASMATIC_NATIVE__` inyectado con `WKUserScript` en
-  `.atDocumentStart`, antes de cargar la página.
-- `web/`: recursos del HTML (incluidos `ios/ios.css`, `ios/ios-bridge.js`,
-  `vr/vr-preview.css` y `vr/vr-preview.js`), manifest, iconos y todo el
-  precache del service worker.
-- Orden de scripts: puente iOS antes del módulo VR.
-- Espejo `ios/RasmaticLugar3D/www`: mismos archivos, idénticos byte a byte.
+  iPhone + iPad, `GamepadBridge.swift` y `HeadTrackingBridge.swift` en las
+  fases correctas.
+- **Tres targets**: Head Tracking, Classic y el heredado `RasmaticLugar3D`.
+- Bundle IDs distintos (`...headtracking` y `...classic`) en Debug y Release.
+- Esquemas compartidos apuntando a sus targets.
+- `Info.plist` por app: nombre, variante, `RASMATICHeadTracking`,
+  `NSMotionUsageDescription` solo en Head Tracking, sin cámara, barra de estado
+  oculta, `GCSupportsControllerUserInteraction`, pantalla de arranque y las
+  cuatro orientaciones.
+- `Assets.xcassets`: los 18 iconos de **cada** app existen, miden lo declarado
+  y no tienen canal alfa.
+- Swift: `@main`, `WKURLSchemeHandler`, URL `rasmatic://app/index.html`, sin
+  `file://`, MIME de `woff2`, acceso limitado a `www/`, llaves balanceadas.
+- Head Tracking: `import CoreMotion`, `CMMotionManager`,
+  `startDeviceMotionUpdates`, `attitude.yaw/pitch/roll`, 60 Hz, envío a
+  `RasmaticNativeHeadTracking.raw/status`, detección de sensor ausente y cero
+  uso de cámara.
+- Classic: NO compila `HeadTrackingBridge.swift`, NO declara
+  `NSMotionUsageDescription` y su web no contiene `headtracking/`.
+- Mando nativo compartido: GameController, 60 Hz, zona muerta 0,18, gatillo 0,5,
+  `RasmaticNativeGamepad.raw/press/status`, botones A/B/X/Y/Menu/Options.
+- `web/` y `web-classic/`: recursos del HTML, manifest e iconos propios,
+  service worker con caché distinta, prefijos `rasmatic.` y
+  `rasmatic.classic.`.
+- Espejos `ios/RasmaticHeadTracking/www` e `ios/RasmaticClassic/www` idénticos
+  byte a byte a su web.
 - Flujo de compilación: `.github/workflows/ios-ipa.yml` en runner macOS,
-  `tools/check-xcode.js`, `tools/build-ipa.sh` con `set -euo pipefail`, sin
-  firma, en LF (macOS rechaza CRLF), `tools/verify-ipa.js` y artefacto
-  descargable.
-- `tools/publish-github.js` usa el mismo verificador.
+  `tools/check-xcode.js`, `tools/check-parity.js`, `tools/build-ipa.sh` con
+  `set -euo pipefail`, sin firma, en LF, `tools/verify-ipa.js` y artefacto
+  `rasmatic-v19-ipas`.
+
+`check-parity.js` compara el núcleo archivo por archivo. Solo permite
+diferencias en `index.html`, `manifest.webmanifest`, `sw.js`, `icons/*` y la
+carpeta `headtracking/` de Head Tracking. Cualquier divergencia en `game.js`,
+`android-bridge.js`, CSS, modos, `three.js`, VR, red o puente iOS falla.
 
 ### Verificador del `.ipa`
 
 ```powershell
-node tools/verify-ipa.js dist/RasmaticLugar3D-unsigned.ipa
+node tools/verify-ipa.js dist/RASMATIC-HeadTracking-unsigned.ipa `
+  --expect com.rasmatic.lugar3d.headtracking --variant headtracking
+
+node tools/verify-ipa.js dist/RASMATIC-Classic-unsigned.ipa `
+  --expect com.rasmatic.lugar3d.classic --variant classic
 ```
 
-Se probó con un **IPA sintético** armado en `%TEMP%` (Info.plist real, `www/`
-completo y un Mach-O mínimo), no con un `.ipa` compilado por Xcode:
+Se probó con **IPAs sintéticos** armados en `%TEMP%` (Info.plist real, `www/`
+completo y un Mach-O mínimo), no con un `.ipa` compilado por Xcode. El
+verificador comprueba además que Head Tracking lleve `www/headtracking/` y
+`NSMotionUsageDescription`, y que Classic no lleve ninguno de los dos.
 
-```
-  ok   ZIP con 32 entradas
-  ok   un unico Payload/*.app: RasmaticLugar3D.app
-  ok   bundle id esperado: com.rasmatic.lugar3d
-  ok   ejecutable en la raiz de la .app
-  ok   el ejecutable es Mach-O (64 bits)
-  ok   juego completo dentro de www/ (9 archivos clave)
-  ok   todos los recursos del index.html estan dentro (15)
-OK: el .ipa tiene la estructura correcta y el juego completo adentro.
-```
-
-También se comprobó que **falla** cuando el `Info.plist` conserva
-`$(PRODUCT_BUNDLE_IDENTIFIER)` o cuando falta el `Payload/*.app`, que es lo que
-debe hacer. No valida la firma de Apple.
+No valida la firma de Apple. La compilación y firma reales siguen pendientes de
+un runner macOS y una cuenta Apple.
 
 ---
 
@@ -339,7 +393,9 @@ probó:
 | **VR Box físicas** | requieren las gafas y un iPhone | calibrar FOV, IPD, convergencia, tamaño, margen central y distorsión con las lentes puestas, usando el modo prueba |
 | **Legibilidad óptica del HUD en VR** | requiere lentes y distancia real de visión | jugar con el VR Box y confirmar que marcador, pedido y JUGAR se leen sin forzar la vista |
 | **Instalador NSIS ejecutado** | requiere instalarlo en una máquina limpia | ejecutar `RASMATIC VR Calibrator Setup 1.0.0.exe` y repetir el smoke |
-| Seguimiento de cabeza | fuera de alcance (no hay AR/WebXR) | — |
+| **Head Tracking físico** | requiere iPhone con giroscopio y VR Box | instalar la app Head Tracking, activar HT, girar/inclinar la cabeza y recentrar con R; comprobar que no hay deriva ni saltos. La lógica se probó con datos simulados, no con sensores reales |
+| **Permiso de movimiento de iOS** | requiere un iPhone real | aceptar y denegar `NSMotionUsageDescription`; confirmar los estados `HT ACTIVO`, `PERMISO DENEGADO` y `SIN RESPUESTA` |
+| **Instalación simultánea real** | requiere dispositivo | instalar los dos `.ipa` y confirmar que conviven, se actualizan y se borran por separado |
 | Rendimiento real (fps, batería) | hardware distinto | jugar una partida completa en el iPhone |
 | Service worker en iPhone | solo se habilita en https | servir por https o usar la app nativa |
 

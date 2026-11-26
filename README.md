@@ -1,16 +1,31 @@
-# RASMATIC · Lugar 3D — versión iPhone
+# RASMATIC · Lugar 3D — versión iPhone (V19)
 
-Port del juego Android **RASMATIC · Lugar 3D** para que lo pueda jugar alguien
-con iPhone, con el mismo contenido y el mismo comportamiento.
+Port del juego Android **RASMATIC · Lugar 3D** en **dos apps iOS independientes**
+que se pueden instalar a la vez:
+
+| App | Bundle ID | Artefacto |
+|---|---|---|
+| **RASMATIC VR HEAD TRACKING** | `com.rasmatic.lugar3d.headtracking` | `dist/RASMATIC-HeadTracking-unsigned.ipa` |
+| **RASMATIC VR CLASSIC** | `com.rasmatic.lugar3d.classic` | `dist/RASMATIC-Classic-unsigned.ipa` |
 
 El juego en sí (escena 3D, HUD, estaciones, CNC, bot, partida de 3 minutos) es
-**exactamente el mismo código** del proyecto Android: los archivos del juego se
-copian byte a byte. Lo único que cambia es la capa que lo envuelve: en Android
-es una app Kotlin con WebView; acá hay dos formas de abrirlo en un iPhone.
+**exactamente el mismo código** en las dos: se copia byte a byte desde el
+proyecto Android. La única diferencia funcional obligatoria es el **head
+tracking real** de la versión Head Tracking; las dos comparten la opción
+**JOYSTICK: ACTIVADO / DESACTIVADO**.
+
+- Head Tracking usa **Core Motion** (`CMMotionManager` / `CMDeviceMotion`) en
+  iOS, sin cámara, con permiso `NSMotionUsageDescription`.
+- Classic **no** compila Core Motion, no incluye `headtracking/` y no declara
+  permisos de sensores.
+- Cada app tiene su propio almacenamiento (`rasmatic.*` vs
+  `rasmatic.classic.*`), icono, manifest, service worker y bundle ID.
+
+Detalle completo: **`docs/v19-dos-apps.md`**.
 
 ---
 
-## Dos formas de jugarlo
+## Formas de jugarlo
 
 | | Qué es | Qué necesitás | Offline |
 |---|---|---|---|
@@ -22,8 +37,9 @@ explica las cuatro formas de compilarla e instalarla (Mac alquilada por hora,
 build gratis en GitHub Actions + AltStore/Sideloadly, TestFlight, o la PWA como
 último recurso).
 
-Las dos usan el mismo contenido: `web/` y `ios/RasmaticLugar3D/www/` son
-idénticos byte a byte (lo verifica `tools/check-xcode.js`).
+`web/` y `ios/RasmaticHeadTracking/www` son idénticos byte a byte, igual que
+`web-classic/` y `ios/RasmaticClassic/www` (lo verifican `tools/check-xcode.js`
+y `tools/check-parity.js`).
 
 ### Dificultad del bot
 
@@ -54,20 +70,24 @@ La más rápida **sin tener Mac**:
 
 1. Subir esta carpeta a un repositorio de GitHub (gratis; si es público, la
    compilación no consume minutos).
-2. Pestaña **Actions** → *iOS app (ipa sin firmar)* → **Run workflow**.
-3. Al terminar (~10 min), descargar el artefacto `RasmaticLugar3D-ipa`: adentro
-   está `RasmaticLugar3D-unsigned.ipa`.
-4. Instalarlo desde Windows con **Sideloadly** o **AltStore**, firmando con tu
-   Apple ID (cuenta gratis sirve).
+2. Pestaña **Actions** → *iOS apps V19 (dos .ipa sin firmar)* → **Run workflow**.
+3. Al terminar (~15 min), descargar el artefacto `rasmatic-v19-ipas`: adentro
+   están `RASMATIC-HeadTracking-unsigned.ipa` y
+   `RASMATIC-Classic-unsigned.ipa`.
+4. Instalar **cada una** desde Windows con **Sideloadly** o **AltStore**,
+   firmando con tu Apple ID (cuenta gratis sirve).
 
-Resultado: la app queda instalada con su icono, abre a pantalla completa, no
-usa Safari y funciona **sin internet y sin la PC**. Con cuenta gratis la firma
-dura 7 días (se renueva en 30 segundos); con TestFlight, 90 días por versión.
+Resultado: las dos apps quedan instaladas a la vez, con iconos distintos
+(banda azul `HT` / banda ámbar `CL`), abren a pantalla completa, no usan Safari
+y funcionan **sin internet y sin la PC**. Con cuenta gratis la firma dura 7 días
+(se renueva en 30 segundos); con TestFlight, 90 días por versión.
 
-El `.ipa` lo produce `tools/build-ipa.sh`, el mismo script que se usa en una Mac:
+Los `.ipa` los produce `tools/build-ipa.sh`, el mismo script que se usa en una Mac:
 
 ```bash
-./tools/build-ipa.sh     # deja dist/RasmaticLugar3D-unsigned.ipa
+./tools/build-ipa.sh
+# dist/RASMATIC-HeadTracking-unsigned.ipa
+# dist/RASMATIC-Classic-unsigned.ipa
 ```
 
 Y si preferís no usar la web de GitHub, `tools/publish-github.js` hace todo por
@@ -311,11 +331,25 @@ que `GameViewController.swift`), y comprueba sticks, cámara, correr 2,4×,
 A/B/X/Y/Select, desconexión/reconexión, ausencia de doble entrada, ocultado del
 joystick, VR por ojo, aviso de rotación y salida segura.
 
-La estructura del proyecto iOS se verifica sin Mac:
+La suite V19 prueba las dos apps por separado, el joystick, el aislamiento de
+persistencia y el head tracking nativo simulado + fallback web:
 
 ```powershell
-node tools/check-xcode.js     # 123 comprobaciones
-node tools/verify-ipa.js dist/RasmaticLugar3D-unsigned.ipa
+node tools/test-v19.js
+```
+
+**16/16 Head Tracking nativo**, **14/14 Classic**, **16/16 Head Tracking web**
+y persistencia independiente (`rasmatic.*` on / `rasmatic.classic.*` off).
+
+La estructura del proyecto iOS y la paridad del núcleo se verifican sin Mac:
+
+```powershell
+node tools/check-xcode.js         # 246 comprobaciones
+node tools/check-parity.js        # 44 comprobaciones
+node tools/verify-ipa.js dist/RASMATIC-HeadTracking-unsigned.ipa \
+  --expect com.rasmatic.lugar3d.headtracking --variant headtracking
+node tools/verify-ipa.js dist/RASMATIC-Classic-unsigned.ipa \
+  --expect com.rasmatic.lugar3d.classic --variant classic
 ```
 
 > Importante: esto corre en Chromium, no en Safari. Lo que solo se puede
@@ -325,6 +359,8 @@ node tools/verify-ipa.js dist/RasmaticLugar3D-unsigned.ipa
 
 ## Documentación
 
+- `docs/v19-dos-apps.md` — **V19**: las dos apps, Core Motion, permisos,
+  bundle IDs, almacenamiento aislado, joystick, compilación y limitaciones.
 - `docs/paridad.md` — equivalencia con Android, archivo por archivo, y las
   diferencias con su justificación.
 - `docs/pruebas.md` — matriz de pruebas por entorno, resultados, evidencias y lo
@@ -348,16 +384,22 @@ node tools/verify-ipa.js dist/RasmaticLugar3D-unsigned.ipa
 
 | | |
 |---|---|
-| Juego copiado del APK Android | 6 archivos + 13 fuentes, SHA-256 idéntico |
-| `web/index.html` generado | 266.213 B · `526F91094276B4001DB26518AE3C2D03B3B914C217321FE5568AC0A9ABEAD367` |
-| Verificación del proyecto iOS | 123/123 comprobaciones |
-| Pruebas funcionales (Chromium) | 30/30 + offline + horizontal |
-| Pruebas del modo VR (escritorio) | 34/34 + mouse + `?vr=1` |
-| Pruebas de mando nativo y VR móvil (iPhone simulado) | 21/21 |
+| Juego copiado del APK Android | 6 archivos + 13 fuentes, SHA-256 idéntico en las dos apps |
+| `web/index.html` (Head Tracking) | generado con variante, `headTracking: true` y prefijo `rasmatic.` |
+| `web-classic/index.html` (Classic) | generado con `headTracking: false` y prefijo `rasmatic.classic.` |
+| Verificación del proyecto iOS | 246/246 comprobaciones |
+| Paridad del núcleo | 44/44 comprobaciones |
+| Pruebas funcionales Head Tracking | 30/30 + offline + horizontal |
+| Pruebas funcionales Classic | 30/30 + offline + horizontal |
+| Pruebas del modo VR (escritorio, ambas) | 34/34 + mouse + `?vr=1` |
+| Pruebas de mando nativo y VR móvil (ambas) | 21/21 |
+| Suite V19 (head tracking, joystick, aislamiento) | HT nativo 16/16 · Classic 14/14 · HT web 16/16 |
+| Iconos | HT con banda azul `HT`, Classic con banda ámbar `CL` |
 | Instalador Windows | `windows-calibrator/release/RASMATIC VR Calibrator Setup 1.0.0.exe` · smoke 14/14 |
-| Verificador de `.ipa` | probado con un IPA sintético (estructura, Mach-O, bundle id y juego completo) |
+| Verificador de `.ipa` | estructura, Mach-O, bundle id, permisos por variante y juego completo |
 | ZIP para llevar a la Mac | `dist/RASMATIC-Lugar3D-iPhone-<fecha>.zip` · hash en `dist/<zip>.sha256` |
-| `.ipa` compilado y firmado | **pendiente**: requiere runner macOS y una cuenta Apple |
+| `.ipa` compilados y firmados | **pendiente**: requieren runner macOS y una cuenta Apple |
+| Head Tracking físico / sensores reales | **pendiente**: requiere iPhone real y VR Box |
 
 Pendiente (requiere hardware Apple): compilar en Xcode, generar el `.ipa`,
 firmarlo, instalarlo, abrir en Safari/WKWebView real, probar un mando Bluetooth
