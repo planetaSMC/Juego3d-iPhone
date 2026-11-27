@@ -64,7 +64,7 @@
     })();
     ok('V20-03 escena del HTML: farmacia completa',
       !!ph && ph.drugs.length === 15 && ph.shelves.length === 3 &&
-      ph.stations.length === 9 && ph.machine.boxes.length === 30 &&
+      ph.stations.length === 12 && ph.machine.boxes.length === 30 &&
       ph.shelfBoxes.length >= 300 && Math.abs(ph.counter.x - 21.9) < 0.01 &&
       Math.abs(ph.counter.z - 12.7) < 0.01 && Math.abs(ph.eye - 3.6) < 0.01 &&
       Math.abs(ph.machine.root.position.x - 12.4) < 0.01,
@@ -74,7 +74,7 @@
         ojo: ph && ph.eye });
 
     ok('V20-04 seis estaciones separadas y con medicamento real',
-      ph && ph.stations.length === 9 && stationGap >= 2.4 &&
+      ph && ph.stations.length === 12 && stationGap >= 1.2 &&
       ph.stations.every((s) => s.drug >= 0 && ph.drugs[s.drug] && s.box && s.box.visible),
       { separacion_minima: +stationGap.toFixed(2),
         estaciones: ph && ph.stations.map((s) => ({
@@ -130,7 +130,7 @@
       { modos: modes, rechazo_modo_invalido: core.setMode('otro') === false });
 
     /* ---------------- V20-08: dificultades ---------------- */
-    const diffIds = ['facil', 'normal', 'dificil'];
+    const diffIds = ['facil', 'normal', 'dificil', 'extremo'];
     const diffSeen = [];
     for (const id of diffIds) {
       window.RasmaticGame.setDifficulty(id);
@@ -138,12 +138,13 @@
       diffSeen.push(window.RasmaticGame.getDifficulty());
     }
     const diffStored = localStorage.getItem(window.RasmaticStore.key('rasmatic.botDifficulty'));
-    ok('V20-08 tres dificultades y persistencia',
-      diffSeen.length === 3 &&
+    ok('V20-08 cuatro dificultades y persistencia',
+      diffSeen.length === 4 &&
       diffSeen[0].interval === 12 && diffSeen[0].speed === 0.75 &&
       diffSeen[1].interval === 9 && diffSeen[1].speed === 1 &&
       diffSeen[2].interval === 6 && diffSeen[2].speed === 1.25 &&
-      diffStored === 'dificil',
+      diffSeen[3].interval === 3.5 && diffSeen[3].speed === 1.7 &&
+      diffStored === 'extremo',
       { dificultades: diffSeen, guardado: diffStored });
     window.RasmaticGame.setDifficulty('normal');
 

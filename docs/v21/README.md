@@ -101,7 +101,7 @@ Se conservan:
 - Recentrado, calibración, sensibilidad X/Y/roll, suavizado, respuesta e
   inversión.
 - Mando Bluetooth y joystick táctil opcional.
-- Los tres modos (`film`, `model`, `place`) y las tres dificultades.
+- Los tres modos (`film`, `model`, `place`) y las cuatro dificultades.
 - Partida de 3 minutos, puntaje, bot/CNC, victoria/derrota y revancha.
 
 La mira también funciona en VR: el rayo usa `RasmaticVR.aimQuaternion()`, que
@@ -118,11 +118,11 @@ node tools/test-pad.js
 cd windows-calibrator; npm test
 ```
 
-Resultados de la última ejecución local (V21.3): `test-v21` **19/19**,
+Resultados de la última ejecución local (V21.4): `test-v21` **20/20**,
 `test-pad` **23/23**, `test-v20` **18/18**, `test-web` **32/32**,
 `test-vr` **34/34**, `check-xcode` **164/164** y calibrador Windows **62/62**
-(requiere `npm install`). Ver `testing-report.md`, `v21.2-polish.md` y
-`v21.3-gameplay.md`.
+(requiere `npm install`). Ver `testing-report.md`, `v21.2-polish.md`,
+`v21.3-gameplay.md` y `v21.4-extreme.md`.
 
 La compilación iOS de V21.1 dio **BUILD SUCCEEDED** en GitHub Actions (runs
 45890568451 y 46041477056, Xcode 16.4). La corrección del pedido estable dejó
@@ -134,6 +134,7 @@ un IPA de **844.124 bytes**, SHA-256 `0AE2BF4B…42DEDC1`, verificado con
 - `conveyor-delivery.md` — recorrido, velocidad, validación y animaciones.
 - `v21.2-polish.md` — depósito restringido, estanterías, colores, física e interfaz por dispositivo.
 - `v21.3-gameplay.md` — pedido continuo, 9 colores, huecos, vitrina, clientes y control táctil.
+- `v21.4-extreme.md` — 12 medicamentos, modo Extremo, penalización y reabastecimiento.
 - `start-menu.md` — menú, cuenta regresiva y congelación del reloj.
 - `aim-and-queue.md` — mira, contorno, pedido por color y fila.
 - `individual-medications.md` — cajas individuales, agarre/soltura y mandos.

@@ -45,7 +45,7 @@ DRUGS.push(
    rojo, azul, verde, amarillo, violeta, naranja, celeste, rosa y marrón.
    El resto de presentaciones conserva un color propio para las
    estanterías decorativas bloqueadas. */
-const GAME_DRUGS=[1,0,6,5,4,2,3,7,10];
+const GAME_DRUGS=[1,0,6,5,4,2,3,7,10,8,9,14];
 const GAME_COLORS=[
   {css:'#e5484d',hex:0xe5484d}, // rojo
   {css:'#2f7bff',hex:0x2f7bff}, // azul
@@ -55,15 +55,15 @@ const GAME_COLORS=[
   {css:'#ff8a00',hex:0xff8a00}, // naranja
   {css:'#22c1dc',hex:0x22c1dc}, // celeste
   {css:'#e0399a',hex:0xe0399a}, // rosa
-  {css:'#8b5a2b',hex:0x8b5a2b}  // marrón
+  {css:'#8b5a2b',hex:0x8b5a2b}, // marrón
+  {css:'#f4f4f5',hex:0xf4f4f5}, // blanco
+  {css:'#84cc16',hex:0x84cc16}, // lima
+  {css:'#374151',hex:0x374151}  // grafito
 ];
 const EXTRA_COLORS={
-  8:{css:'#0891b2',hex:0x0891b2},   // Salbutamol
-  9:{css:'#c0392b',hex:0xc0392b},   // Aspirina
   11:{css:'#d97706',hex:0xd97706},  // Vitamina C
   12:{css:'#b08a2e',hex:0xb08a2e},  // Vitamina D
-  13:{css:'#64748b',hex:0x64748b},  // Zinc
-  14:{css:'#7c3aed',hex:0x7c3aed}   // Calcio
+  13:{css:'#64748b',hex:0x64748b}   // Zinc
 };
 const DRUG_COLORS=[];
 DRUGS.forEach(function(d,i){
@@ -73,15 +73,15 @@ DRUGS.forEach(function(d,i){
   d.color=c.hex;
   d.css=c.css;
 });
-/* Índice de color de juego (0…8) de cada medicamento. -1 = solo stock
+/* Índice de color de juego (0…11) de cada medicamento. -1 = solo stock
    decorativo de estanterías bloqueadas. */
 const GAME_COLOR={};
 GAME_DRUGS.forEach(function(di,ci){GAME_COLOR[di]=ci;});
 
 const CATS=[
-  {n:'Estante A',d:[1,0,6]},   // rojo / azul / verde
-  {n:'Estante B',d:[5,4,2]},   // amarillo / violeta / naranja
-  {n:'Estante C',d:[3,7,10]}   // celeste / rosa / marrón
+  {n:'Estante A',d:[1,0,6,5]},      // rojo / azul / verde / amarillo
+  {n:'Estante B',d:[4,2,3,7]},      // violeta / naranja / celeste / rosa
+  {n:'Estante C',d:[10,8,9,14]}     // marrón / blanco / lima / grafito
 ];
 const CUST=['Sra. Marta','Don Ernesto','LucÃ­a','TomÃ¡s','Dra. PÃ©rez','Valentina','Sr. GÃ³mez'];
 const FF='Arial Black,Arial,sans-serif';
@@ -669,7 +669,7 @@ bx(.28,.28,.9,aluM,0,0,.45,pad); bx(.9,.78,.08,darkM,0,0,0,pad);
     function spaced(b) {
       const p = b.userData.home;
       return stations.every(function (s) {
-        return Math.hypot(p.x - s.x, p.z - s.z) >= 2.45;
+        return Math.hypot(p.x - s.x, p.z - s.z) >= 1.2;
       });
     }
     COLOR_DRUGS.forEach(function (di, ci) {
@@ -710,7 +710,10 @@ bx(.28,.28,.9,aluM,0,0,.45,pad); bx(.9,.78,.08,darkM,0,0,0,pad);
       { id: 'naranja', name: 'NARANJA', css: '#ff8a00', hex: 0xff8a00 },
       { id: 'celeste', name: 'CELESTE', css: '#22c1dc', hex: 0x22c1dc },
       { id: 'rosa', name: 'ROSA', css: '#e0399a', hex: 0xe0399a },
-      { id: 'marron', name: 'MARRÓN', css: '#8b5a2b', hex: 0x8b5a2b }
+      { id: 'marron', name: 'MARRÓN', css: '#8b5a2b', hex: 0x8b5a2b },
+      { id: 'blanco', name: 'BLANCO', css: '#f4f4f5', hex: 0xf4f4f5 },
+      { id: 'lima', name: 'LIMA', css: '#84cc16', hex: 0x84cc16 },
+      { id: 'grafito', name: 'GRAFITO', css: '#374151', hex: 0x374151 }
     ];
 
     const counter = {

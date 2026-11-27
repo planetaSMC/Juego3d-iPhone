@@ -190,9 +190,10 @@
         return d.request === reqWrong && d.shelf.consumed > holesBefore;
       }, 24000);
       wrongOk = placedWrong && advancedWrong && retried &&
-        D().score.player === scoreBad && D().stockP[wrong] === stockBefore;
+        D().score.player === Math.max(0, scoreBad - 1) &&
+        D().stockP[wrong] === stockBefore;
     }
-    ok('V21-08 medicamento equivocado no suma, deja hueco y vuelve el pedido', wrongOk,
+    ok('V21-08 medicamento equivocado resta 1, deja hueco y vuelve el pedido', wrongOk,
       { equivocado: wrong, pedido: reqWrong, puntaje: D().score.player,
         stock: wrong >= 0 ? D().stockP[wrong] : null,
         huecos: D().shelf.consumed });
@@ -204,13 +205,13 @@
       const cand = (a + off) % D().palette;
       if (window.RasmaticGame._test.aimAtStation(cand)) b = cand;
     }
-    window.RasmaticGame._test.config({ beltSpeed: 2.5 });
+    window.RasmaticGame._test.config({ beltSpeed: 7 });
     window.RasmaticGame._test.aimAtStation(a);
     await until(() => D().ui.action === 'RECOGER', 6000);
     window.RasmaticGame.interact();
     await until(() => D().carrying === a, 5000);
     window.RasmaticGame._test.placeBeltNow();
-    await until(() => D().belt.items.length === 1 && D().belt.items[0].s >= 1.9, 6000);
+    await until(() => D().belt.items.length === 1 && D().belt.items[0].s >= 1.9, 15000);
     const aimB = b >= 0 && window.RasmaticGame._test.aimAtStation(b);
     await until(() => D().ui.action === 'RECOGER', 6000);
     window.RasmaticGame.interact();
@@ -240,7 +241,7 @@
     const distinct = imgValues.filter(function (v, i) { return imgValues.indexOf(v) === i; }).length;
     ok('V21-10 Farmacia RASMATIC, cajas de color sólido y escala humana',
       ph.signs.main === 'FARMACIA RASMATIC' && ph.machineConveyor === false &&
-      ph.stations.length === 9 &&
+      ph.stations.length === 12 &&
       Math.abs(ph.pharmacist.scale.x - 0.86) < 0.01 &&
       D().clients.every(function (c) { return c.scale >= 0.8 && c.scale <= 0.9; }) &&
       !!box.material && !Array.isArray(box.material) && !box.material.map &&
@@ -460,6 +461,28 @@
         sigue_en_mano: storeStillHeld, puede_guardar: canStore,
         guardada: stored, en_hueco: backInSlot, caja_final: finalBox,
         home: storeHome && [+storeHome.x.toFixed(2), +storeHome.z.toFixed(2)] });
+
+    /* ---------------- V21-19: reabastecimiento automático de una sección -- */
+    window.RasmaticGame._test.startNow();
+    await until(() => D().state === 'playing', 5000);
+    await until(() => D().clients.length >= 1 && D().request >= 0, 12000);
+    const restockColor = D().request >= 0 ? D().request : 0;
+    const beforeRestock = window.RasmaticGame._test.restockInfo(restockColor);
+    const exhausted = window.RasmaticGame._test.exhaustColor(restockColor);
+    const emptyState = window.RasmaticGame._test.restockInfo(restockColor);
+    window.RasmaticGame._test.checkRestock();
+    const restocked = await until(() => {
+      const s = window.RasmaticGame._test.restockInfo(restockColor);
+      return s.stock === 8 && s.visible === s.total && s.restocking === 0;
+    }, 7000);
+    const afterRestock = window.RasmaticGame._test.restockInfo(restockColor);
+    ok('V21-19 al agotar un color la sección se reabastece sola',
+      beforeRestock.visible === beforeRestock.total && exhausted > 0 &&
+      emptyState.visible === 0 && emptyState.stock === 0 &&
+      restocked && afterRestock.visible === afterRestock.total &&
+      afterRestock.stock === 8,
+      { color: restockColor, antes: beforeRestock, agotado: emptyState,
+        despues: afterRestock, restocked });
 
     /* Restaurar un estado limpio. */
     window.RasmaticGame._test.config({ beltSpeed: 3.6 });

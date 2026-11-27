@@ -57,7 +57,9 @@
     normal: { label: 'Normal', interval: 9, first: 3.5, speed: 1,
       note: 'El bot atiende cada 9 s.' },
     dificil: { label: 'Difícil', interval: 6, first: 2.5, speed: 1.25,
-      note: 'El bot atiende cada 6 s y se mueve más rápido.' }
+      note: 'El bot atiende cada 6 s y se mueve más rápido.' },
+    extremo: { label: 'Extremo', interval: 3.5, first: 1.2, speed: 1.7,
+      note: 'El bot atiende cada 3,5 s y se mueve muy rápido. Sin margen de error.' }
   };
   let difficulty = 'normal';
 
@@ -176,7 +178,10 @@
     { id: 'naranja',  name: 'NARANJA',  css: '#ff8a00', hex: 0xff8a00 },
     { id: 'celeste',  name: 'CELESTE',  css: '#22c1dc', hex: 0x22c1dc },
     { id: 'rosa',     name: 'ROSA',     css: '#e0399a', hex: 0xe0399a },
-    { id: 'marron',   name: 'MARRÓN',   css: '#8b5a2b', hex: 0x8b5a2b }
+    { id: 'marron',   name: 'MARRÓN',   css: '#8b5a2b', hex: 0x8b5a2b },
+    { id: 'blanco',   name: 'BLANCO',   css: '#f4f4f5', hex: 0xf4f4f5 },
+    { id: 'lima',     name: 'LIMA',     css: '#84cc16', hex: 0x84cc16 },
+    { id: 'grafito',  name: 'GRAFITO',  css: '#374151', hex: 0x374151 }
   ];
 
   /* Estaciones sobre las góndolas del pasillo central (caras al pasillo).
@@ -185,7 +190,7 @@
   /* V20: las estaciones se llenan desde las cajas de las estanterías del HTML.
      El orden de COLOR_DRUGS coincide con pharmacy-scene.js. */
   const STATIONS = [];
-  const COLOR_DRUGS = [1, 0, 6, 5, 4, 2, 3, 7, 10];
+  const COLOR_DRUGS = [1, 0, 6, 5, 4, 2, 3, 7, 10, 8, 9, 14];
 
   const SPOT = {
     npc:      { x: 21.9, z: 10.3 },   // farmacéutico detrás del mostrador HTML
@@ -230,6 +235,8 @@
   let carryAnim = null;
   let reqFlashToken = 0;
   let shelfAnim = null;
+  let restockFx = [];
+  let restockCheckAt = 0;
   const HALF_H = 0.48;              // media altura de la caja sobre la cinta
 
   /* V21: menú, cuenta regresiva, mira, cinta y fila. */
@@ -1172,7 +1179,7 @@
     client.leaveAt = now();
     if (S.leaving.indexOf(client) < 0) S.leaving.push(client);
     for (let i = 0; i < S.queue.length; i++) S.queue[i].slot = i;
-    pendingSpawns.push({ at: now() + 0.8, initial: false });
+    pendingSpawns.push({ at: now() + 0.35, initial: false });
     updateActiveRequest();
     return true;
   }
@@ -1249,7 +1256,7 @@
         const dx = target.x - c.group.position.x;
         const dz = target.z - c.group.position.z;
         const d = Math.hypot(dx, dz);
-        const speed = c.state === 'walking' ? 2.3 : 2.5;
+        const speed = c.state === 'walking' ? 3.2 : 2.8;
         const moving = d > 0.06;
         if (moving) {
           const step = Math.min(d, speed * dt);
@@ -1272,7 +1279,7 @@
       } else if (c.state === 'waiting' || c.state === 'receiving') {
         c.group.rotation.y = Math.PI;
         animateClient(c, t, false);
-        if (c.state === 'receiving' && t - c.reactAt > 1.2) {
+        if (c.state === 'receiving' && t - c.reactAt > 0.9) {
           /* V21.3: el cliente atendido se retira solo; la cola avanza y el
              siguiente pedido pendiente pasa al HUD. */
           retireClient(c);
@@ -1695,6 +1702,8 @@
       G.pharmacy.resetShelfBoxes();
     }
     shelfAnim = null;
+    restockFx.length = 0;
+    restockCheckAt = 0;
     clearCarrying();
   }
 
@@ -1848,6 +1857,86 @@
     updateStationSigns();
   }
 
+  /* V21.4: cuando no queda ninguna caja de un color en las tres estanterías
+     habilitadas, la sección se reabastece sola. */
+  function shelfBoxesForColor(color) {
+    const drug = stationDrug(color);
+    const list = [];
+    const boxes = G && G.pharmacy && G.pharmacy.shelfBoxes ? G.pharmacy.shelfBoxes : [];
+    for (let i = 0; i < boxes.length; i++) {
+      const u = boxes[i].userData || {};
+      if (u.sh >= 0 && u.n === drug) list.push(boxes[i]);
+    }
+    return list;
+  }
+
+  function restockColor(color, t) {
+    const boxes = shelfBoxesForColor(color);
+    if (!boxes.length) return false;
+    for (let i = 0; i < boxes.length; i++) {
+      const b = boxes[i];
+      const u = b.userData || {};
+      if (b.parent !== G.place) G.place.attach(b);
+      if (u.home) b.position.copy(u.home);
+      if (u.q) b.quaternion.copy(u.q);
+      b.visible = true;
+      b.scale.setScalar(0.65);
+      u.taken = false;
+      u.dropped = false;
+      u.onBelt = false;
+      u.held = false;
+      u.consumed = false;
+      u.storing = false;
+      u.restocking = true;
+      restockFx.push({ box: b, t0: t + i * 0.018, dur: 0.32 });
+    }
+    stockP[color] = CFG.stock;
+    updateStationSigns();
+    return true;
+  }
+
+  function checkRestock(t) {
+    if (state !== 'playing') return false;
+    const restored = [];
+    for (let c = 0; c < COLORS.length; c++) {
+      const boxes = shelfBoxesForColor(c);
+      if (!boxes.length) continue;
+      let empty = true;
+      for (let i = 0; i < boxes.length; i++) {
+        if (!boxes[i].userData || !boxes[i].userData.consumed) {
+          empty = false;
+          break;
+        }
+      }
+      if (empty && restockColor(c, t)) restored.push(COLORS[c].name);
+    }
+    if (restored.length) {
+      toast('Repuesto: ' + restored.join(', '), 'ok');
+      return true;
+    }
+    return false;
+  }
+
+  function updateRestockFx(t) {
+    for (let i = restockFx.length - 1; i >= 0; i--) {
+      const a = restockFx[i];
+      const u = a.box.userData || {};
+      if (u.held || u.onBelt || u.consumed) {
+        restockFx.splice(i, 1);
+        continue;
+      }
+      const p = clamp01((t - a.t0) / a.dur);
+      if (p <= 0) continue;
+      const e = ease(p);
+      a.box.scale.setScalar(0.65 + 0.35 * e);
+      if (p >= 1) {
+        a.box.scale.setScalar(1);
+        u.restocking = false;
+        restockFx.splice(i, 1);
+      }
+    }
+  }
+
   function resolveBeltDelivery(item) {
     const client = item && item.client && S.queue.indexOf(item.client) >= 0
       ? item.client : S.queue[0];
@@ -1877,7 +1966,10 @@
       /* El pedido vuelve a quedar pendiente para que el jugador lo reintente. */
       client.placed = false;
       updateActiveRequest();
-      toast('Medicamento incorrecto', 'bad');
+      scoreP = Math.max(0, scoreP - 1);
+      setScore();
+      flashRequest(false);
+      toast('Incorrecto · -1 punto', 'bad');
     }
   }
 
@@ -2037,13 +2129,13 @@
   }
 
   function updateCountdown(t) {
-    const elapsed = t - countdownAt;
-    const n = 3 - Math.floor(elapsed);
-    if (n <= 0) { begin(); return; }
-    if (n !== countdownStep) {
-      countdownStep = n;
-      setCountdownNumber(n);
-    }
+    /* V21.4: la cuenta avanza un número por paso, aunque un cuadro lento
+       consuma más de un segundo. Así nunca se saltea el 2 ni el 1. */
+    if (t - countdownAt < 1) return;
+    countdownAt += 1;
+    countdownStep -= 1;
+    if (countdownStep <= 0) { begin(); return; }
+    setCountdownNumber(countdownStep);
   }
 
   /* ---------------- Movimiento del CNC ---------------- */
@@ -2117,9 +2209,10 @@
             '<button type="button" data-menu-diff="facil">Fácil</button>' +
             '<button type="button" data-menu-diff="normal">Normal</button>' +
             '<button type="button" data-menu-diff="dificil">Difícil</button>' +
+            '<button type="button" data-menu-diff="extremo">Extremo</button>' +
           '</div>' +
           '<button id="v21-start-btn" type="button">INICIAR</button>' +
-          '<small>3 modos · 3 dificultades · VR BOX</small>' +
+          '<small>3 modos · 4 dificultades · VR BOX</small>' +
         '</div>' +
       '</div>' +
       '<div id="v21-countdown" aria-live="assertive"><span id="v21-count-num">3</span></div>';
@@ -2186,6 +2279,9 @@
           '</button>' +
           '<button type="button" role="radio" data-diff="dificil">' +
             '<b>Difícil</b><small>Rápido</small>' +
+          '</button>' +
+          '<button type="button" role="radio" data-diff="extremo">' +
+            '<b>Extremo</b><small>Muy difícil</small>' +
           '</button>' +
         '</div>' +
         '<p class="rg-opts-note" id="rg-diff-note"></p>' +
@@ -2463,6 +2559,10 @@
     if (carrying >= 0 || carryingBox) return false;
     if (u.consumed || u.accessible === false ||
         (typeof u.sh === 'number' && u.sh < 0)) return false;
+    for (let i = restockFx.length - 1; i >= 0; i--) {
+      if (restockFx[i].box === box) restockFx.splice(i, 1);
+    }
+    u.restocking = false;
     const st = stationForBox(box);
     const wasTaken = !!u.taken;
     let c;
@@ -2559,9 +2659,9 @@
     matchEnd = matchStart + CFG.duration;
     nextBotAt = matchStart + CFG.botFirst;
     pendingSpawns = [
-      { at: matchStart + 0.2, initial: true },
-      { at: matchStart + 1.0, initial: true },
-      { at: matchStart + 1.8, initial: true }
+      { at: matchStart + 0.1, initial: true },
+      { at: matchStart + 0.45, initial: true },
+      { at: matchStart + 0.8, initial: true }
     ];
 
     setTime(CFG.duration);
@@ -2970,8 +3070,13 @@
     updateClients(dt, t);
     updateBelt(dt, t);
     updateEmployee(dt, t);
+    if (state === 'playing' && t >= restockCheckAt) {
+      restockCheckAt = t + 0.5;
+      checkRestock(t);
+    }
     updateCarry(t);
     updateShelfAnim();
+    updateRestockFx(t);
     updateBeltFeedback(t);
     maybeUnlockRequest();
     updateAim(t);
@@ -3182,6 +3287,7 @@
         dropped: G.pharmacy.shelfBoxes.filter(function (b) { return b.userData.dropped; }).length,
         held: G.pharmacy.shelfBoxes.filter(function (b) { return b.userData.held; }).length,
         storing: G.pharmacy.shelfBoxes.filter(function (b) { return b.userData.storing; }).length,
+        restocking: G.pharmacy.shelfBoxes.filter(function (b) { return b.userData.restocking; }).length,
         consumed: G.pharmacy.shelfBoxes.filter(function (b) { return b.userData.consumed; }).length,
         onBelt: G.pharmacy.shelfBoxes.filter(function (b) { return b.userData.onBelt; }).length
       } : null,
@@ -3296,6 +3402,7 @@
           id: u.id, drug: u.n, name: drugName(u.n), visible: b.visible === true,
           held: !!u.held, dropped: !!u.dropped, onBelt: !!u.onBelt,
           consumed: !!u.consumed, taken: !!u.taken, storing: !!u.storing,
+          restocking: !!u.restocking,
           parent: b.parent === (G && G.camera) ? 'camera' : 'scene',
           x: +b.position.x.toFixed(2), y: +b.position.y.toFixed(2), z: +b.position.z.toFixed(2)
         };
@@ -3312,6 +3419,36 @@
         };
       },
       expectedDrug: function (color) { return stationDrug(color); },
+      exhaustColor: function (color) {
+        if (!G || state !== 'playing' || color < 0 || color >= COLORS.length) return null;
+        const boxes = shelfBoxesForColor(color);
+        for (let i = 0; i < boxes.length; i++) {
+          const b = boxes[i];
+          const u = b.userData || {};
+          if (b.parent === G.place) G.place.remove(b);
+          b.visible = false;
+          u.taken = false;
+          u.onBelt = false;
+          u.held = false;
+          u.storing = false;
+          u.restocking = false;
+          u.consumed = true;
+        }
+        stockP[color] = 0;
+        restockFx.length = 0;
+        updateStationSigns();
+        return boxes.length;
+      },
+      restockInfo: function (color) {
+        const boxes = shelfBoxesForColor(color);
+        return {
+          total: boxes.length,
+          visible: boxes.filter(function (b) { return b.visible && !b.userData.consumed; }).length,
+          stock: stockP[color] || 0,
+          restocking: boxes.filter(function (b) { return !!b.userData.restocking; }).length
+        };
+      },
+      checkRestock: function () { return checkRestock(now()); },
       advanceFront: function () { releaseFront(); return true; },
       placeBeltNow: function () {
         if (!G || state !== 'playing' || (carrying < 0 && !carryingBox)) return false;

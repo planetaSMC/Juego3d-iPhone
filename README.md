@@ -1,4 +1,4 @@
-# RASMATIC VR · versión iPhone (V21.3)
+# RASMATIC VR · versión iPhone (V21.4)
 
 Port del juego **RASMATIC Lugar 3D** a **una sola app iOS**:
 
@@ -23,7 +23,7 @@ La app incluye:
   estanterías, cajas de medicamentos, cinta en L, mostrador, clientes,
   farmacéutico y máquina **RASMATIC BOT**.
 - **Tres modos**: recorrido guiado, modelo/exploración y lugar/partida.
-- **Tres dificultades** (Fácil, Normal, Difícil) con sus reglas, objetivos,
+- **Cuatro dificultades** (Fácil, Normal, Difícil, Extremo) con sus reglas, objetivos,
   puntuación, victoria/derrota y al bot con el CNC.
 - **Joystick táctil opcional** y **mando Bluetooth** independiente.
 - **VR SBS**: dos ojos, IPD, convergencia, distorsión, zoom y HUD por ojo.
@@ -80,6 +80,19 @@ V21.3 añade:
 - **Clientes sin superposición** y balanceo suave del medicamento en la mano.
 - **Sin stick visible**: la zona inferior izquierda funciona como joystick
   dinámico invisible; el resto de la pantalla sigue mirando.
+
+V21.4 añade:
+
+- **Doce medicamentos/colores**: blanco, lima y grafito se suman a los nueve
+  anteriores, con cuatro grupos de color por estantería y 12 estaciones.
+- **Clientes más rápidos**: aparecen en menos de un segundo y la cola se
+  reemplaza en 0,35 s.
+- **Modo Extremo**: cuarta dificultad con bot cada 3,5 s y velocidad 1,7×.
+- **Penalización**: el medicamento incorrecto resta 1 punto y muestra
+  «Incorrecto · -1 punto».
+- **Reabastecimiento automático**: cuando se agota un color, su sección vuelve
+  a llenarse sola con animación y stock restaurado.
+
 
 
 V20 **reemplaza por completo** el mapa anterior (góndolas, productos y logo del
@@ -280,7 +293,7 @@ Resultados de la última ejecución (2026-11-27, Windows + Edge headless):
 | Suite | Resultado |
 |---|---|
 | `check-xcode.js` | **164/164** |
-| `test-v21.js` | **19/19** |
+| `test-v21.js` | **20/20** |
 | `test-v20.js` | **18/18** |
 | `test-web.js` | **32/32** + horizontal + offline |
 | `test-vr.js` | **34/34** |
@@ -307,6 +320,7 @@ Capturas en `docs/evidencias/` y `docs/evidencias/v20/`.
 | `docs/v21/README.md` | resumen de gameplay y archivos V21 |
 | `docs/v21/v21.2-polish.md` | agarre/depósito, estanterías, colores, física y dispositivos |
 | `docs/v21/v21.3-gameplay.md` | pedido continuo, 9 colores, huecos, vitrina y control táctil |
+| `docs/v21/v21.4-extreme.md` | 12 medicamentos, modo Extremo, penalización y reabastecimiento |
 | `docs/v21/aim-and-queue.md` | mira, contorno, pedido y fila |
 | `docs/v21/individual-medications.md` | cajas individuales, agarre/depósito y mandos |
 | `docs/v21/conveyor-delivery.md` | recorrido y validación de la cinta |
@@ -326,7 +340,7 @@ Implementado y probado en simulación:
 
 - app única, target y bundle únicos;
 - escena de farmacia del HTML sin restos del almacén;
-- tres modos, tres dificultades, partida completa, bot/CNC;
+- tres modos, cuatro dificultades, partida completa, bot/CNC;
 - joystick opcional, mando simulado, Head Tracking configurable;
 - SBS/IPD/convergencia y panel VR;
 - sincronización Windows-iPhone por protocolo con persistencia y `ack`;
@@ -340,6 +354,8 @@ Implementado y probado en simulación:
   dispositivo con Head Tracking remoto sin duplicados.
 - V21.3: pedido continuo al colocar, 9 colores/estaciones, huecos persistentes,
   devolución a la vitrina, clientes sin superposición y joystick invisible.
+- V21.4: 12 colores/estaciones, clientes más rápidos, modo Extremo,
+  penalización de −1 punto y reabastecimiento automático por color.
 
 **Compilación iOS:** la corrección del pedido estable compiló en GitHub Actions
 con Xcode 16.4 (`BUILD SUCCEEDED`, run 46041477056). IPA sin firmar de

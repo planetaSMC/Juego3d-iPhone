@@ -166,9 +166,9 @@
       }
       await sleep(300);
     }
-    ok('T09 entrega incorrecta: no suma, deja hueco y vuelve el pedido',
+    ok('T09 entrega incorrecta: resta 1, deja hueco y vuelve el pedido',
       placed === true && advanced && retried && holeKept &&
-      D().score.player === 1 && D().carrying === -1,
+      D().score.player === 0 && D().carrying === -1,
       { score: D().score.player, stock: D().stockP[wrong], antes: stockBefore,
         huecos: D().shelf.consumed, equivocado: wrong, pedido: req2 });
   }
@@ -178,7 +178,7 @@
   await sleep(350);
   const again = window.RasmaticGame.interact();
   await sleep(400);
-  ok('T10 sin puntos duplicados', again === false && D().score.player === 1,
+  ok('T10 sin puntos duplicados', again === false && D().score.player === 0,
     { again, score: D().score.player });
 
   /* T11: ciclo del bot con el CNC. Se espera a que termine el ciclo en curso
@@ -392,13 +392,13 @@
     dfacil.speed === 0.75 && dsaved === 'facil',
     { devuelto: dset, estado: dfacil, guardado: dsaved });
 
-  /* T23: panel de opciones real (botón, tres niveles, selección y cierre). */
+  /* T23: panel de opciones real (botón, cuatro niveles, selección y cierre). */
   const optsBtn = document.getElementById('rg-opts-btn');
   const optsPanel = document.getElementById('rg-opts');
   const diffBtns = optsPanel ? optsPanel.querySelectorAll('[data-diff]') : [];
   if (optsBtn) optsBtn.click();
   const opened = !!(optsPanel && optsPanel.classList.contains('on'));
-  const hardBtn = optsPanel && optsPanel.querySelector('[data-diff="dificil"]');
+  const hardBtn = optsPanel && optsPanel.querySelector('[data-diff="extremo"]');
   if (hardBtn) hardBtn.click();
   const dhard = window.RasmaticGame.getDifficulty();
   const marked = !!(hardBtn && hardBtn.classList.contains('on'));
@@ -406,10 +406,11 @@
   if (okBtn) okBtn.click();
   const closed = !(optsPanel && optsPanel.classList.contains('on'));
   ok('T23 panel de opciones de dificultad',
-    !!optsBtn && diffBtns.length === 3 && opened && dhard.id === 'dificil' &&
-    marked && closed,
+    !!optsBtn && diffBtns.length === 4 && opened && dhard.id === 'extremo' &&
+    dhard.interval === 3.5 && marked && closed,
     { boton: !!optsBtn, opciones: diffBtns.length, abierto: opened,
-      elegido: dhard.id, marcado: marked, cerrado: closed });
+      elegido: dhard.id, intervalo: dhard.interval, marcado: marked, cerrado: closed });
+  window.RasmaticGame.setDifficulty('normal');
 
   /* T24: acción de la mira centrada, cómoda y sin tapar el joystick. */
   const reqNow = D().request;

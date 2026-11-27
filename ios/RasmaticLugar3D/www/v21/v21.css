@@ -198,6 +198,12 @@
   border-color: transparent;
   box-shadow: 0 0 18px rgba(80, 190, 255, .4);
 }
+.v21-menu-diff button[data-menu-diff="extremo"].on,
+#rg-opts [data-diff="extremo"].on {
+  color: #fff;
+  background: linear-gradient(160deg, #ff7a6a, #d62839);
+  box-shadow: 0 0 18px rgba(230, 70, 60, .5);
+}
 #v21-start-btn {
   all: unset;
   display: block;

@@ -20,7 +20,7 @@ dirección = (0,0,-1) aplicada a:
 
 - `Raycaster.far = CFG.aimRange` (16).
 - Objetos: **todas las cajas visibles de las estanterías** (`pharmacy.shelfBoxes`),
-  no solo las nueve de estación. Cada caja es una malla individual.
+  no solo las doce de estación. Cada caja es una malla individual.
 - Se excluyen las cajas que están en la mano, en la cinta o ya entregadas.
 - Se toma el **primer impacto**: ese medicamento es el objetivo, sin etiquetas
   intermedias ni selección por proximidad.

@@ -7,7 +7,7 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 
 | Suite | Resultado |
 |---|---|
-| `node tools/test-v21.js` | **19 / 19** |
+| `node tools/test-v21.js` | **20 / 20** |
 | `node tools/test-v20.js` | **18 / 18** |
 | `node tools/test-web.js` | **30 / 30** + horizontal |
 | `node tools/test-vr.js` | **34 / 34** |
@@ -26,7 +26,7 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 | V21-05 | colocar en cinta sin cambiar el pedido; `s` avanza, caja real e identidad estable |
 | V21-06 | empleado recoge, valida, entrega y cambia el pedido |
 | V21-07 | la fila avanza, el siguiente queda activo y se repone |
-| V21-08 | medicamento equivocado no suma y vuelve al stock |
+| V21-08 | medicamento equivocado resta 1 punto, deja hueco y vuelve el pedido |
 | V21-09 | dos paquetes en la cinta con separación ≥ 1,5 |
 | V21-10 | FARMACIA RASMATIC, sin cinta de máquina, escalas y cajas de color |
 | V21-10b | rendimiento con escena, fila y tres clientes |
@@ -38,6 +38,7 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 | V21-16 | entregar una copia individual del medicamento exacto pedido |
 | V21-17 | el pedido pasa al siguiente medicamento al colocar; la entrega sigue validando |
 | V21-18 | sin soltura libre; devolución a la vitrina y hueco restaurado |
+| V21-19 | al agotar un color, la sección se reabastece sola |
 
 Evidencias: `docs/evidencias/v21/v21-menu.png`,
 `v21-countdown.png`, `v21-aim.png`, `v21-belt.png`, `v21-queue.png`.
