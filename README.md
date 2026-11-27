@@ -46,6 +46,8 @@ V21.1 añade:
 - **Cada medicamento de las estanterías es una malla individual** (330 cajas):
   se puede apuntar, agarrar, soltar en el piso y volver a agarrar por separado.
 - La caja real se lleva en la mano; no se sustituye por un cubo genérico.
+- Al colocar la caja, el pedido **no** avanza: se mantiene hasta que la cinta y
+  el empleado terminan la entrega.
 - La entrega valida el **medicamento exacto**, no solo el color.
 - El mando físico permite mover, apuntar, seleccionar, agarrar, colocar y
   soltar, tanto con VR Box como sin VR.
@@ -247,7 +249,7 @@ Resultados de la última ejecución (2026-11-26, Windows + Edge headless):
 | Suite | Resultado |
 |---|---|
 | `check-xcode.js` | **162/162** |
-| `test-v21.js` | **17/17** |
+| `test-v21.js` | **19/19** |
 | `test-v20.js` | **18/18** |
 | `test-web.js` | **30/30** + horizontal |
 | `test-vr.js` | **34/34** |
@@ -302,12 +304,13 @@ Implementado y probado en simulación:
   validación por medicamento exacto; controles de mando verificados en VR y
   fuera de VR (simulación).
 
-**Compilación iOS:** V21.1 compiló en GitHub Actions con Xcode 16.4
-(`BUILD SUCCEEDED`, run 45890568451). IPA sin firmar de **843.351 bytes**,
-SHA-256 `A0F91D19A4DAAC2BB025A58A0578DCCFE1206F343804968283ECCB8C9101C7D9`,
+**Compilación iOS:** la corrección del pedido estable compiló en GitHub Actions
+con Xcode 16.4 (`BUILD SUCCEEDED`, run 46041477056). IPA sin firmar de
+**844.124 bytes**, SHA-256
+`0AE2BF4B2654B0D17D84AD705937695607F90C128F94940CD96FA81FB42DEDC1`,
 verificado con `verify-ipa.js`; el contenido de `www/` coincide con `web/`
-(normalizando CRLF/LF). V21 ya había compilado en `main` (runs 45880086744 y
-45880239776).
+(normalizando CRLF/LF) e incluye `requestLock` y `lastPlaceMs`. V21.1 y V21 ya
+habían compilado en `main` (runs 45890568451, 45880086744 y 45880239776).
 
 **Pendiente de validación física** (no se afirma que funcione en hardware):
 

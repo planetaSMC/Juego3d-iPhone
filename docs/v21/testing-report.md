@@ -7,7 +7,7 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 
 | Suite | Resultado |
 |---|---|
-| `node tools/test-v21.js` | **17 / 17** |
+| `node tools/test-v21.js` | **19 / 19** |
 | `node tools/test-v20.js` | **18 / 18** |
 | `node tools/test-web.js` | **30 / 30** + horizontal |
 | `node tools/test-vr.js` | **34 / 34** |
@@ -15,7 +15,7 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 | `node tools/check-xcode.js` | **162 / 162** |
 | `windows-calibrator && npm test` | **62 / 62** |
 
-## 2. Suite V21 (17 casos)
+## 2. Suite V21 (19 casos)
 
 | Caso | Comprueba |
 |---|---|
@@ -23,7 +23,7 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 | V21-02 | INICIAR, 3 → 2 → 1, reloj congelado en 180 y partida al final |
 | V21-03 | tres clientes en sus slots y pedido visible como imagen real |
 | V21-04 | mira + contorno, desaparición al mirar afuera, sin etiquetas |
-| V21-05 | colocar en cinta, `s` avanza, velocidad > 0, mano vacía |
+| V21-05 | colocar en cinta sin cambiar el pedido; `s` avanza, caja real e identidad estable |
 | V21-06 | empleado recoge, valida, entrega y cambia el pedido |
 | V21-07 | la fila avanza, el siguiente queda activo y se repone |
 | V21-08 | medicamento equivocado no suma y vuelve al stock |
@@ -36,6 +36,8 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 | V21-14 | 330 cajas individuales con identidad única, sin fusión |
 | V21-15 | agarrar una caja, soltarla en el piso y volver a agarrarla |
 | V21-16 | entregar una copia individual del medicamento exacto pedido |
+| V21-17 | el pedido no cambia al colocar: se mantiene hasta la entrega |
+| V21-18 | con una caja en tránsito, el HUD conserva el pedido colocado y recién muestra el siguiente al quedar libre la cinta |
 
 Evidencias: `docs/evidencias/v21/v21-menu.png`,
 `v21-countdown.png`, `v21-aim.png`, `v21-belt.png`, `v21-queue.png`.
@@ -104,6 +106,18 @@ V21.1 se compiló en GitHub Actions (Xcode 16.4) sobre el PR #4:
 | SHA-256 | `A0F91D19A4DAAC2BB025A58A0578DCCFE1206F343804968283ECCB8C9101C7D9` |
 | `verify-ipa.js` | **OK** (bundle, Mach-O, 15 archivos clave) |
 | Contenido | `www/mobile/game.js` y `www/v20/pharmacy-scene.js` coinciden con `web/` (normalizando CRLF/LF) |
+
+Corrección del pedido estable (cajas en tránsito):
+
+| Dato | Valor |
+|---|---|
+| Run | [46041477056](https://github.com/planetaSMC/Juego3d-iPhone/actions/runs/46041477056) |
+| Resultado | **BUILD SUCCEEDED** |
+| IPA | `RASMATIC-VR-unsigned.ipa` |
+| Tamaño | **844.124 bytes** |
+| SHA-256 | `0AE2BF4B2654B0D17D84AD705937695607F90C128F94940CD96FA81FB42DEDC1` |
+| `verify-ipa.js` | **OK** |
+| Contenido | `www/mobile/game.js` coincide con `web/` (normalizando CRLF/LF) e incluye `requestLock` y `lastPlaceMs` |
 
 La compilación de V21 en `main` que sigue es la referencia histórica.
 

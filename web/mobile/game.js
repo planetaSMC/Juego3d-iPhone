@@ -200,6 +200,13 @@
   /* V21.1: se lleva la caja real, no solo un color. carryingDrug y
      carryingBox permiten validar y manipular cada medicamento por separado. */
   let carryingDrug = -1, carryingBox = null, carryingFromStock = false;
+  /* V21.2: evita que un doble flanco del mando (o un toque duplicado) tome
+     otro medicamento inmediatamente después de colocar uno en la cinta. */
+  let lastPlaceMs = -1e9;
+  /* V21.2: mientras hay una caja en la cinta o en manos del empleado, el HUD
+     conserva el pedido con el que se colocó. El siguiente pedido se muestra
+     recién cuando la cinta y el empleado quedan libres. */
+  let requestLock = -1, pendingRequest = null;
   /* Posición de la caja real en la mano. Se mantiene dentro del frustum
      vertical (390x844) y del horizontal; no tapa la mira ni el pedido. */
   const HAND_POS = { x: 0.08, y: -0.4, z: -1.6 };
@@ -1137,6 +1144,8 @@
     S.queue.length = 0;
     S.leaving.length = 0;
     pendingSpawns = [];
+    requestLock = -1;
+    pendingRequest = null;
     requestP = -1;
     for (let i = 0; i < S.clients.length; i++) {
       const c = S.clients[i];
@@ -1280,6 +1289,12 @@
   function placeOnBelt() {
     if (carrying < 0) return false;
     if (!nearBeltEntry()) return false;
+    /* No se coloca a ciegas entre la entrega de un cliente y el siguiente
+       pedido: evita que el HUD cambie justo al apoyar la caja. */
+    if (requestP < 0) {
+      toast('Esperá al próximo cliente', 'bad');
+      return false;
+    }
     for (let i = 0; i < belt.items.length; i++) {
       if (belt.items[i].s < CFG.beltSpacing * 1.2) {
         toast('La cinta está ocupada', 'bad');
@@ -1316,7 +1331,12 @@
       fromStock: !!carryingFromStock
     };
     belt.items.push(item);
+    if (requestLock < 0 && requestP >= 0) requestLock = requestP;
     clearCarrying();
+    /* La mira se limpia y la acción queda bloqueada unos milisegundos: si el
+       mando repite el flanco, no se agarra el siguiente medicamento. */
+    lastPlaceMs = performance.now();
+    clearAim();
     setCarry(-1);
     updateStationSigns();
     toast('Medicamento en la cinta', 'ok');
@@ -1328,6 +1348,17 @@
     carryingDrug = -1;
     carryingBox = null;
     carryingFromStock = false;
+  }
+
+  function maybeUnlockRequest() {
+    if (requestLock < 0) return;
+    if (belt.items.length > 0 || employee) return;
+    requestLock = -1;
+    if (pendingRequest !== null) {
+      const c = pendingRequest;
+      pendingRequest = null;
+      setRequest(c, true);
+    }
   }
 
   function returnBoxHome(box) {
@@ -1978,8 +2009,14 @@
     nodes.time.classList.toggle('low', s <= 30);
   }
 
-  function setRequest(c) {
+  function setRequest(c, force) {
     if (!nodes.req) return;
+    /* Si hay una caja en tránsito, no se reemplaza el pedido visible por el
+       siguiente. Se guarda para mostrarlo cuando la cinta quede libre. */
+    if (!force && c >= 0 && requestLock >= 0 && c !== requestLock) {
+      pendingRequest = c;
+      return;
+    }
     if (c < 0) {
       nodes.req.classList.remove('on');
       return;
@@ -2289,6 +2326,9 @@
     if (state === 'over') { restart(); return true; }
     if (state === 'menu') return startCountdown();
     if (state !== 'playing') return false;
+    /* Un solo flanco: si se acaba de colocar una caja, no se toma otra por
+       un rebote del mando o un toque duplicado. */
+    if (performance.now() - lastPlaceMs < 300) return false;
 
     if (carrying >= 0 || carryingBox) {
       if (nearBeltEntry()) return placeOnBelt();
@@ -2533,6 +2573,7 @@
     updateClients(dt, t);
     updateBelt(dt, t);
     updateEmployee(dt, t);
+    maybeUnlockRequest();
     updateAim(t);
 
     for (let i = 0; i < S.clients.length; i++) {
@@ -2700,6 +2741,8 @@
         parent: carryingBox.parent === (G && G.camera) ? 'camera' : 'scene'
       } : null,
       request: requestP,
+      requestLock: requestLock,
+      pendingRequest: pendingRequest,
       requestBot: requestB,
       stockP: stockP.slice(),
       stockB: stockB.slice(),
@@ -2732,7 +2775,9 @@
         total: +(belt.total || 0).toFixed(2),
         entry: nearBeltEntry(),
         items: belt.items.map(function (it) {
-          return { color: it.color, s: +it.s.toFixed(2) };
+          return { color: it.color, drug: it.drug,
+            id: it.mesh && it.mesh.userData ? it.mesh.userData.id : -1,
+            s: +it.s.toFixed(2) };
         })
       },
       employee: employee ? employee.phase : null,
@@ -2784,7 +2829,9 @@
       request: function (c) {
         if (state !== 'playing' || c < 0 || c >= COLORS.length) return false;
         requestP = c;
-        setRequest(c);
+        requestLock = -1;
+        pendingRequest = null;
+        setRequest(c, true);
         return true;
       },
       botNow: function () {
@@ -2848,6 +2895,7 @@
         };
       },
       expectedDrug: function (color) { return stationDrug(color); },
+      advanceFront: function () { releaseFront(); return true; },
       placeBeltNow: function () {
         if (!G || state !== 'playing' || (carrying < 0 && !carryingBox)) return false;
         G.player.x = G.pharmacy.conveyor.entry.x + 1.8;
