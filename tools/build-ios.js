@@ -33,6 +33,7 @@ const required = [
   'three.min.js',
   'mobile/game.js',
   'mobile/modes.js',
+  'mobile/platform.js',
   'mobile/android-bridge.js',
   'mobile/android-game.css',
   'mobile/android-controls.css',
@@ -86,6 +87,7 @@ fs.writeFileSync(path.join(web, 'manifest.webmanifest'), JSON.stringify(manifest
 const hash = crypto.createHash('sha256');
 for (const rel of [
   'index.html', 'mobile/game.js', 'mobile/android-bridge.js',
+  'mobile/platform.js',
   'mobile/android-game.css', 'mobile/android-controls.css',
   'v20/pharmacy-scene.js', 'v20/pharmacy-core.js', 'v20/pharmacy.css', 'v21/v21.css',
   'headtracking/head-tracking.js', 'vr/vr-preview.js', 'net/vr-link.js'
@@ -106,6 +108,7 @@ const precache = [
   './three.min.js',
   './mobile/game.js',
   './mobile/modes.js',
+  './mobile/platform.js',
   './mobile/android-bridge.js',
   './mobile/android-game.css',
   './mobile/android-controls.css',

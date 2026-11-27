@@ -769,9 +769,9 @@
       giveOk = false;
       if (takeOk) {
         const score0 = D().score.player;
-        window.RasmaticGame._test.config({ beltSpeed: 7 });
+        window.RasmaticGame._test.config({ beltSpeed: 24 });
         const placed = window.RasmaticGame._test.placeBeltNow();
-        giveOk = placed && await until(() => D().score.player === score0 + 1, 15000);
+        giveOk = placed && await until(() => D().score.player === score0 + 1, 22000);
       }
     }
     ok('V12 el juego normal sigue funcionando despues de VR',

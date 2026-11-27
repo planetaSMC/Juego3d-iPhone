@@ -76,13 +76,14 @@ V21.1 está implementada y probada en simulación. No se probó en un iPhone fí
 
 - Menú/cuenta regresiva y reloj congelado.
 - Mira con raycast, contorno, desaparición y sin etiquetas.
-- 330 cajas de estantería individuales: apuntar, agarrar, soltar y re-agarrar.
+- 330 cajas de estantería individuales: apuntar, agarrar, depositar en la cinta
+  y reutilizar el stock.
 - Pedido por imagen real del medicamento y validación por medicamento exacto.
 - Cinta funcional con recorrido, validación, separación y animación del empleado.
 - Fila de tres clientes, avance y reposición.
 - Escenario V21: cartel, cajas de color, escala, cinta de máquina eliminada.
 - VR: mira y cuenta por ojo, Head Tracking en la orientación.
-- Mando: mover, apuntar, seleccionar, agarrar, colocar y soltar, con VR y sin VR
+- Mando: mover, apuntar, seleccionar, agarrar y colocar, con VR y sin VR
   (simulado con el puente nativo).
 - Todas las suites V20.1 adaptadas y verdes.
 

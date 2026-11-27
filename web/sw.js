@@ -1,6 +1,6 @@
 /* Generado por tools/build-ios.js (V20) - no editar a mano.
-   Build: 1064b336c6e759ab */
-const CACHE = 'rasmatic-v21-1064b336c6e759ab';
+   Build: 159b2ef4cad99849 */
+const CACHE = 'rasmatic-v21-159b2ef4cad99849';
 const PRECACHE = [
   "./",
   "./index.html",
@@ -8,6 +8,7 @@ const PRECACHE = [
   "./three.min.js",
   "./mobile/game.js",
   "./mobile/modes.js",
+  "./mobile/platform.js",
   "./mobile/android-bridge.js",
   "./mobile/android-game.css",
   "./mobile/android-controls.css",

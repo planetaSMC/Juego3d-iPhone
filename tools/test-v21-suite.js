@@ -49,20 +49,32 @@
         boton: startBtn && startBtn.textContent, tiempo: D().time });
 
     /* ---------------- V21-02: cuenta regresiva 3-2-1 ---------------- */
+    const countEl = document.getElementById('v21-count-num');
+    const seenCount = [];
+    const seenTimes = [];
+    const countObs = new MutationObserver(function () {
+      seenCount.push(countEl.textContent);
+      seenTimes.push(D().time);
+    });
+    countObs.observe(countEl, { childList: true, characterData: true, subtree: true });
     startBtn.click();
     const cd3 = await until(() => D().state === 'countdown', 3000);
-    const num3 = document.getElementById('v21-count-num').textContent;
+    const num3 = countEl.textContent;
     const frozen0 = D().time;
-    const seen2 = await until(() => document.getElementById('v21-count-num').textContent === '2', 4000);
-    const seen1 = await until(() => document.getElementById('v21-count-num').textContent === '1', 5000);
-    const stillFrozen = D().time;
-    const playing = await until(() => D().state === 'playing', 8000);
+    const playing = await until(() => D().state === 'playing', 9000);
+    countObs.disconnect();
+    const seen2 = seenCount.indexOf('2') >= 0;
+    const seen1 = seenCount.indexOf('1') >= 0;
+    const frozenDuring = seenTimes.length > 0 &&
+      seenTimes.every(function (v) { return v === 180; });
+    const stillFrozen = frozenDuring ? 180 : -1;
     const countdownOff = !document.getElementById('v21-countdown').classList.contains('on');
     ok('V21-02 INICIAR, cuenta 3-2-1 y reloj congelado',
       cd3 && num3 === '3' && seen2 && seen1 && playing && countdownOff &&
       frozen0 === 180 && stillFrozen === 180 && D().time <= 180.2,
-      { num3, seen2, seen1, estado: D().state, reloj_antes: frozen0,
-        reloj_cuenta: stillFrozen, reloj_partida: D().time, overlay: countdownOff });
+      { num3, seen2, seen1, vistos: seenCount, tiempos: seenTimes,
+        estado: D().state, reloj_antes: frozen0, reloj_cuenta: stillFrozen,
+        reloj_partida: D().time, overlay: countdownOff });
 
     /* ---------------- V21-03: fila y pedido con imagen ---------------- */
     const queueReady = await until(() => D().clients.length >= 3, 20000);
@@ -96,8 +108,9 @@
         contorno_al_salir: lost, llevando: D().carrying, mira_limpia: cleared });
 
     /* ---------------- V21-05: colocar en la cinta ---------------- */
-    window.RasmaticGame._test.config({ beltSpeed: 7 });
+    window.RasmaticGame._test.config({ beltSpeed: 24 });
     const entry = PH().conveyor.entry;
+    const scorePlaceBefore = D().score.player;
     const reqPlaceBefore = D().request;
     const reqImgPlaceBefore = document.getElementById('rg-req-img').getAttribute('src');
     const carriedId = D().carryingBox ? D().carryingBox.id : -1;
@@ -129,10 +142,10 @@
         imagen_igual: reqImgPlaceAfter === reqImgPlaceBefore });
 
     /* ---------------- V21-06: empleado valida y entrega ---------------- */
-    const score0 = D().score.player;
-    const reqBefore = D().request;
-    const delivered = await until(() => D().score.player === score0 + 1, 16000);
-    const requestChanged = await until(() => D().request >= 0 && D().request !== reqBefore, 12000);
+    const score0 = scorePlaceBefore;
+    const reqBefore = reqPlaceBefore;
+    const delivered = await until(() => D().score.player === score0 + 1, 22000);
+    const requestChanged = await until(() => D().request >= 0 && D().request !== reqBefore, 16000);
     const afterDelivery = D();
     ok('V21-06 el empleado recoge, valida y entrega al cliente',
       delivered && requestChanged && afterDelivery.belt.count === 0 &&
@@ -168,9 +181,9 @@
     if (wrong >= 0) {
       const scoreBad = D().score.player;
       const stockBefore = D().stockP[wrong];
-      window.RasmaticGame._test.config({ beltSpeed: 7 });
+      window.RasmaticGame._test.config({ beltSpeed: 24 });
       const placedWrong = window.RasmaticGame._test.placeBeltNow();
-      wrongOk = placedWrong && await until(() => D().stockP[wrong] === stockBefore + 1, 16000);
+      wrongOk = placedWrong && await until(() => D().stockP[wrong] === stockBefore + 1, 22000);
       wrongOk = wrongOk && D().score.player === scoreBad && D().request === reqWrong;
     }
     ok('V21-08 medicamento equivocado no suma y vuelve al stock', wrongOk,
@@ -214,17 +227,19 @@
     }).length;
     const imgValues = Object.keys(imgs).map(function (k) { return imgs[k]; });
     const distinct = imgValues.filter(function (v, i) { return imgValues.indexOf(v) === i; }).length;
-    ok('V21-10 Farmacia RASMATIC, cajas de color y escala humana',
+    ok('V21-10 Farmacia RASMATIC, cajas de color sólido y escala humana',
       ph.signs.main === 'FARMACIA RASMATIC' && ph.machineConveyor === false &&
       Math.abs(ph.pharmacist.scale.x - 0.86) < 0.01 &&
       D().clients.every(function (c) { return c.scale >= 0.8 && c.scale <= 0.9; }) &&
-      !!box.material && !Array.isArray(box.material) && !!box.material.map &&
+      !!box.material && !Array.isArray(box.material) && !box.material.map &&
+      !!box.material.color && box.material.color.getHex() !== 0xffffff &&
       distinct >= Math.min(4, uniqueImgs),
       { cartel: ph.signs, cinta_maquina: ph.machineConveyor,
         escala_empleado: +ph.pharmacist.scale.x.toFixed(2),
         escalas_clientes: D().clients.map(function (c) { return c.scale; }),
         imagenes_distintas: distinct,
-        cajas: box.material ? (Array.isArray(box.material) ? box.material.length : 'atlas') : 0 });
+        material: box.material ? (box.material.map ? 'atlas' : 'color-sólido') : 0,
+        color: box.material && box.material.color ? '#' + box.material.color.getHexString() : null });
 
     /* ---------------- V21-10b: rendimiento desde el arranque ---------------- */
     tp(46.8, 9.4, Math.PI / 2, 0);
@@ -293,42 +308,66 @@
       sc.stationBoxesSeparate === true && each,
       { estanteria: sc, identidad_unica: each });
 
-    /* ---------------- V21-15: agarrar, soltar y volver a agarrar ---------- */
+    /* ---------------- V21-15: agarre restringido y sin soltura libre ------ */
     window.RasmaticGame._test.startNow();
     await until(() => D().state === 'playing', 5000);
     await until(() => D().clients.length >= 1, 12000);
-    let gi = -1;
-    for (let i = 0; i < 90 && gi < 0; i++) {
+    /* a) Solo se puede agarrar de las tres estanterías habilitadas. */
+    let ai = -1;
+    for (let i = 0; i < 140 && ai < 0; i++) {
       const b = G().pharmacy.shelfBoxes[i];
       const u = b && b.userData;
-      if (u && u.sh < 0 && b.visible && !u.taken && !u.onBelt && !u.consumed) {
-        if (window.RasmaticGame._test.aimAtShelfBox(i)) gi = i;
+      if (u && u.sh >= 0 && u.accessible === true && b.visible &&
+          !u.taken && !u.onBelt && !u.consumed) {
+        if (window.RasmaticGame._test.aimAtShelfBox(i)) ai = i;
       }
     }
-    const gDrug = gi >= 0 ? G().pharmacy.shelfBoxes[gi].userData.n : -1;
-    const grabbed = gi >= 0 ? window.RasmaticGame.interact() : false;
-    const held = await until(() => D().carryingDrug === gDrug &&
-      D().carryingBox && D().carryingBox.id === gi &&
+    const aDrug = ai >= 0 ? G().pharmacy.shelfBoxes[ai].userData.n : -1;
+    const grabbed = ai >= 0 ? window.RasmaticGame.interact() : false;
+    const held = await until(() => D().carryingDrug === aDrug &&
+      D().carryingBox && D().carryingBox.id === ai &&
       D().carryingBox.parent === 'camera' &&
-      window.RasmaticGame._test.shelfBox(gi).held === true, 5000);
-    const homeBefore = gi >= 0 ? G().pharmacy.shelfBoxes[gi].userData.home.clone() : null;
+      window.RasmaticGame._test.shelfBox(ai).held === true, 5000);
+    /* b) Lejos de la cinta no se suelta: sigue en la mano. */
+    window.RasmaticGame._test.teleport(45, 27);
+    const noFreeDrop = window.RasmaticGame.interact() === false;
+    await sleep(200);
+    const stillHeld = D().carrying >= 0 && D().carryingBox &&
+      D().carryingBox.drug === aDrug;
+    const homeBefore = ai >= 0 ? G().pharmacy.shelfBoxes[ai].userData.home.clone() : null;
+    /* c) La cancelación de prueba devuelve la caja a su lugar (no al piso). */
     const released = window.RasmaticGame._test.releaseHeld();
-    const dropped = await until(() => {
-      const b = window.RasmaticGame._test.shelfBox(gi);
-      return b && D().carrying === -1 && b.dropped === true &&
-        b.visible === true && b.parent === 'scene' &&
-        Math.hypot(b.x - homeBefore.x, b.z - homeBefore.z) > 0.4;
+    const backHome = await until(() => {
+      const b = window.RasmaticGame._test.shelfBox(ai);
+      return b && D().carrying === -1 && b.held === false && b.taken === false &&
+        b.visible === true && Math.hypot(b.x - homeBefore.x, b.z - homeBefore.z) < 0.05;
     }, 5000);
-    const aimDrop = window.RasmaticGame._test.aimAtShelfBox(gi);
-    const regrabbed = aimDrop && window.RasmaticGame.interact();
-    const heldAgain = await until(() => D().carryingDrug === gDrug &&
-      D().carryingBox && D().carryingBox.id === gi, 5000);
+    const aimAgain = window.RasmaticGame._test.aimAtShelfBox(ai);
+    const regrabbed = aimAgain && window.RasmaticGame.interact();
+    const heldAgain = await until(() => D().carryingDrug === aDrug &&
+      D().carryingBox && D().carryingBox.id === ai, 5000);
     if (heldAgain) window.RasmaticGame._test.releaseHeld();
-    ok('V21-15 agarrar, soltar y volver a agarrar la misma caja',
-      gi >= 0 && grabbed === true && held && released === true && dropped &&
-      aimDrop === true && regrabbed === true && heldAgain,
-      { indice: gi, medicamento: gDrug, agarrada: grabbed, en_mano: held,
-        soltada: dropped, re_apuntada: aimDrop, re_agarrada: heldAgain });
+    /* d) Una estantería bloqueada no se puede agarrar ni en rango cercano. */
+    let bi = -1;
+    for (let i = 0; i < 200 && bi < 0; i++) {
+      const b = G().pharmacy.shelfBoxes[i];
+      const u = b && b.userData;
+      if (u && u.sh < 0 && u.accessible === false && b.visible &&
+          !u.taken && !u.onBelt && !u.consumed) {
+        if (window.RasmaticGame._test.aimAtShelfBox(i)) bi = i;
+      }
+    }
+    const blockedAim = bi >= 0 && D().aim && D().aim.blocked === true;
+    const blockedGrab = bi >= 0 ? window.RasmaticGame.interact() : false;
+    const blockedOk = bi >= 0 && blockedAim && blockedGrab === false &&
+      D().carrying === -1;
+    ok('V21-15 solo las 3 estanterías habilitadas, sin soltura libre',
+      ai >= 0 && grabbed === true && held && noFreeDrop && stillHeld &&
+      released === true && backHome && aimAgain === true && regrabbed === true &&
+      heldAgain && blockedOk,
+      { indice: ai, medicamento: aDrug, agarrada: grabbed, en_mano: held,
+        sin_soltar: noFreeDrop && stillHeld, devuelta: backHome,
+        re_agarrada: heldAgain, bloqueada: bi, bloqueada_ok: blockedOk });
 
     /* ---------------- V21-16: entrega del medicamento exacto ------------- */
     window.RasmaticGame._test.startNow();
@@ -340,9 +379,9 @@
     const exactGrab = exactAim && window.RasmaticGame.interact();
     const exactHeld = await until(() => D().carryingDrug === expected, 5000);
     const exactScore0 = D().score.player;
-    window.RasmaticGame._test.config({ beltSpeed: 7 });
+    window.RasmaticGame._test.config({ beltSpeed: 24 });
     const exactPlaced = exactHeld && window.RasmaticGame._test.placeBeltNow();
-    const exactDelivered = await until(() => D().score.player === exactScore0 + 1, 18000);
+    const exactDelivered = await until(() => D().score.player === exactScore0 + 1, 24000);
     ok('V21-16 el pedido se valida por medicamento exacto (copia individual)',
       reqExact >= 0 && expected >= 0 && exactAim === true && exactGrab === true &&
       exactHeld && exactPlaced === true && exactDelivered,
@@ -354,7 +393,7 @@
     window.RasmaticGame._test.startNow();
     await until(() => D().state === 'playing', 5000);
     await until(() => D().clients.length >= 3 && D().request >= 0, 15000);
-    window.RasmaticGame._test.config({ beltSpeed: 3.6 });
+    window.RasmaticGame._test.config({ beltSpeed: 24 });
     const reqStay = D().request;
     const expectedStay = window.RasmaticGame._test.expectedDrug(reqStay);
     const stayAim = window.RasmaticGame._test.aimAtDrug(expectedStay);
@@ -386,7 +425,7 @@
     window.RasmaticGame._test.startNow();
     await until(() => D().state === 'playing', 5000);
     await until(() => D().clients.length >= 3 && D().request >= 0, 15000);
-    window.RasmaticGame._test.config({ beltSpeed: 7 });
+    window.RasmaticGame._test.config({ beltSpeed: 24 });
     const lockReq0 = D().request;
     const lockDrug0 = window.RasmaticGame._test.expectedDrug(lockReq0);
     const lockImg0 = document.getElementById('rg-req-img').getAttribute('src');

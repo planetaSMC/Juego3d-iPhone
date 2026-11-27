@@ -62,6 +62,38 @@
   font-size: calc(10px * var(--rg-boost));
   letter-spacing: .18em;
 }
+#rg-req .rg-req-color {
+  font-family: "Exo 2", system-ui, sans-serif;
+  font-size: calc(clamp(18px, 4.4vmin, 24px) * var(--rg-boost));
+  font-weight: 900;
+  letter-spacing: .06em;
+  line-height: 1.05;
+  color: #fff;
+  text-shadow: 0 0 14px var(--v21-req-color, #1f5fd0);
+}
+#rg-req.match .rg-req-imgwrap {
+  box-shadow: 0 0 0 3px #6ff0b4, 0 0 24px rgba(111, 240, 180, .85);
+}
+#rg-req.mismatch .rg-req-imgwrap {
+  box-shadow: 0 0 0 3px #ff8a6a, 0 0 24px rgba(255, 122, 96, .8);
+}
+#rg-req.flash-ok .rg-req-imgwrap {
+  animation: v21-deposit-ok .55s ease;
+}
+#rg-req.flash-bad .rg-req-imgwrap {
+  animation: v21-deposit-bad .55s ease;
+}
+@keyframes v21-deposit-ok {
+  0% { transform: scale(1); filter: brightness(1); }
+  35% { transform: scale(1.14); filter: brightness(1.4); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+@keyframes v21-deposit-bad {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  55% { transform: translateX(4px); }
+  80% { transform: translateX(-2px); }
+}
 #rg-req.pop .rg-req-imgwrap {
   animation: v21-req-pop .26s cubic-bezier(.2, .9, .3, 1.2);
 }

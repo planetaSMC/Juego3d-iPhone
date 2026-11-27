@@ -12,7 +12,7 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 | `node tools/test-web.js` | **30 / 30** + horizontal |
 | `node tools/test-vr.js` | **34 / 34** |
 | `node tools/test-pad.js` | **23 / 23** |
-| `node tools/check-xcode.js` | **162 / 162** |
+| `node tools/check-xcode.js` | **164 / 164** |
 | `windows-calibrator && npm test` | **62 / 62** |
 
 ## 2. Suite V21 (19 casos)
@@ -34,7 +34,7 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 | V21-12 | cuenta regresiva visible en cada ojo de VR |
 | V21-13 | rendimiento estable después de salir de VR |
 | V21-14 | 330 cajas individuales con identidad única, sin fusión |
-| V21-15 | agarrar una caja, soltarla en el piso y volver a agarrarla |
+| V21-15 | solo las 3 estanterías habilitadas; sin soltura libre; bloqueo y devolución |
 | V21-16 | entregar una copia individual del medicamento exacto pedido |
 | V21-17 | el pedido no cambia al colocar: se mantiene hasta la entrega |
 | V21-18 | con una caja en tránsito, el HUD conserva el pedido colocado y recién muestra el siguiente al quedar libre la cinta |
@@ -46,7 +46,7 @@ Evidencias: `docs/evidencias/v21/v21-menu.png`,
 
 - `test-v20.js` 18/18: identidad, escena, colisiones, tres modos, tres
   dificultades, partida, joystick, Head Tracking y puente Windows.
-- `test-web.js` 30/30: HUD, menú, recoger, cinta, entrega correcta e incorrecta,
+- `test-web.js` 31/31: HUD, menú, recoger, cinta, entrega correcta e incorrecta,
   bot/CNC, fin, revancha, joystick, cámara, pausa, mando, safe areas, offline,
   panel de dificultad, HUD personalizado y horizontal.
 - `test-vr.js` 34/34: SBS, IPD, convergencia, distorsión, perfiles, cámara,

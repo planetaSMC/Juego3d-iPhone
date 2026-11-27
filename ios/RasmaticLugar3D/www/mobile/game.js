@@ -30,7 +30,10 @@
     aimTake: 5.6,       // distancia máxima para recoger con la mira
     beltSpeed: 3.6,     // unidades/s de la cinta de entrega
     beltSpacing: 1.5,   // separación mínima entre paquetes
-    beltEntryRadius: 3.4,
+    beltEntryRadius: 3.4,   // radio histórico de la boca de la cinta
+    beltDepositRadius: 6.4, // V21.2: depositar desde cierta distancia
+    carryAnimMs: 220,       // transición al agarrar
+    dropFallMs: 380,        // caída/convergencia al depositar
     queueSize: 3
   };
 
@@ -164,12 +167,12 @@
   let uiEditor = null;
 
   const COLORS = [
-    { id: 'rojo',     name: 'ROJO',     css: '#e8453c', hex: 0xe8453c },
+    { id: 'rojo',     name: 'ROJO',     css: '#e5484d', hex: 0xe5484d },
     { id: 'azul',     name: 'AZUL',     css: '#2f7bff', hex: 0x2f7bff },
-    { id: 'verde',    name: 'VERDE',    css: '#22a06b', hex: 0x22a06b },
-    { id: 'amarillo', name: 'AMARILLO', css: '#f2c63a', hex: 0xf2c63a },
-    { id: 'violeta',  name: 'VIOLETA',  css: '#8a6fe0', hex: 0x8a6fe0 },
-    { id: 'naranja',  name: 'NARANJA',  css: '#f08a3c', hex: 0xf08a3c }
+    { id: 'verde',    name: 'VERDE',    css: '#17a673', hex: 0x17a673 },
+    { id: 'amarillo', name: 'AMARILLO', css: '#f5c518', hex: 0xf5c518 },
+    { id: 'violeta',  name: 'VIOLETA',  css: '#8b5cf6', hex: 0x8b5cf6 },
+    { id: 'naranja',  name: 'NARANJA',  css: '#ff8a00', hex: 0xff8a00 }
   ];
 
   /* Estaciones sobre las góndolas del pasillo central (caras al pasillo).
@@ -209,9 +212,9 @@
   let requestLock = -1, pendingRequest = null;
   /* Posición de la caja real en la mano. Se mantiene dentro del frustum
      vertical (390x844) y del horizontal; no tapa la mira ni el pedido. */
-  const HAND_POS = { x: 0.08, y: -0.4, z: -1.6 };
-  const HAND_ROT = { x: -0.12, y: -0.32, z: 0.1 };
-  const HAND_SCALE = 0.5;
+  const HAND_POS = { x: 0.3, y: -0.46, z: -1.7 };
+  const HAND_ROT = { x: -0.08, y: -0.45, z: 0.12 };
+  const HAND_SCALE = 0.44;
   let matchStart = 0, matchEnd = 0;
   let customerWaitUntil = 0, customerHideAt = 0;
   let nextBotAt = 0, bot = null;
@@ -219,14 +222,18 @@
   let toastToken = 0, backAt = -99;
   let handMesh = null;
   let promptLabel = null, promptCls = '';
+  /* V21.2: transición de agarre y feedback de depósito. */
+  let carryAnim = null;
+  let reqFlashToken = 0;
+  const HALF_H = 0.48;              // media altura de la caja sobre la cinta
 
   /* V21: menú, cuenta regresiva, mira, cinta y fila. */
   let countdownAt = 0, countdownStep = 0;
   let pendingSpawns = [];
   let releaseAt = 0;
   let employee = null;
-  const belt = { items: [], seq: 0, speed: 0 };
-  const aim = { target: null, nextAt: 0, outline: null };
+  const belt = { items: [], seq: 0, speed: 0, fx: null, flashUntil: 0, flashOk: true };
+  const aim = { target: null, nextAt: 0, outline: null, allowed: true, blocked: false };
   const raycaster = new T.Raycaster();
   const aimDir = new T.Vector3();
   const aimOrigin = new T.Vector3();
@@ -922,9 +929,13 @@
 
   function targetAvailable(t) {
     if (!t || !t.box) return false;
-    if (t.box.userData && t.box.userData.consumed) return false;
+    const u = t.box.userData || {};
+    if (u.consumed) return false;
+    /* V21.2: las estanterías bloqueadas nunca son agarrables, ni siquiera
+       apuntando desde lejos. */
+    if (u.accessible === false || (typeof u.sh === 'number' && u.sh < 0)) return false;
     const st = stationForBox(t.box);
-    if (st && !t.box.userData.taken && (stockP[st.def.c] || 0) <= 0) return false;
+    if (st && !u.taken && (stockP[st.def.c] || 0) <= 0) return false;
     return true;
   }
 
@@ -1063,8 +1074,8 @@
       G.pharmacy.drugGeometry(0.9, 0.75, 0.4),
       new T.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
     );
-    handMesh.position.set(0.55, -0.52, -1.25);
-    handMesh.rotation.set(-0.12, -0.35, 0.1);
+    handMesh.position.set(HAND_POS.x, HAND_POS.y, HAND_POS.z);
+    handMesh.rotation.set(HAND_ROT.x, HAND_ROT.y, HAND_ROT.z);
     handMesh.visible = false;
     G.camera.add(handMesh);
     G.scene.add(G.camera);
@@ -1258,6 +1269,49 @@
     belt.speed = 0;
   }
 
+  /* V21.2: aro de la zona de depósito. Comunica dónde se puede soltar el
+     medicamento y cambia de color al colocar uno correcto o incorrecto. */
+  function buildBeltFeedback() {
+    const e = G.pharmacy.conveyor.entry;
+    const group = new T.Group();
+    group.position.set(e.x, e.y + 0.012, e.z);
+    group.rotation.x = -Math.PI / 2;
+    const ring = new T.Mesh(
+      new T.RingGeometry(0.92, 1.06, 48),
+      new T.MeshBasicMaterial({
+        color: 0x7dffc8, transparent: true, opacity: 0.38,
+        side: T.DoubleSide, depthWrite: false
+      })
+    );
+    const ring2 = new T.Mesh(
+      new T.RingGeometry(0.58, 0.63, 48),
+      new T.MeshBasicMaterial({
+        color: 0xd6fff0, transparent: true, opacity: 0.26,
+        side: T.DoubleSide, depthWrite: false
+      })
+    );
+    group.add(ring);
+    group.add(ring2);
+    G.place.add(group);
+    belt.fx = { group: group, ring: ring, ring2: ring2 };
+  }
+
+  function updateBeltFeedback(t) {
+    if (!belt.fx) return;
+    const flash = t < belt.flashUntil;
+    const base = flash ? 0.82 : 0.34;
+    const pulse = 0.5 + 0.5 * Math.sin(t * (flash ? 12 : 2.4));
+    belt.fx.ring.material.opacity = base + 0.12 * pulse;
+    belt.fx.ring2.material.opacity = (flash ? 0.55 : 0.2) + 0.1 * pulse;
+    const s = flash ? 1.06 + 0.03 * pulse : 1;
+    belt.fx.group.scale.setScalar(s);
+    if (!flash && !belt.flashOk) {
+      belt.flashOk = true;
+      belt.fx.ring.material.color.setHex(0x7dffc8);
+      belt.fx.ring2.material.color.setHex(0xd6fff0);
+    }
+  }
+
   function sampleBelt(s) {
     const total = belt.total || 0.001;
     const q = Math.max(0, Math.min(total, s));
@@ -1281,33 +1335,79 @@
     return st && st.pharmacy ? st.pharmacy.drug : COLOR_DRUGS[color];
   }
 
-  function nearBeltEntry() {
+  function beltDepositDistance() {
     const e = G.pharmacy.conveyor.entry;
-    return dist(G.player.x, G.player.z, e.x, e.z) <= CFG.beltEntryRadius;
+    return dist(G.player.x, G.player.z, e.x, e.z);
+  }
+
+  /* V21.2: zona de depósito amplia. No hace falta tocar la cinta con la
+     mano: basta con estar cerca de la boca de entrada. */
+  function canDepositOnBelt() {
+    return beltDepositDistance() <= CFG.beltDepositRadius;
+  }
+
+  function nearBeltEntry() { return canDepositOnBelt(); }
+
+  function beltEntryBusy() {
+    for (let i = 0; i < belt.items.length; i++) {
+      if (belt.items[i].s < CFG.beltSpacing) return true;
+    }
+    return false;
+  }
+
+  function flashBeltFeedback(ok) {
+    const t = now();
+    belt.flashUntil = t + 1.15;
+    belt.flashOk = !!ok;
+    if (belt.fx) {
+      belt.fx.ring.material.color.setHex(ok ? 0x6ff0b4 : 0xff7a6a);
+      belt.fx.ring2.material.color.setHex(ok ? 0xd6fff0 : 0xffd2c8);
+    }
+  }
+
+  function flashRequest(ok) {
+    if (!nodes.req) return;
+    const tok = ++reqFlashToken;
+    nodes.req.classList.remove('flash-ok', 'flash-bad');
+    void nodes.req.offsetWidth;
+    nodes.req.classList.add(ok ? 'flash-ok' : 'flash-bad');
+    setTimeout(function () {
+      if (tok === reqFlashToken) nodes.req.classList.remove('flash-ok', 'flash-bad');
+    }, 900);
   }
 
   function placeOnBelt() {
-    if (carrying < 0) return false;
-    if (!nearBeltEntry()) return false;
+    if (carrying < 0 && !carryingBox) return false;
+    if (!canDepositOnBelt()) {
+      toast('Acercate a la cinta para depositarlo', 'bad');
+      return false;
+    }
     /* No se coloca a ciegas entre la entrega de un cliente y el siguiente
        pedido: evita que el HUD cambie justo al apoyar la caja. */
     if (requestP < 0) {
       toast('Esperá al próximo cliente', 'bad');
       return false;
     }
-    for (let i = 0; i < belt.items.length; i++) {
-      if (belt.items[i].s < CFG.beltSpacing * 1.2) {
-        toast('La cinta está ocupada', 'bad');
-        return false;
-      }
+    if (beltEntryBusy()) {
+      toast('La cinta está ocupada', 'bad');
+      return false;
     }
     const color = carrying;
     const drug = carryingDrug >= 0 ? carryingDrug : stationDrug(color);
+    const expected = stationDrug(requestP);
+    const matches = drug === expected;
     let mesh = carryingBox;
+    /* Punto de partida de la caída: la mano real, acercada a la cinta
+       para que el trayecto sea corto y natural. */
+    let fallFrom = null;
+    if (mesh) {
+      fallFrom = new T.Vector3();
+      mesh.getWorldPosition(fallFrom);
+    }
     if (mesh) {
       if (mesh.parent !== G.place) G.place.attach(mesh);
       const p0 = sampleBelt(0);
-      mesh.position.set(p0.x, p0.y + 0.48, p0.z);
+      mesh.position.set(p0.x, p0.y + HALF_H, p0.z);
       mesh.rotation.set(0, p0.yaw, 0);
       mesh.scale.set(1, 1, 1);
       mesh.visible = true;
@@ -1326,9 +1426,23 @@
       mesh.visible = true;
       mesh.scale.set(1, 1, 1);
     }
+    const p0 = sampleBelt(0);
+    const targetY = p0.y + HALF_H;
+    let from = fallFrom;
+    if (from) {
+      /* Se interpola solo una parte del recorrido hacia la boca de la cinta;
+         la caja nunca aparece suspendida ni atraviesa la superficie. */
+      from = new T.Vector3(
+        lerp(from.x, p0.x, 0.55),
+        Math.max(from.y, targetY + 0.55),
+        lerp(from.z, p0.z, 0.55)
+      );
+    }
     const item = {
-      color: color, drug: drug, mesh: mesh, s: 0, held: false,
-      fromStock: !!carryingFromStock
+      color: color, drug: drug, mesh: mesh, s: 0,
+      fromStock: !!carryingFromStock,
+      drop: from ? { t0: now(), from: from, lift: Math.max(0.5, from.y - targetY) } : null,
+      endSince: 0
     };
     belt.items.push(item);
     if (requestLock < 0 && requestP >= 0) requestLock = requestP;
@@ -1339,7 +1453,11 @@
     clearAim();
     setCarry(-1);
     updateStationSigns();
-    toast('Medicamento en la cinta', 'ok');
+    flashBeltFeedback(matches);
+    flashRequest(matches);
+    toast(matches
+      ? 'En la cinta · pedido correcto'
+      : 'En la cinta · no es el pedido', matches ? 'ok' : 'bad');
     return true;
   }
 
@@ -1348,6 +1466,7 @@
     carryingDrug = -1;
     carryingBox = null;
     carryingFromStock = false;
+    carryAnim = null;
   }
 
   function maybeUnlockRequest() {
@@ -1378,31 +1497,19 @@
     u.consumed = false;
   }
 
-  function dropCarried() {
+  /* Solo pruebas / cancelación interna: devuelve la caja a su estantería.
+     El jugador no puede soltar medicamentos en el piso. */
+  function cancelCarry() {
     const box = carryingBox;
     if (!box) return false;
-    if (!G || !G.player) return false;
-    const p = G.player;
-    const b = G.pharmacy.bounds;
-    const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
-    let x = p.x + fx * 1.45;
-    let z = p.z + fz * 1.45;
-    if (b) {
-      x = Math.max(b.minX + 0.7, Math.min(b.maxX - 0.7, x));
-      z = Math.max(b.minZ + 0.7, Math.min(b.maxZ - 0.7, z));
+    const st = stationForBox(box);
+    if (carryingFromStock && st) {
+      stockP[st.def.c] = (stockP[st.def.c] || 0) + 1;
     }
-    if (box.parent !== G.place) G.place.attach(box);
-    box.position.set(x, (G.home && G.home.floor ? G.home.floor : 0) + 0.5, z);
-    box.rotation.set(0, p.yaw + Math.PI, 0);
-    box.scale.set(1, 1, 1);
-    box.visible = true;
-    box.userData.held = false;
-    box.userData.dropped = true;
-    box.userData.onBelt = false;
+    returnBoxHome(box);
     clearCarrying();
     setCarry(-1);
     updateStationSigns();
-    toast('Soltaste ' + drugName(box.userData.n), 'ok');
     clearAim();
     return true;
   }
@@ -1421,14 +1528,49 @@
       G.pharmacy.conveyor.setSpeed(speed);
     }
     const list = belt.items.slice().sort(function (a, b) { return b.s - a.s; });
+    const stuck = [];
     for (let i = 0; i < list.length; i++) {
       const it = list[i];
       const ahead = i > 0 ? list[i - 1] : null;
       const max = ahead ? Math.max(0, ahead.s - CFG.beltSpacing) : belt.total;
       it.s = Math.min(max, it.s + speed * dt);
       const p = sampleBelt(it.s);
-      it.mesh.position.set(p.x, p.y + 0.48, p.z);
-      it.mesh.rotation.y = p.yaw;
+      const targetY = p.y + HALF_H;
+      if (it.drop) {
+        /* Caída corta con gravedad: converge a la superficie de la cinta y
+           nunca queda por debajo de ella. */
+        const u = clamp01((t - it.drop.t0) / (CFG.dropFallMs / 1000));
+        const e = ease(u);
+        const y = Math.max(targetY, targetY + it.drop.lift * (1 - u * u));
+        it.mesh.position.set(
+          lerp(it.drop.from.x, p.x, e),
+          y,
+          lerp(it.drop.from.z, p.z, e)
+        );
+        it.mesh.rotation.set(0, p.yaw, 0);
+        if (u >= 1) {
+          it.drop = null;
+          it.mesh.position.set(p.x, targetY, p.z);
+        }
+      } else {
+        it.mesh.position.set(p.x, targetY, p.z);
+        it.mesh.rotation.set(0, p.yaw, 0);
+      }
+      /* Seguridad: si la cinta termina sin cliente/pedido, el paquete vuelve
+         a su lugar en vez de quedar atascado para siempre. */
+      if (it.s >= belt.total - 0.02 && state === 'playing' &&
+          (requestP < 0 || !S.queue.length)) {
+        if (!it.endSince) it.endSince = t;
+        else if (t - it.endSince > 2.4) stuck.push(it);
+      } else {
+        it.endSince = 0;
+      }
+    }
+    for (let j = 0; j < stuck.length; j++) {
+      const it = stuck[j];
+      const idx = belt.items.indexOf(it);
+      if (idx >= 0) belt.items.splice(idx, 1);
+      returnFailedItem(it);
     }
   }
 
@@ -1590,6 +1732,7 @@
     aim.target = null;
     aim.drug = -1;
     aim.hitDistance = 0;
+    aim.allowed = true;
     if (aim.outline) aim.outline.visible = false;
   }
 
@@ -1612,7 +1755,10 @@
   function updateAim(t) {
     if (t < aim.nextAt) return;
     aim.nextAt = t + 0.1;
-    if (!G || state !== 'playing' || core.getMode() !== 'place') {
+    /* Mientras lleva una caja no se selecciona otra: el sistema transporta
+       un medicamento por vez. */
+    if (!G || state !== 'playing' || core.getMode() !== 'place' ||
+        carrying >= 0 || carryingBox) {
       clearAim();
       return;
     }
@@ -1626,8 +1772,8 @@
     aimDir.set(0, 0, -1).applyQuaternion(aimQuat).normalize();
     raycaster.set(aimOrigin, aimDir);
     raycaster.far = CFG.aimRange;
-    /* V21.1: todas las cajas de las estanterías son candidatas individuales.
-       Se excluyen solo las que están en la mano, en la cinta o ya entregadas. */
+    /* V21.2: se apunta a las cajas visibles, pero solo las tres estanterías
+       habilitadas se pueden agarrar. Las bloqueadas se marcan en rojo. */
     const objects = [];
     const boxes = G.pharmacy.shelfBoxes || [];
     for (let i = 0; i < boxes.length; i++) {
@@ -1639,6 +1785,10 @@
     if (!hits.length) { clearAim(); return; }
     const target = aimTargetFor(hits[0].object);
     if (!target) { clearAim(); return; }
+    const u = target.box.userData || {};
+    aim.allowed = u.accessible !== false &&
+      !(typeof u.sh === 'number' && u.sh < 0);
+    aim.blocked = !aim.allowed;
     aim.target = target;
     aim.drug = targetDrug(target);
     aim.hitDistance = hits[0].distance;
@@ -1648,6 +1798,8 @@
     aim.outline.quaternion.copy(tmpQ);
     aim.outline.scale.setScalar(1.02);
     aim.outline.visible = true;
+    aim.shell.material.color.setHex(aim.allowed ? 0xffe14d : 0xff6b5c);
+    aim.lines.material.color.setHex(aim.allowed ? 0xfff3a0 : 0xffb0a4);
     aim.shell.material.opacity = 0.3 + 0.16 * (0.5 + 0.5 * Math.sin(t * 6));
     aim.lines.material.opacity = 0.7 + 0.25 * (0.5 + 0.5 * Math.sin(t * 6 + 1));
   }
@@ -1664,6 +1816,7 @@
     }
     if (on) {
       if (nodes.countdown) nodes.countdown.classList.remove('on');
+      document.body.classList.remove('rg-playing');
       state = 'menu';
       clearAim();
       setRequest(-1);
@@ -1768,8 +1921,8 @@
           '<div class="rg-team rg-b"><span>BOT</span><b>0</b></div>' +
         '</div>' +
         '<div id="rg-req" class="rg-panel">' +
-          '<div class="rg-req-imgwrap"><img id="rg-req-img" alt="Medicamento solicitado"></div>' +
-          '<div class="rg-req-txt"><small>PEDIDO</small></div>' +
+          '<div class="rg-req-imgwrap"><img id="rg-req-img" alt="Color del medicamento solicitado"></div>' +
+          '<div class="rg-req-txt"><small>PEDIDO</small><span id="rg-req-color" class="rg-req-color">—</span></div>' +
         '</div>' +
         '<div id="rg-carry" class="rg-panel"><i></i><span></span></div>' +
       '</div>' +
@@ -1984,6 +2137,7 @@
     nodes.time = document.getElementById('rg-time');
     nodes.req = document.getElementById('rg-req');
     nodes.reqImg = document.getElementById('rg-req-img');
+    nodes.reqColor = document.getElementById('rg-req-color');
     nodes.carry = document.getElementById('rg-carry');
     nodes.carryDot = nodes.carry.querySelector('i');
     nodes.carryTxt = nodes.carry.querySelector('span');
@@ -2018,7 +2172,8 @@
       return;
     }
     if (c < 0) {
-      nodes.req.classList.remove('on');
+      nodes.req.classList.remove('on', 'match', 'mismatch');
+      if (nodes.reqColor) nodes.reqColor.textContent = '—';
       return;
     }
     const col = COLORS[c];
@@ -2029,17 +2184,22 @@
     if (nodes.reqImg && src && nodes.reqImg.getAttribute('src') !== src) {
       nodes.reqImg.setAttribute('src', src);
     }
+    if (nodes.reqColor) nodes.reqColor.textContent = col.name;
     nodes.req.style.setProperty('--v21-req-color', col.css);
     nodes.req.classList.add('on');
-    nodes.req.classList.remove('pop');
+    nodes.req.classList.remove('match', 'mismatch', 'pop', 'flash-ok', 'flash-bad');
     void nodes.req.offsetWidth;
     nodes.req.classList.add('pop');
+    if (carrying >= 0 && carryingDrug >= 0) {
+      nodes.req.classList.add(carryingDrug === drug ? 'match' : 'mismatch');
+    }
   }
 
   function setCarry(c, drug) {
     if (!nodes.carry) return;
     if (c < 0) {
       nodes.carry.classList.remove('on');
+      if (nodes.req) nodes.req.classList.remove('match', 'mismatch');
       if (handMesh) handMesh.visible = false;
       return;
     }
@@ -2048,6 +2208,11 @@
     nodes.carry.classList.add('on');
     nodes.carryDot.style.background = col.css;
     nodes.carryTxt.textContent = 'Llevas: ' + drugName(idx);
+    if (nodes.req) {
+      const expected = requestP >= 0 ? stationDrug(requestP) : -1;
+      nodes.req.classList.toggle('match', expected >= 0 && idx === expected);
+      nodes.req.classList.toggle('mismatch', expected >= 0 && idx !== expected);
+    }
     if (handMesh) {
       /* Normalmente se lleva la caja real (carryingBox). El cubo de mano es
          solo un respaldo si la escena no expone la malla. */
@@ -2117,9 +2282,12 @@
   function take(target) {
     if (!target || !target.box) return false;
     const box = target.box;
+    const u = box.userData || {};
     if (carrying >= 0 || carryingBox) return false;
+    if (u.consumed || u.accessible === false ||
+        (typeof u.sh === 'number' && u.sh < 0)) return false;
     const st = stationForBox(box);
-    const wasTaken = !!(box.userData && box.userData.taken);
+    const wasTaken = !!u.taken;
     let c;
     let fromStock = false;
     if (st) {
@@ -2145,12 +2313,20 @@
     carryingFromStock = fromStock;
 
     /* La caja real se sujeta delante de la cámara. En VR SBS la cámara se
-       desplaza por ojo y la caja la acompaña, por lo que se ve en ambos ojos. */
+       desplaza por ojo y la caja la acompaña, por lo que se ve en ambos ojos.
+       V21.2: entra desde un poco más abajo y más chica, y la transición la
+       acomoda en la mano en ~220 ms. */
     G.camera.attach(box);
-    box.position.set(HAND_POS.x, HAND_POS.y, HAND_POS.z);
-    box.rotation.set(HAND_ROT.x, HAND_ROT.y, HAND_ROT.z);
-    box.scale.setScalar(HAND_SCALE);
+    box.position.set(HAND_POS.x - 0.04, HAND_POS.y - 0.16, HAND_POS.z + 0.1);
+    box.rotation.set(HAND_ROT.x - 0.16, HAND_ROT.y - 0.12, HAND_ROT.z);
+    box.scale.setScalar(HAND_SCALE * 0.62);
     box.visible = true;
+    carryAnim = {
+      t0: performance.now(),
+      from: { x: box.position.x, y: box.position.y, z: box.position.z },
+      fromScale: HAND_SCALE * 0.62,
+      fromRot: { x: box.rotation.x, y: box.rotation.y, z: box.rotation.z }
+    };
 
     setCarry(c, carryingDrug);
     updateStationSigns();
@@ -2215,6 +2391,7 @@
     setAction(null, '');
     clearAim();
     document.body.classList.add('ras-arena');
+    document.body.classList.add('rg-playing');
     document.body.classList.remove('rg-over');
     if (nodes.start) nodes.start.classList.remove('on');
     if (nodes.countdown) nodes.countdown.classList.remove('on');
@@ -2257,6 +2434,7 @@
     });
     S.kiosk.screenMat.color.setHex(0x39d0ff);
     document.body.classList.add('rg-over');
+    document.body.classList.remove('rg-playing');
     if (nodes.hud) nodes.hud.classList.remove('v21-menu-open', 'v21-countdown-open');
 
     const win = scoreP > scoreB, lose = scoreP < scoreB;
@@ -2315,6 +2493,7 @@
     });
     parkMachine();
     document.body.classList.remove('rg-over');
+    document.body.classList.remove('rg-playing');
     if (nodes.end) nodes.end.classList.remove('on');
     showMenu(true);
     setAction(null, '');
@@ -2331,12 +2510,16 @@
     if (performance.now() - lastPlaceMs < 300) return false;
 
     if (carrying >= 0 || carryingBox) {
-      if (nearBeltEntry()) return placeOnBelt();
-      return dropCarried();
+      /* El medicamento permanece en la mano hasta colocarlo en la cinta.
+         No se puede soltar en el piso ni en otra superficie. */
+      if (canDepositOnBelt()) return placeOnBelt();
+      toast('Acercate a la cinta para depositarlo', 'bad');
+      return false;
     }
 
     const st = aim.target;
-    if (st && aim.hitDistance <= CFG.aimTake && targetAvailable(st)) {
+    if (st && aim.allowed !== false && aim.hitDistance <= CFG.aimTake &&
+        targetAvailable(st)) {
       return take(st);
     }
     return false;
@@ -2354,18 +2537,21 @@
       return;
     }
     if (carrying >= 0 || carryingBox) {
-      if (nearBeltEntry()) {
-        setHint('Colocá el medicamento en la cinta');
+      if (canDepositOnBelt()) {
+        setHint('Depositá el medicamento en la cinta');
         setAction('COLOCAR', 'give');
       } else {
-        setHint('Soltá el medicamento enfrente');
-        setAction('SOLTAR', 'give');
+        setHint('Llevá el medicamento hasta la cinta');
+        setAction(null, '');
       }
       return;
     }
     const st = aim.target;
     if (st) {
-      if (aim.hitDistance <= CFG.aimTake && targetAvailable(st)) {
+      if (aim.allowed === false) {
+        setHint('Estantería no habilitada · usá las 3 primeras');
+        setAction(null, '');
+      } else if (aim.hitDistance <= CFG.aimTake && targetAvailable(st)) {
         setHint('Medicamento: ' + drugName(aim.drug));
         setAction('RECOGER', 'take');
       } else {
@@ -2527,6 +2713,30 @@
   }
 
   /* ---------------- Cuadro ---------------- */
+  function updateCarry(t) {
+    if (!carryingBox) return;
+    if (carryAnim) {
+      const u = clamp01((performance.now() - carryAnim.t0) / CFG.carryAnimMs);
+      const e = ease(u);
+      carryingBox.position.set(
+        lerp(carryAnim.from.x, HAND_POS.x, e),
+        lerp(carryAnim.from.y, HAND_POS.y, e),
+        lerp(carryAnim.from.z, HAND_POS.z, e)
+      );
+      carryingBox.rotation.set(
+        lerp(carryAnim.fromRot.x, HAND_ROT.x, e),
+        lerp(carryAnim.fromRot.y, HAND_ROT.y, e),
+        lerp(carryAnim.fromRot.z, HAND_ROT.z, e)
+      );
+      carryingBox.scale.setScalar(lerp(carryAnim.fromScale, HAND_SCALE, e));
+      if (u >= 1) carryAnim = null;
+    } else {
+      /* Balanceo muy leve: la caja se siente sostenida, no pegada al aire. */
+      carryingBox.position.y = HAND_POS.y + Math.sin(t * 2.1) * 0.006;
+      carryingBox.rotation.z = HAND_ROT.z + Math.sin(t * 1.7) * 0.012;
+    }
+  }
+
   function tick(dt) {
     if (!G || state === 'boot' || failed) return;
 
@@ -2573,6 +2783,8 @@
     updateClients(dt, t);
     updateBelt(dt, t);
     updateEmployee(dt, t);
+    updateCarry(t);
+    updateBeltFeedback(t);
     maybeUnlockRequest();
     updateAim(t);
 
@@ -2594,8 +2806,8 @@
       S.kiosk.arm.rotation.x *= 0.9;
     }
     if (handMesh && handMesh.visible) {
-      handMesh.position.y = -0.52 + Math.sin(t * 4) * 0.02;
-      handMesh.rotation.z = 0.1 + Math.sin(t * 3.1) * 0.02;
+      handMesh.position.y = HAND_POS.y + Math.sin(t * 4) * 0.02;
+      handMesh.rotation.z = HAND_ROT.z + Math.sin(t * 3.1) * 0.02;
     }
 
     /* Los carteles mantienen un tamano aparente constante: en vertical el
@@ -2643,6 +2855,7 @@
       buildBotBoxes();
       buildHand();
       buildBeltPool();
+      buildBeltFeedback();
       buildAim();
       hideLegacy();
       buildUI();
@@ -2759,10 +2972,20 @@
         id: aim.target.box ? aim.target.box.userData.id : -1,
         name: drugName(aim.drug),
         distance: +aim.hitDistance.toFixed(2),
-        visible: !!(aim.outline && aim.outline.visible)
+        visible: !!(aim.outline && aim.outline.visible),
+        allowed: aim.allowed !== false,
+        blocked: !!aim.blocked
       } : null,
+      deposit: {
+        can: canDepositOnBelt(),
+        distance: +(G ? beltDepositDistance() : 0).toFixed(2),
+        radius: CFG.beltDepositRadius
+      },
       shelf: G && G.pharmacy && G.pharmacy.shelfBoxes ? {
         total: G.pharmacy.shelfBoxes.length,
+        accessible: G.pharmacy.shelfBoxes.filter(function (b) {
+          return b.userData && b.userData.accessible === true;
+        }).length,
         independent: G.pharmacy.shelfBoxes.filter(function (b) {
           return b.isMesh === true && b.userData && b.userData.kind === 'shelf';
         }).length,
@@ -2858,6 +3081,7 @@
         for (let i = 0; i < boxes.length; i++) {
           const b = boxes[i];
           const u = b.userData || {};
+          if (u.sh < 0 || u.accessible === false) continue;
           if (u.n === drug && b.visible && !u.taken && !u.onBelt && !u.consumed) {
             if (aimAtBoxDebug(b)) return true;
           }
@@ -2869,7 +3093,7 @@
         if (!this.interact || typeof window.RasmaticGame.interact !== 'function') return false;
         return window.RasmaticGame.interact();
       },
-      releaseHeld: function () { return dropCarried(); },
+      releaseHeld: function () { return cancelCarry(); },
       shelfBox: function (index) {
         const boxes = G && G.pharmacy ? G.pharmacy.shelfBoxes : [];
         const b = boxes && boxes[index];

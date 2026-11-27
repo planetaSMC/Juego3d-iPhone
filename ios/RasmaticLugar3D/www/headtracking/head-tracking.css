@@ -115,6 +115,14 @@
 /* En VR SBS la barra se oculta; el panel VR ofrece los mismos controles. */
 body.vr-on #ht-bar { display: none !important; }
 
+/* V21.2 · dispositivo correcto:
+   - En Windows/escritorio no hay sensores de orientación: la barra local
+     no aporta nada y el calibrador ya controla el HT.
+   - Con la PC emparejada, Windows es la fuente de verdad: iOS no muestra
+     indicadores duplicados de Head Tracking. */
+.ras-desktop #ht-bar { display: none !important; }
+body.ras-remote-linked #ht-bar { display: none !important; }
+
 /* En pantallas bajas no tapar el HUD superior. */
 @media (max-height: 460px) {
   #ht-bar { top: calc(64px + env(safe-area-inset-top, 0px)); }

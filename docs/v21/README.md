@@ -6,7 +6,7 @@ mira, pedido visual, cinta funcional, fila de clientes, animaciones y menú de
 inicio con cuenta regresiva.
 
 - **App:** RASMATIC VR · `com.rasmatic.lugar3d`
-- **Rama V21.1:** `v21.1-individual-medications`
+- **Rama V21.2:** `main`
 - **Base:** V21 en `main` (merge de V20.1 + V21)
 - **Motor:** Three.js r128, WebGL, WKWebView
 - **VR:** SBS, IPD, convergencia, distorsión y Head Tracking intactos
@@ -27,14 +27,15 @@ aristas). Al mirar afuera el contorno desaparece; al apuntar a otra caja se
 traslada. No hay etiquetas flotantes sobre los medicamentos.
 
 V21.1: **cada una de las 330 cajas de las estanterías es una malla individual**.
-Se puede apuntar, agarrar, soltar en el piso y volver a agarrar por separado.
-Ver `individual-medications.md`.
+Se puede apuntar, agarrar y depositar por separado; desde V21.2 no se sueltan
+en el piso.
+Ver `individual-medications.md` y `v21.2-polish.md`.
 
-### Pedido por imagen
-El HUD muestra la **imagen real de la caja** del medicamento pedido, generada
-desde la misma textura del producto. No se muestra el nombre como elemento
-principal. Al entregar el pedido correcto, la imagen cambia por la del siguiente
-cliente.
+### Pedido por color
+El HUD muestra una **muestra de color sólida** y el nombre del color del
+medicamento pedido. Cada color corresponde a un medicamento exacto y las
+estanterías están agrupadas por color. Al entregar el pedido correcto, la
+muestra cambia por la del siguiente cliente.
 
 ### Entrega por cinta
 El jugador recoge la caja con la mira y la coloca en la cinta. La caja viaja por
@@ -80,8 +81,9 @@ cliente nuevo. Tienen espera, caminata, recepción y salida animadas.
 
 | Archivo | Cambio |
 |---|---|
-| `web/mobile/game.js` | mira, agarre/soltura por caja real, pedido por imagen, cinta, cola, menú, cuenta, animaciones |
-| `web/v20/pharmacy-scene.js` | cajas individuales, atlas por medicamento, carteles, escala, cinta de máquina eliminada, API de cinta/imagen |
+| `web/mobile/game.js` | mira, agarre/depósito por caja real, pedido por color, cinta, cola, menú, cuenta, animaciones |
+| `web/mobile/platform.js` | detección de dispositivo y Head Tracking remoto |
+| `web/v20/pharmacy-scene.js` | cajas individuales de color sólido, grupos por color, carteles, escala, cinta de máquina eliminada, API de cinta/imagen |
 | `web/v20/pharmacy-core.js` | bloqueo de movimiento en menú/cuenta; cámara intacta |
 | `web/vr/vr-preview.js` | `aimQuaternion()` para la mira con Head Tracking |
 | `web/v21/v21.css` | mira, menú, cuenta regresiva y pedido visual |
@@ -116,9 +118,10 @@ node tools/test-pad.js
 cd windows-calibrator; npm test
 ```
 
-Resultados de la última ejecución local: `test-v21` **19/19**, `test-pad`
-**23/23**, `test-v20` **18/18**, `test-web` **30/30**, `test-vr` **34/34**,
-`check-xcode` **162/162** y calibrador Windows **62/62**. Ver `testing-report.md`.
+Resultados de la última ejecución local (V21.2): `test-v21` **19/19**,
+`test-pad` **23/23**, `test-v20` **18/18**, `test-web` **31/31**,
+`test-vr` **34/34**, `check-xcode` **164/164** y calibrador Windows **62/62**
+(requiere `npm install`). Ver `testing-report.md` y `v21.2-polish.md`.
 
 La compilación iOS de V21.1 dio **BUILD SUCCEEDED** en GitHub Actions (runs
 45890568451 y 46041477056, Xcode 16.4). La corrección del pedido estable dejó
@@ -128,6 +131,7 @@ un IPA de **844.124 bytes**, SHA-256 `0AE2BF4B…42DEDC1`, verificado con
 ## 6. Documentos V21
 
 - `conveyor-delivery.md` — recorrido, velocidad, validación y animaciones.
+- `v21.2-polish.md` — depósito restringido, estanterías, colores, física e interfaz por dispositivo.
 - `start-menu.md` — menú, cuenta regresiva y congelación del reloj.
 - `aim-and-queue.md` — mira, contorno, pedido por imagen y fila.
 - `individual-medications.md` — cajas individuales, agarre/soltura y mandos.

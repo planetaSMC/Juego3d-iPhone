@@ -78,6 +78,14 @@
 }
 #v20-dock button:active { transform: scale(.97); }
 
+/* V21.2: durante la partida se ocultan los atajos de recorrido/rutas.
+   Evitan tapar el marcador, el pedido y el temporizador. */
+body.rg-playing #v20-mode,
+body.rg-playing #v20-routes,
+body.rg-playing #v20-dock {
+  display: none !important;
+}
+
 #v20-loading {
   position: fixed;
   inset: 0;

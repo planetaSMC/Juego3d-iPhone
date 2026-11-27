@@ -215,6 +215,7 @@ check(/storagePrefix: 'rasmatic\.'/.test(index), 'prefijo rasmatic.*');
 check(/v20\/pharmacy-scene\.js/.test(index), 'carga pharmacy-scene.js');
 check(/v20\/pharmacy-core\.js/.test(index), 'carga pharmacy-core.js');
 check(/v21\/v21\.css/.test(index), 'carga v21.css');
+check(/mobile\/platform\.js/.test(index), 'carga platform.js');
 check(/mobile\/game\.js/.test(index), 'carga game.js');
 check(/headtracking\/head-tracking\.js/.test(index), 'carga head-tracking.js');
 check(/vr\/vr-preview\.js/.test(index) && /net\/vr-link\.js/.test(index), 'carga VR y enlace Windows');
@@ -222,7 +223,7 @@ check(!/(src|href)="[^"]*android\//.test(index), 'sin rutas android/');
 check(/manifest\.webmanifest/.test(index), 'enlace al manifest');
 
 for (const rel of ['v20/pharmacy-scene.js', 'v20/pharmacy-core.js', 'v20/pharmacy.css', 'v21/v21.css',
-  'three.min.js', 'mobile/game.js', 'headtracking/head-tracking.js']) {
+  'three.min.js', 'mobile/game.js', 'mobile/platform.js', 'headtracking/head-tracking.js']) {
   check(exists(path.join(web, rel)), 'existe web/' + rel);
 }
 const sceneJs = read(path.join(web, 'v20', 'pharmacy-scene.js'));

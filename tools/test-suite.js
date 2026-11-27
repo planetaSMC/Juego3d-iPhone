@@ -103,7 +103,7 @@
   }
 
   /* T07: entregar por la cinta y validar el color correcto */
-  window.RasmaticGame._test.config({ beltSpeed: 7 });
+  window.RasmaticGame._test.config({ beltSpeed: 24 });
   const entry = window.RasmaticPharmacyApi.conveyor.entry;
   tp(entry.x + 1.8, entry.z);
   await until(() => D().ui.action === 'COLOCAR', 8000);
@@ -135,7 +135,7 @@
     skip('T09 entrega incorrecta', 'no se pudo aislar una caja equivocada');
   } else {
     const stockBefore = D().stockP[wrong];
-    window.RasmaticGame._test.config({ beltSpeed: 7 });
+    window.RasmaticGame._test.config({ beltSpeed: 24 });
     const placed = window.RasmaticGame._test.placeBeltNow();
     let restored = false;
     const tw = Date.now();
@@ -598,7 +598,25 @@
       cancelar_descarta: cancelOk, reabierto: reopenedUi,
       pestana_vr: vrTabOn, cerrado: panelClosed, escena: sceneStill });
 
-  /* Restaura la configuración de interfaz previa del equipo de prueba. */
+  /* T31: plataforma detectada y aviso remoto sin indicadores duplicados. */
+  const P = window.RasmaticPlatform;
+  const platformClass = /ras-platform-(ios|android|windows|mac|other)/.test(
+    document.documentElement.className);
+  const htBarEl = document.getElementById('ht-bar');
+  const remoteWas = document.body.classList.contains('ras-remote-linked');
+  const remoteOnRes = P ? P.setRemote(true) : false;
+  const remoteOn = remoteOnRes === true &&
+    document.body.classList.contains('ras-remote-linked') &&
+    (!P.isMobile || !htBarEl || getComputedStyle(htBarEl).display === 'none');
+  if (P) P.setRemote(remoteWas);
+  const remoteOff = !document.body.classList.contains('ras-remote-linked');
+  ok('T31 plataforma correcta y Head Tracking remoto sin duplicados',
+    !!P && platformClass && remoteOn && remoteOff,
+    { plataforma: P && P.id, movil: P && P.isMobile,
+      escritorio: P && P.isDesktop, clase: platformClass,
+      ht_remoto: remoteOn, restaurado: remoteOff });
+
+
   if (uiKeyBefore === null) {
     localStorage.removeItem(SKEY('rasmatic.ui.v1'));
     window.RasmaticGame.ui.load();

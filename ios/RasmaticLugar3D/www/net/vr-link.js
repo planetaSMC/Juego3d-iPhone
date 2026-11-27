@@ -102,7 +102,9 @@
   loadStore();
   if (!S.deviceId) { S.deviceId = uid(); saveStore(); }
   if (!S.deviceName) {
-    S.deviceName = /iPhone/i.test(navigator.userAgent || '') ? 'iPhone' : 'Dispositivo';
+    S.deviceName = window.RasmaticPlatform
+      ? window.RasmaticPlatform.label
+      : (/iPhone|iPad/i.test(navigator.userAgent || '') ? 'iPhone' : 'Dispositivo');
     saveStore();
   }
 
@@ -253,6 +255,14 @@
         : 'Conectar con el calibrador de Windows';
     }
     document.body.classList.toggle('vr-locked', !!S.locked);
+    /* V21.2: avisar a la interfaz que Windows controla el Head Tracking.
+       iOS oculta así la barra local duplicada. */
+    var linked = S.status === 'linked';
+    if (window.RasmaticPlatform && typeof window.RasmaticPlatform.setRemote === 'function') {
+      window.RasmaticPlatform.setRemote(linked);
+    } else {
+      document.body.classList.toggle('ras-remote-linked', linked);
+    }
   }
 
   /* ---------------- protocolo ---------------- */
@@ -477,7 +487,9 @@
     return {
       id: S.deviceId,
       name: S.deviceName.slice(0, 40),
-      model: String((navigator.userAgent || '').match(/iPhone|iPad|Android/) || [''])[0]
+      model: window.RasmaticPlatform
+        ? window.RasmaticPlatform.label
+        : String((navigator.userAgent || '').match(/iPhone|iPad|Android/) || [''])[0]
     };
   }
 

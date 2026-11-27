@@ -38,7 +38,46 @@ DRUGS.push(
  {name:'Vitamina D',bg:'#fff',top:'#f59e0b',band:'#d97706',dose:'2000 UI',count:'60 cÃ¡ps.'},
  {name:'Zinc',bg:'#fff',top:'#0891b2',band:'#0e7490',dose:'25 mg',count:'30 comp.'},
  {name:'Calcio',bg:'#fff',top:'#9333ea',band:'#7e22ce',dose:'600 mg',count:'60 comp.'});
-const CATS=[{n:'Estante A',d:[0,1,9,10,5]},{n:'Estante B',d:[2,4,3,8]},{n:'Estante C',d:[7,6,11,12,13,14]}];
+
+/* ══════════ V21.2 · COLOR SÓLIDO POR MEDICAMENTO ══════════
+   Sin texturas: cada caja usa un único color limpio y uniforme.
+   Los seis primeros colores son los del objetivo del HUD y coinciden
+   exactamente con COLOR_DRUGS (rojo, azul, verde, amarillo, violeta,
+   naranja). El resto de presentaciones conserva un color propio para
+   que las estanterías decorativas sigan viéndose ordenadas. */
+const DRUG_COLORS=[
+  {css:'#2f7bff',hex:0x2f7bff}, // 0 Ibuprofeno  · azul
+  {css:'#e5484d',hex:0xe5484d}, // 1 Paracetamol · rojo
+  {css:'#ff8a00',hex:0xff8a00}, // 2 Amoxicilina · naranja
+  {css:'#0e9f8e',hex:0x0e9f8e}, // 3 Loratadina  · turquesa
+  {css:'#8b5cf6',hex:0x8b5cf6}, // 4 Omeprazol   · violeta
+  {css:'#f5c518',hex:0xf5c518}, // 5 Diclofenac  · amarillo
+  {css:'#17a673',hex:0x17a673}, // 6 Metformina  · verde
+  {css:'#e0399a',hex:0xe0399a}, // 7 Losartán    · rosa
+  {css:'#0891b2',hex:0x0891b2}, // 8 Salbutamol  · cian
+  {css:'#c0392b',hex:0xc0392b}, // 9 Aspirina    · ladrillo
+  {css:'#6b8e23',hex:0x6b8e23}, // 10 Naproxeno  · oliva
+  {css:'#d97706',hex:0xd97706}, // 11 Vitamina C · ámbar
+  {css:'#b08a2e',hex:0xb08a2e}, // 12 Vitamina D · dorado
+  {css:'#64748b',hex:0x64748b}, // 13 Zinc       · gris azulado
+  {css:'#7c3aed',hex:0x7c3aed}  // 14 Calcio     · púrpura
+];
+DRUGS.forEach(function(d,i){
+  var c=DRUG_COLORS[i]||DRUG_COLORS[0];
+  d.color=c.hex;
+  d.css=c.css;
+});
+/* Índice de color de juego (0…5) de cada medicamento. -1 = solo stock
+   decorativo de estanterías bloqueadas. */
+const GAME_DRUGS=[1,0,6,5,4,2];
+const GAME_COLOR={};
+GAME_DRUGS.forEach(function(di,ci){GAME_COLOR[di]=ci;});
+
+const CATS=[
+  {n:'Estante A',d:[1,0]},   // rojo / azul
+  {n:'Estante B',d:[6,5]},   // verde / amarillo
+  {n:'Estante C',d:[4,2]}    // violeta / naranja
+];
 const CUST=['Sra. Marta','Don Ernesto','LucÃ­a','TomÃ¡s','Dra. PÃ©rez','Valentina','Sr. GÃ³mez'];
 const FF='Arial Black,Arial,sans-serif';
 function roundRectPath(x, a, b, w, h, r){
@@ -108,64 +147,45 @@ function makeBoxSide(d){
   return new THREE.CanvasTexture(SIDE_CANVAS[key]);
 }
 const DRUG_IMG={};
+/* Miniatura del objetivo: muestra el color sólido exacto del medicamento. */
 function drugImageURL(d){
   const key=d.name;
-  if(!DRUG_IMG[key]) DRUG_IMG[key]=frontCanvas(d).toDataURL('image/png');
+  if(!DRUG_IMG[key]){
+    const c=document.createElement('canvas');c.width=256;c.height=160;
+    const x=c.getContext('2d');
+    x.fillStyle=d.css||'#ffffff';x.fillRect(0,0,256,160);
+    const gr=x.createLinearGradient(0,0,0,160);
+    gr.addColorStop(0,'rgba(255,255,255,.28)');
+    gr.addColorStop(.42,'rgba(255,255,255,0)');
+    gr.addColorStop(1,'rgba(0,0,0,.18)');
+    x.fillStyle=gr;x.fillRect(0,0,256,160);
+    x.strokeStyle='rgba(255,255,255,.72)';x.lineWidth=8;
+    x.strokeRect(4,4,248,152);
+    DRUG_IMG[key]=c.toDataURL('image/png');
+  }
   return DRUG_IMG[key];
 }
 const MC = {};
-const ATLAS_W = 1024, ATLAS_H = 320;
-const ATLAS_RECT = {
-  front: [0, 0, 512, 320],
-  side: [512, 0, 256, 320],
-  top: [768, 0, 256, 160],
-  bottom: [768, 160, 256, 160]
-};
-function sideCanvas(d){
-  if(!SIDE_CANVAS[d.name]) makeBoxSide(d);
-  return SIDE_CANVAS[d.name];
-}
-function boxAtlas(d){
-  if(MC[d.name] && MC[d.name].canvas) return MC[d.name].canvas;
-  const c=document.createElement('canvas');c.width=ATLAS_W;c.height=ATLAS_H;
-  const x=c.getContext('2d');
-  x.fillStyle=d.top;x.fillRect(0,0,ATLAS_W,ATLAS_H);
-  x.drawImage(frontCanvas(d),0,0);
-  x.drawImage(sideCanvas(d),512,0);
-  x.fillStyle=d.top;x.fillRect(768,0,256,160);
-  x.fillStyle=d.band;x.fillRect(768,160,256,160);
-  x.fillStyle='rgba(255,255,255,.14)';x.fillRect(768,0,256,18);
-  x.fillStyle=d.band;x.fillRect(768,140,256,20);
-  const rec = MC[d.name] || (MC[d.name] = {});
-  rec.canvas = c;
-  return c;
-}
 function drugMaterial(d){
   if(!MC[d.name] || !MC[d.name].mat){
-    const tex=new THREE.CanvasTexture(boxAtlas(d));
-    tex.anisotropy=8;
+    const hex = typeof d.color === 'number' ? d.color : 0xffffff;
+    const em = new THREE.Color(hex).multiplyScalar(0.06);
     MC[d.name] = MC[d.name] || {};
-    MC[d.name].mat = new THREE.MeshStandardMaterial({map:tex,roughness:.6,color:0xffffff});
+    MC[d.name].mat = new THREE.MeshStandardMaterial({
+      color: hex,
+      roughness: .56,
+      metalness: .03,
+      emissive: em,
+      emissiveIntensity: 1
+    });
   }
   return MC[d.name].mat;
 }
+/* Caja limpia, sin atlas ni UV especiales. */
 function atlasBoxGeometry(w,h,d){
-  const g=new THREE.BoxGeometry(w,h,d);
-  const uv=g.attributes.uv;
-  const faces=['side','side','top','bottom','front','side'];
-  g.groups.forEach(function(grp){
-    const r=ATLAS_RECT[faces[grp.materialIndex] || 'side'];
-    for(let i=grp.start;i<grp.start+grp.count;i++){
-      const vi=g.index.getX(i);
-      const u=uv.getX(vi), v=uv.getY(vi);
-      uv.setXY(vi,
-        (r[0]+u*r[2])/ATLAS_W,
-        1-((r[1]+(1-v)*r[3])/ATLAS_H));
-    }
-  });
-  uv.needsUpdate=true;
-  return g;
+  return new THREE.BoxGeometry(w,h,d);
 }
+
 function drugKit(d){return {m:drugMaterial(d)};}
 function makeDrugMats(d){return drugMaterial(d);}
 
@@ -177,11 +197,13 @@ const cam = camera;
 scene.background = new THREE.Color(BG);
 scene.fog = new THREE.Fog(BG, 38, 105);
 
-scene.add(new THREE.HemisphereLight(0xf0fff8,0x8fb8a0,.55));
-const sun=new THREE.DirectionalLight(0xfff0e0,0.38);
-sun.position.set(15,30,10); scene.add(sun);
-const sun2=new THREE.DirectionalLight(0xe8f4ff,0.14);
-sun2.position.set(-10,20,20); scene.add(sun2);
+/* V21.2: iluminación más limpia y uniforme para que los colores sólidos
+   se lean igual en el pasillo, el mostrador y la cinta. */
+scene.add(new THREE.HemisphereLight(0xf4fff9,0x87b09a,.68));
+const sun=new THREE.DirectionalLight(0xfff3e4,0.46);
+sun.position.set(18,32,12); scene.add(sun);
+const sun2=new THREE.DirectionalLight(0xe8f4ff,0.20);
+sun2.position.set(-12,22,22); scene.add(sun2);
 
 const std=(c,r=.6,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
 const addMesh=(geo,mat,x,y,z,p=scene)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);p.add(m);return m;};
@@ -280,7 +302,11 @@ function stockRow(g,ly,list,span,zf,fy,off,sh=SHP.length-1){
     b.userData={
       home:b.position.clone(), q:b.quaternion.clone(), n:di, ry:b.rotation.y,
       sh:sh, id:SB.length, kind:'shelf', taken:false, dropped:false,
-      onBelt:false, held:false, consumed:false
+      onBelt:false, held:false, consumed:false,
+      /* V21.2: solo las tres estanterías del arco (sh >= 0) se pueden
+         agarrar. Las decorativas quedan visibles pero bloqueadas. */
+      accessible:sh>=0,
+      gc:typeof GAME_COLOR[di]==='number'?GAME_COLOR[di]:-1
     };
     scene.add(b);SB.push(b);
   }
@@ -291,7 +317,14 @@ function makeShelf(cx,cz,ry,cat,list){
   const g=new THREE.Group();g.position.set(cx,0,cz);g.rotation.y=ry;scene.add(g);g.updateMatrixWorld(true);SHP.push({x:cx,z:cz,d:list,a:ry});
   bx(SW,5.8,.12,frameMat,0,2.9,-1.15,g);
   [...PL,5.7].forEach((y,i)=>{bx(SW,.12,2.4,shelfMat,0,y,0,g);
-    if(i<4){bx(SW-.4,.04,.06,ledStripM,0,y+1.3,1.1,g);stockRow(g,y,list,SW,.75,0,i*2);}});
+    if(i<4){
+      bx(SW-.4,.04,.06,ledStripM,0,y+1.3,1.1,g);
+      /* V21.2: dos filas por medicamento, agrupadas por color. Así el
+         jugador ve bloques limpios y el color del objetivo coincide
+         siempre con el medicamento que debe buscar. */
+      const row = list && list.length ? list[Math.min(list.length-1, Math.floor(i/2))] : 0;
+      stockRow(g,y,[row],SW,.75,0,0);
+    }});
   bx(.12,5.8,2.4,frameMat,-SW/2,2.9,0,g);bx(.12,5.8,2.4,frameMat,SW/2,2.9,0,g);
   bx(SW+.2,.25,2.5,greenM,0,5.85,0,g);bx(SW-.4,1.5,.2,shelfMat,0,6.7,0,g);
   const sg=signMesh(cat,SW-.6,['#14804f','#1f5fd0','#c2410c'][SHP.length-1]);sg.position.set(0,6.7,.11);g.add(sg);SGN.push(sg.material);
@@ -662,12 +695,12 @@ bx(.28,.28,.9,aluM,0,0,.45,pad); bx(.9,.78,.08,darkM,0,0,0,pad);
     };
 
     const COLORS = [
-      { id: 'rojo', name: 'ROJO', css: '#e8453c', hex: 0xe8453c },
+      { id: 'rojo', name: 'ROJO', css: '#e5484d', hex: 0xe5484d },
       { id: 'azul', name: 'AZUL', css: '#2f7bff', hex: 0x2f7bff },
-      { id: 'verde', name: 'VERDE', css: '#22a06b', hex: 0x22a06b },
-      { id: 'amarillo', name: 'AMARILLO', css: '#f2c63a', hex: 0xf2c63a },
-      { id: 'violeta', name: 'VIOLETA', css: '#8a6fe0', hex: 0x8a6fe0 },
-      { id: 'naranja', name: 'NARANJA', css: '#f08a3c', hex: 0xf08a3c }
+      { id: 'verde', name: 'VERDE', css: '#17a673', hex: 0x17a673 },
+      { id: 'amarillo', name: 'AMARILLO', css: '#f5c518', hex: 0xf5c518 },
+      { id: 'violeta', name: 'VIOLETA', css: '#8b5cf6', hex: 0x8b5cf6 },
+      { id: 'naranja', name: 'NARANJA', css: '#ff8a00', hex: 0xff8a00 }
     ];
 
     const counter = {
@@ -710,6 +743,7 @@ bx(.28,.28,.9,aluM,0,0,.45,pad); bx(.9,.78,.08,darkM,0,0,0,pad);
     };
 
     function drugColor(n) {
+      if (typeof GAME_COLOR[n] === 'number') return GAME_COLOR[n];
       const st = stations.filter(function (s) { return s.drug === n; })[0];
       return st ? st.color : ((n % 6) + 6) % 6;
     }

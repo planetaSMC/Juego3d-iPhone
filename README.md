@@ -1,4 +1,4 @@
-# RASMATIC VR · versión iPhone (V21.1)
+# RASMATIC VR · versión iPhone (V21.2)
 
 Port del juego **RASMATIC Lugar 3D** a **una sola app iOS**:
 
@@ -8,7 +8,7 @@ Port del juego **RASMATIC Lugar 3D** a **una sola app iOS**:
 | Bundle ID | `com.rasmatic.lugar3d` |
 | Target / esquema | `RasmaticVR` |
 | Artefacto | `dist/RASMATIC-VR-unsigned.ipa` |
-| Rama de desarrollo | `v21.1-individual-medications` |
+| Rama de desarrollo | `main` (V21.2) |
 | Base | `main` (V21 ya integrada) |
 | Punto de recuperación V19 | rama `v19-recovery` (commit `53f410b`) |
 
@@ -44,13 +44,30 @@ V21 añade:
 V21.1 añade:
 
 - **Cada medicamento de las estanterías es una malla individual** (330 cajas):
-  se puede apuntar, agarrar, soltar en el piso y volver a agarrar por separado.
+  se puede apuntar, agarrar y depositar por separado.
 - La caja real se lleva en la mano; no se sustituye por un cubo genérico.
 - Al colocar la caja, el pedido **no** avanza: se mantiene hasta que la cinta y
   el empleado terminan la entrega.
 - La entrega valida el **medicamento exacto**, no solo el color.
-- El mando físico permite mover, apuntar, seleccionar, agarrar, colocar y
-  soltar, tanto con VR Box como sin VR.
+- El mando físico permite mover, apuntar, seleccionar, agarrar y colocar,
+  tanto con VR Box como sin VR.
+
+V21.2 añade:
+
+- **Depósito restringido**: el medicamento no se suelta en el piso; permanece
+  en la mano hasta colocarlo en la cinta, desde una zona amplia alrededor de
+  la boca de entrada.
+- **Tres estanterías habilitadas**: las decorativas quedan visibles pero
+  bloqueadas, con contorno rojo y aviso al apuntarlas.
+- **Cajas de color sólido**: sin texturas, con un color por medicamento y
+  grupos de color en las estanterías; el HUD muestra el color del pedido.
+- **Depósito físico**: caída corta con gravedad, apoyo exacto sobre la cinta,
+  separación entre paquetes y devolución automática si no hay cliente.
+- **Respuesta visual**: aro de la zona de depósito, pulso verde/rojo y
+  coincidencia entre lo que se lleva y el pedido.
+- **Interfaz por dispositivo**: detección iOS/Android/Windows, Head Tracking
+  local oculto cuando Windows está conectado y sin atajos superpuestos en
+  partida.
 
 V20 **reemplaza por completo** el mapa anterior (góndolas, productos y logo del
 almacén). No quedan elementos ocultos ni superpuestos.
@@ -194,6 +211,7 @@ Juego3d-iPhone/
     v20/pharmacy-core.js          renderer, cámara, tres modos, contrato
     v20/pharmacy.css              estilos del shell y rutas
     mobile/game.js                mecánicas RASMATIC sobre la farmacia
+    mobile/platform.js            detección iOS/Android/Windows y HT remoto
     mobile/android-bridge.js      joystick, mando, pausa
     mobile/modes.js               registro de experiencias
     headtracking/head-tracking.js Core Motion + configuración X/Y/roll
@@ -222,7 +240,7 @@ Hace:
 
 1. `tools/make-icons.ps1` → iconos de PWA y de la app.
 2. `tools/build-ios.js` → `manifest.webmanifest`, `sw.js` y espejo iOS.
-3. `tools/check-xcode.js` → **162 comprobaciones** (target único, plist,
+3. `tools/check-xcode.js` → **164 comprobaciones** (target único, plist,
    permisos, iconos, escena V20, precache y espejo).
 
 Para empaquetar el proyecto:
@@ -244,18 +262,17 @@ node tools/test-pad.js     # mando nativo, botones, VR, salida segura
 cd windows-calibrator; npm test
 ```
 
-Resultados de la última ejecución (2026-11-26, Windows + Edge headless):
+Resultados de la última ejecución (2026-11-27, Windows + Edge headless):
 
 | Suite | Resultado |
 |---|---|
-| `check-xcode.js` | **162/162** |
+| `check-xcode.js` | **164/164** |
 | `test-v21.js` | **19/19** |
 | `test-v20.js` | **18/18** |
-| `test-web.js` | **30/30** + horizontal |
+| `test-web.js` | **31/31** + horizontal + offline |
 | `test-vr.js` | **34/34** |
 | `test-pad.js` | **23/23** |
-| calibrador Windows | **62/62** |
-| `verify-ipa.js` (IPA sintético) | **OK** |
+| calibrador Windows | **62/62** (requiere `npm install`) |
 
 Capturas en `docs/evidencias/` y `docs/evidencias/v20/`.
 
@@ -275,8 +292,9 @@ Capturas en `docs/evidencias/` y `docs/evidencias/v20/`.
 | `docs/v20/testing-report.md` | pruebas y evidencias |
 | `docs/v20/limitations.md` | límites de la validación V20 |
 | `docs/v21/README.md` | resumen de gameplay y archivos V21 |
+| `docs/v21/v21.2-polish.md` | agarre/depósito, estanterías, colores, física y dispositivos |
 | `docs/v21/aim-and-queue.md` | mira, contorno, pedido y fila |
-| `docs/v21/individual-medications.md` | cajas individuales, agarre/soltura y mandos |
+| `docs/v21/individual-medications.md` | cajas individuales, agarre/depósito y mandos |
 | `docs/v21/conveyor-delivery.md` | recorrido y validación de la cinta |
 | `docs/v21/start-menu.md` | menú y cuenta regresiva |
 | `docs/v21/testing-report.md` | pruebas V21 |
@@ -300,9 +318,12 @@ Implementado y probado en simulación:
 - sincronización Windows-iPhone por protocolo con persistencia y `ack`;
 - V21: menú/cuenta, mira con contorno, pedido por imagen, cinta funcional,
   fila de clientes y animaciones.
-- V21.1: 330 medicamentos individuales, agarre/soltura de la caja real y
-  validación por medicamento exacto; controles de mando verificados en VR y
-  fuera de VR (simulación).
+- V21.1: 330 medicamentos individuales, agarre de la caja real y validación
+  por medicamento exacto; controles de mando verificados en VR y fuera de VR
+  (simulación).
+- V21.2: depósito solo en la cinta, tres estanterías habilitadas, cajas de
+  color sólido, feedback de acierto/error, física de apoyo y detección de
+  dispositivo con Head Tracking remoto sin duplicados.
 
 **Compilación iOS:** la corrección del pedido estable compiló en GitHub Actions
 con Xcode 16.4 (`BUILD SUCCEEDED`, run 46041477056). IPA sin firmar de
@@ -319,8 +340,8 @@ habían compilado en `main` (runs 45890568451, 45880086744 y 45880239776).
 - Wi-Fi entre PC e iPhone reales;
 - FPS y consumo en la GPU del iPhone.
 
-Antes de publicar V21.1 como terminada hay que completar esos puntos. Ver
+Antes de publicar V21.2 como terminada hay que completar esos puntos. Ver
 **`docs/v21/limitations.md`** y **`docs/v20/limitations.md`**.
 
-`main` contiene V21; V21.1 se desarrolla en `v21.1-individual-medications` y
-requiere recompilar el IPA antes de integrarse.
+`main` contiene V21.2 (base V21.1); requiere recompilar el IPA antes de
+distribuir la nueva versión.

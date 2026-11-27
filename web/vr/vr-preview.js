@@ -48,9 +48,11 @@
   var EMBED = /[?&]embed=1\b/.test(location.search);
   /* Movil = iPhone/iPad/Android o cualquier pantalla tactil. En la app iOS
      el modo VR debe estar disponible; antes solo se mostraba en escritorio. */
-  var MOBILE = navigator.maxTouchPoints > 0 ||
+  var P = window.RasmaticPlatform || null;
+  var MOBILE = P ? P.isMobile : (navigator.maxTouchPoints > 0 ||
     /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '') ||
-    window.matchMedia('(pointer:coarse)').matches;
+    window.matchMedia('(pointer:coarse)').matches);
+  var TOUCH_DEVICE = P ? (P.isIOS || P.isAndroid) : MOBILE;
   var DESKTOP = !MOBILE;
 
   /* ------------------------------------------------------------------
@@ -1313,7 +1315,7 @@
     rot.id = 'vr-rotate';
     rot.setAttribute('role', 'status');
     rot.innerHTML =
-      '<div class="vr-rotate-card"><b>Girá el iPhone</b>' +
+      '<div class="vr-rotate-card"><b>Girá el dispositivo</b>' +
       '<p>Ponelo en horizontal para que las dos lentes vean su imagen completa.</p>' +
       '<button type="button" id="vr-rotate-ok">Continuar así</button></div>';
     document.body.appendChild(rot);
@@ -1820,7 +1822,7 @@
   function updateRotate() {
     if (!ui.rotate) return;
     var portrait = window.innerHeight > window.innerWidth;
-    ui.rotate.classList.toggle('on', !!active && MOBILE && !rotateDismissed && portrait);
+    ui.rotate.classList.toggle('on', !!active && TOUCH_DEVICE && !rotateDismissed && portrait);
   }
 
   /* El menu de pausa es el unico menu persistente del lobby: ahi se agrega

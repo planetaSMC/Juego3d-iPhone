@@ -27,8 +27,9 @@ dirección = (0,0,-1) aplicada a:
 - La distancia de interacción es `CFG.aimTake` (5,6). El contorno puede verse a
   más distancia, pero RECOGER solo aparece si el jugador está cerca.
 
-V21.1: al agarrar se usa la malla real; al soltar lejos de la cinta la caja
-queda en el piso y se puede volver a apuntar. Ver `individual-medications.md`.
+V21.1: al agarrar se usa la malla real. Desde V21.2 el medicamento no se
+suelta en el piso: permanece en la mano hasta depositarlo en la cinta. Ver
+`individual-medications.md` y `v21.2-polish.md`.
 
 ### Contorno
 
@@ -51,7 +52,8 @@ lo comprueba.
 
 - El HUD `#rg-req` contiene `#rg-req-img`.
 - `pharmacy.drugImage(drugIndex)` devuelve un `data:image/png` generado desde la
-  misma `frontCanvas` que usa la textura de la caja.
+- V21.2: el pedido muestra una muestra de color sólida y su nombre; la
+  miniatura se genera con el color exacto del medicamento.
 - No hay imágenes genéricas: es el arte real del medicamento solicitado.
 - El nombre no aparece como texto principal; solo queda el rótulo “PEDIDO”.
 - Al cambiar el cliente activo, se actualiza el `src` y se reproduce una

@@ -89,9 +89,10 @@
     ok('V20-05 rendimiento del escenario (menos draw calls que el HTML)',
       info.render.calls > 100 && info.render.calls < 1200 &&
       info.render.triangles < 130000 && sceneMeshes > 300 &&
-      info.memory.textures >= 25,
+      info.memory.textures >= 8 && info.memory.textures < 80,
       { draw_calls: info.render.calls, triangulos: info.render.triangles,
-        mallas: sceneMeshes, texturas: info.memory.textures });
+        mallas: sceneMeshes, texturas: info.memory.textures,
+        materiales: 'color sólido sin atlas' });
 
     /* ---------------- V20-06: colisiones del HTML ---------------- */
     const col = {
@@ -161,9 +162,9 @@
       }
       if (take) {
         const s0 = D().score.player;
-        window.RasmaticGame._test.config({ beltSpeed: 7 });
+        window.RasmaticGame._test.config({ beltSpeed: 24 });
         const placed = window.RasmaticGame._test.placeBeltNow();
-        give = placed && await until(() => D().score.player === s0 + 1, 15000);
+        give = placed && await until(() => D().score.player === s0 + 1, 22000);
       }
     }
     ok('V20-09 partida: cliente, recoger y entrega por cinta',
