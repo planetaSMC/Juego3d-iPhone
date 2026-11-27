@@ -107,6 +107,18 @@ V21.1 se compiló en GitHub Actions (Xcode 16.4) sobre el PR #4:
 | `verify-ipa.js` | **OK** (bundle, Mach-O, 15 archivos clave) |
 | Contenido | `www/mobile/game.js` y `www/v20/pharmacy-scene.js` coinciden con `web/` (normalizando CRLF/LF) |
 
+Corrección del pedido estable (cajas en tránsito):
+
+| Dato | Valor |
+|---|---|
+| Run | [46041477056](https://github.com/planetaSMC/Juego3d-iPhone/actions/runs/46041477056) |
+| Resultado | **BUILD SUCCEEDED** |
+| IPA | `RASMATIC-VR-unsigned.ipa` |
+| Tamaño | **844.124 bytes** |
+| SHA-256 | `0AE2BF4B2654B0D17D84AD705937695607F90C128F94940CD96FA81FB42DEDC1` |
+| `verify-ipa.js` | **OK** |
+| Contenido | `www/mobile/game.js` coincide con `web/` (normalizando CRLF/LF) e incluye `requestLock` y `lastPlaceMs` |
+
 La compilación de V21 en `main` que sigue es la referencia histórica.
 
 ### V21 en `main`

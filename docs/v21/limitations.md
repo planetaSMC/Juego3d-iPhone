@@ -14,6 +14,10 @@ V21.1 está implementada y probada en simulación. No se probó en un iPhone fí
 - **V21.1 también compiló** en el PR #4 (run 45890568451, Xcode 16.4):
   `BUILD SUCCEEDED`, IPA de 843.351 bytes, SHA-256 `A0F91D19…9101C7D9`,
   contenido de `www/` idéntico a `web/` (normalizando CRLF/LF).
+- **La corrección del pedido estable compiló** en el PR #5 (run 46041477056):
+  `BUILD SUCCEEDED`, IPA de 844.124 bytes, SHA-256 `0AE2BF4B…42DEDC1`,
+  `www/mobile/game.js` idéntico a `web/` e incluye el bloqueo del pedido y la
+  ventana de 300 ms.
 - No se instaló ni firmó la app.
 
 ## 2. Sensores y VR
