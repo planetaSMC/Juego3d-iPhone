@@ -53,8 +53,8 @@ cliente nuevo. Tienen espera, caminata, recepción y salida animadas.
 ### Escenario
 - El cartel principal dice **FARMACIA RASMATIC**; se eliminó “Farmacia 16
   horas” y el cartel “Abierto · 16 hs”.
-- Los medicamentos son cajas de color con etiqueta central y patrones
-  distintos; se mantienen los recursos procedurales del HTML.
+- Los medicamentos son cajas de color sólido, sin texturas ni etiquetas
+  impresas; el color y el grupo de la estantería identifican el producto.
 - El empleado mide 0,86 de la escala del modelo y los clientes 0,82–0,86, en
   proporción con el ojo del jugador (3,6 unidades).
 - Se eliminó la **cinta de la ventanilla de la máquina**. La máquina conserva
@@ -118,10 +118,11 @@ node tools/test-pad.js
 cd windows-calibrator; npm test
 ```
 
-Resultados de la última ejecución local (V21.2): `test-v21` **19/19**,
-`test-pad` **23/23**, `test-v20` **18/18**, `test-web` **31/31**,
+Resultados de la última ejecución local (V21.3): `test-v21` **19/19**,
+`test-pad` **23/23**, `test-v20` **18/18**, `test-web` **32/32**,
 `test-vr` **34/34**, `check-xcode` **164/164** y calibrador Windows **62/62**
-(requiere `npm install`). Ver `testing-report.md` y `v21.2-polish.md`.
+(requiere `npm install`). Ver `testing-report.md`, `v21.2-polish.md` y
+`v21.3-gameplay.md`.
 
 La compilación iOS de V21.1 dio **BUILD SUCCEEDED** en GitHub Actions (runs
 45890568451 y 46041477056, Xcode 16.4). La corrección del pedido estable dejó
@@ -132,8 +133,9 @@ un IPA de **844.124 bytes**, SHA-256 `0AE2BF4B…42DEDC1`, verificado con
 
 - `conveyor-delivery.md` — recorrido, velocidad, validación y animaciones.
 - `v21.2-polish.md` — depósito restringido, estanterías, colores, física e interfaz por dispositivo.
+- `v21.3-gameplay.md` — pedido continuo, 9 colores, huecos, vitrina, clientes y control táctil.
 - `start-menu.md` — menú, cuenta regresiva y congelación del reloj.
-- `aim-and-queue.md` — mira, contorno, pedido por imagen y fila.
+- `aim-and-queue.md` — mira, contorno, pedido por color y fila.
 - `individual-medications.md` — cajas individuales, agarre/soltura y mandos.
 - `testing-report.md` — pruebas y evidencias.
 - `limitations.md` — lo que no se validó en hardware real.

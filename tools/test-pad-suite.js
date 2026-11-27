@@ -178,7 +178,7 @@
     await sleep(350);
     const beltFreeVr = await until(() => D().belt.count === 0 &&
       D().request >= 0, 20000);
-    const cVr = (cGrab + 2) % 6;
+    const cVr = (cGrab + 2) % window.RasmaticPharmacyApi.colors.length;
     const aimedVr = window.RasmaticGame._test.aimAtStation(cVr);
     const grabVr = N().press('interact');
     const heldVr = await until(() => D().carrying === cVr &&

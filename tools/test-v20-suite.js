@@ -64,7 +64,7 @@
     })();
     ok('V20-03 escena del HTML: farmacia completa',
       !!ph && ph.drugs.length === 15 && ph.shelves.length === 3 &&
-      ph.stations.length === 6 && ph.machine.boxes.length === 30 &&
+      ph.stations.length === 9 && ph.machine.boxes.length === 30 &&
       ph.shelfBoxes.length >= 300 && Math.abs(ph.counter.x - 21.9) < 0.01 &&
       Math.abs(ph.counter.z - 12.7) < 0.01 && Math.abs(ph.eye - 3.6) < 0.01 &&
       Math.abs(ph.machine.root.position.x - 12.4) < 0.01,
@@ -74,7 +74,7 @@
         ojo: ph && ph.eye });
 
     ok('V20-04 seis estaciones separadas y con medicamento real',
-      ph && ph.stations.length === 6 && stationGap >= 2.4 &&
+      ph && ph.stations.length === 9 && stationGap >= 2.4 &&
       ph.stations.every((s) => s.drug >= 0 && ph.drugs[s.drug] && s.box && s.box.visible),
       { separacion_minima: +stationGap.toFixed(2),
         estaciones: ph && ph.stations.map((s) => ({

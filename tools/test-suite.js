@@ -119,11 +119,27 @@
   ok('T08 nuevo cliente', D().request >= 0 && D().customer === true,
     { request: D().request, customer: D().customer });
 
-  /* T09: un color equivocado no suma y vuelve al stock */
+  /* T32: los clientes visibles no se superponen mientras caminan/esperan. */
+  let minClientDist = 999;
+  const tSep = Date.now();
+  while (Date.now() - tSep < 4200) {
+    const cs = D().clients;
+    for (let i = 0; i < cs.length; i++) {
+      for (let j = i + 1; j < cs.length; j++) {
+        const d = Math.hypot(cs[i].x - cs[j].x, cs[i].z - cs[j].z);
+        if (d < minClientDist) minClientDist = d;
+      }
+    }
+    await sleep(120);
+  }
+  ok('T32 los clientes no se superponen entre sí', minClientDist >= 0.85,
+    { distancia_minima: +minClientDist.toFixed(2), clientes: D().clients.length });
+
+
   const req2 = D().request;
   let wrong = -1;
-  for (let off = 1; off < 6 && wrong < 0; off++) {
-    const cand = (req2 + off) % 6;
+  for (let off = 1; off < D().palette && wrong < 0; off++) {
+    const cand = (req2 + off) % D().palette;
     window.RasmaticGame._test.aimAtStation(cand);
     await until(() => D().ui.action === 'RECOGER', 5000);
     if (D().ui.action !== 'RECOGER') continue;
@@ -135,21 +151,31 @@
     skip('T09 entrega incorrecta', 'no se pudo aislar una caja equivocada');
   } else {
     const stockBefore = D().stockP[wrong];
+    const holesBefore = D().shelf.consumed;
     window.RasmaticGame._test.config({ beltSpeed: 24 });
     const placed = window.RasmaticGame._test.placeBeltNow();
-    let restored = false;
+    const advanced = await until(() => D().request !== req2, 5000);
+    let retried = false, holeKept = false;
     const tw = Date.now();
-    while (Date.now() - tw < 20000) {
-      if (D().stockP[wrong] === stockBefore + 1) { restored = true; break; }
+    while (Date.now() - tw < 22000) {
+      const d = D();
+      if (d.request === req2 && d.shelf.consumed > holesBefore) {
+        retried = true;
+        holeKept = d.stockP[wrong] === stockBefore;
+        break;
+      }
       await sleep(300);
     }
-    ok('T09 entrega incorrecta por cinta', placed === true && restored &&
+    ok('T09 entrega incorrecta: no suma, deja hueco y vuelve el pedido',
+      placed === true && advanced && retried && holeKept &&
       D().score.player === 1 && D().carrying === -1,
       { score: D().score.player, stock: D().stockP[wrong], antes: stockBefore,
-        equivocado: wrong, pedido: req2 });
+        huecos: D().shelf.consumed, equivocado: wrong, pedido: req2 });
   }
 
   /* T10: doble entrega no duplica */
+  tp(30, 20);
+  await sleep(350);
   const again = window.RasmaticGame.interact();
   await sleep(400);
   ok('T10 sin puntos duplicados', again === false && D().score.player === 1,

@@ -36,8 +36,8 @@ Fecha: 2026-11-26. Entorno: Windows, Node 24.22.0, Edge headless
 | V21-14 | 330 cajas individuales con identidad única, sin fusión |
 | V21-15 | solo las 3 estanterías habilitadas; sin soltura libre; bloqueo y devolución |
 | V21-16 | entregar una copia individual del medicamento exacto pedido |
-| V21-17 | el pedido no cambia al colocar: se mantiene hasta la entrega |
-| V21-18 | con una caja en tránsito, el HUD conserva el pedido colocado y recién muestra el siguiente al quedar libre la cinta |
+| V21-17 | el pedido pasa al siguiente medicamento al colocar; la entrega sigue validando |
+| V21-18 | sin soltura libre; devolución a la vitrina y hueco restaurado |
 
 Evidencias: `docs/evidencias/v21/v21-menu.png`,
 `v21-countdown.png`, `v21-aim.png`, `v21-belt.png`, `v21-queue.png`.
@@ -46,7 +46,7 @@ Evidencias: `docs/evidencias/v21/v21-menu.png`,
 
 - `test-v20.js` 18/18: identidad, escena, colisiones, tres modos, tres
   dificultades, partida, joystick, Head Tracking y puente Windows.
-- `test-web.js` 31/31: HUD, menú, recoger, cinta, entrega correcta e incorrecta,
+- `test-web.js` 32/32: HUD, menú, recoger, cinta, entrega correcta e incorrecta,
   bot/CNC, fin, revancha, joystick, cámara, pausa, mando, safe areas, offline,
   panel de dificultad, HUD personalizado y horizontal.
 - `test-vr.js` 34/34: SBS, IPD, convergencia, distorsión, perfiles, cámara,

@@ -124,35 +124,35 @@
       const b = D().belt;
       return b.count === 1 && b.items[0] && b.items[0].s > 0.2 && b.speed > 0;
     }, 6000);
-    /* El pedido no debe avanzar al colocar: solo cuando el empleado valida
-       al final de la cinta (V21-06). */
-    await sleep(600);
+    /* V21.3: el HUD pasa al siguiente medicamento al instante. */
+    await sleep(300);
     const reqPlaceAfter = D().request;
     const reqImgPlaceAfter = document.getElementById('rg-req-img').getAttribute('src');
     const b1 = D().belt;
-    ok('V21-05 colocar en la cinta y transporte real sin cambiar el pedido',
+    ok('V21-05 colocar en la cinta y pasar al siguiente medicamento',
       nearBelt && placed === true && moving && D().carrying === -1 &&
       doubleTap === false && stillEmpty &&
-      reqPlaceAfter === reqPlaceBefore && reqImgPlaceAfter === reqImgPlaceBefore &&
+      reqPlaceAfter >= 0 && reqPlaceAfter !== reqPlaceBefore &&
+      reqImgPlaceAfter !== reqImgPlaceBefore && D().requestLock === -1 &&
       b1.count === 1 && b1.items[0].drug === window.RasmaticGame._test.expectedDrug(reqPlaceBefore) &&
-      b1.items[0].id === carriedId,
+      b1.items[0].request === reqPlaceBefore && b1.items[0].id === carriedId,
       { accion: D().ui.action, cinta: b1, llevando: D().carrying,
         doble_toque: doubleTap, id_caja: carriedId,
         pedido_antes: reqPlaceBefore, pedido_despues: reqPlaceAfter,
-        imagen_igual: reqImgPlaceAfter === reqImgPlaceBefore });
+        imagen_cambiada: reqImgPlaceAfter !== reqImgPlaceBefore,
+        bloqueo: D().requestLock });
 
     /* ---------------- V21-06: empleado valida y entrega ---------------- */
     const score0 = scorePlaceBefore;
-    const reqBefore = reqPlaceBefore;
     const delivered = await until(() => D().score.player === score0 + 1, 22000);
-    const requestChanged = await until(() => D().request >= 0 && D().request !== reqBefore, 16000);
     const afterDelivery = D();
+    const nextOk = afterDelivery.request >= 0 ||
+      afterDelivery.queue.every(function (q) { return q.placed === true; });
     ok('V21-06 el empleado recoge, valida y entrega al cliente',
-      delivered && requestChanged && afterDelivery.belt.count === 0 &&
+      delivered && nextOk && afterDelivery.belt.count === 0 &&
       afterDelivery.queue.length > 0,
       { puntaje: afterDelivery.score.player, cola: afterDelivery.queue,
-        pedido_antes: reqBefore, pedido_ahora: afterDelivery.request,
-        cinta: afterDelivery.belt });
+        pedido_ahora: afterDelivery.request, cinta: afterDelivery.belt });
 
     /* ---------------- V21-07: la fila avanza y se repone ---------------- */
     const advanced = await until(() => {
@@ -168,8 +168,8 @@
     /* ---------------- V21-08: color equivocado no suma ---------------- */
     const reqWrong = D().request;
     let wrong = -1;
-    for (let off = 1; off < 6 && wrong < 0; off++) {
-      const cand = (reqWrong + off) % 6;
+    for (let off = 1; off < D().palette && wrong < 0; off++) {
+      const cand = (reqWrong + off) % D().palette;
       window.RasmaticGame._test.aimAtStation(cand);
       await until(() => D().ui.action === 'RECOGER', 5000);
       if (D().ui.action !== 'RECOGER') continue;
@@ -181,18 +181,29 @@
     if (wrong >= 0) {
       const scoreBad = D().score.player;
       const stockBefore = D().stockP[wrong];
+      const holesBefore = D().shelf.consumed;
       window.RasmaticGame._test.config({ beltSpeed: 24 });
       const placedWrong = window.RasmaticGame._test.placeBeltNow();
-      wrongOk = placedWrong && await until(() => D().stockP[wrong] === stockBefore + 1, 22000);
-      wrongOk = wrongOk && D().score.player === scoreBad && D().request === reqWrong;
+      const advancedWrong = await until(() => D().request !== reqWrong, 6000);
+      const retried = await until(() => {
+        const d = D();
+        return d.request === reqWrong && d.shelf.consumed > holesBefore;
+      }, 24000);
+      wrongOk = placedWrong && advancedWrong && retried &&
+        D().score.player === scoreBad && D().stockP[wrong] === stockBefore;
     }
-    ok('V21-08 medicamento equivocado no suma y vuelve al stock', wrongOk,
+    ok('V21-08 medicamento equivocado no suma, deja hueco y vuelve el pedido', wrongOk,
       { equivocado: wrong, pedido: reqWrong, puntaje: D().score.player,
-        stock: wrong >= 0 ? D().stockP[wrong] : null });
+        stock: wrong >= 0 ? D().stockP[wrong] : null,
+        huecos: D().shelf.consumed });
 
     /* ---------------- V21-09: dos paquetes sin superponerse ---------------- */
     const a = stationColor();
-    const b = (a + 1) % 6;
+    let b = -1;
+    for (let off = 1; off < D().palette && b < 0; off++) {
+      const cand = (a + off) % D().palette;
+      if (window.RasmaticGame._test.aimAtStation(cand)) b = cand;
+    }
     window.RasmaticGame._test.config({ beltSpeed: 2.5 });
     window.RasmaticGame._test.aimAtStation(a);
     await until(() => D().ui.action === 'RECOGER', 6000);
@@ -200,7 +211,7 @@
     await until(() => D().carrying === a, 5000);
     window.RasmaticGame._test.placeBeltNow();
     await until(() => D().belt.items.length === 1 && D().belt.items[0].s >= 1.9, 6000);
-    window.RasmaticGame._test.aimAtStation(b);
+    const aimB = b >= 0 && window.RasmaticGame._test.aimAtStation(b);
     await until(() => D().ui.action === 'RECOGER', 6000);
     window.RasmaticGame.interact();
     await until(() => D().carrying === b, 5000);
@@ -214,8 +225,8 @@
       }
     }
     ok('V21-09 dos medicamentos en la cinta sin superponerse',
-      two.count >= 2 && gap >= 1.4,
-      { cinta: two, separacion: +gap.toFixed(2) });
+      b >= 0 && aimB && two.count >= 2 && gap >= 1.4,
+      { cinta: two, separacion: +gap.toFixed(2), segundo: b });
 
     /* ---------------- V21-10: escenario V21 ---------------- */
     const ph = PH();
@@ -229,6 +240,7 @@
     const distinct = imgValues.filter(function (v, i) { return imgValues.indexOf(v) === i; }).length;
     ok('V21-10 Farmacia RASMATIC, cajas de color sólido y escala humana',
       ph.signs.main === 'FARMACIA RASMATIC' && ph.machineConveyor === false &&
+      ph.stations.length === 9 &&
       Math.abs(ph.pharmacist.scale.x - 0.86) < 0.01 &&
       D().clients.every(function (c) { return c.scale >= 0.8 && c.scale <= 0.9; }) &&
       !!box.material && !Array.isArray(box.material) && !box.material.map &&
@@ -389,7 +401,7 @@
         agarrado: exactGrab, entregado: exactDelivered,
         puntaje: D().score.player });
 
-    /* ---------------- V21-17: el pedido no cambia al colocar ------------- */
+    /* ---------------- V21-17: el pedido avanza al colocar ---------------- */
     window.RasmaticGame._test.startNow();
     await until(() => D().state === 'playing', 5000);
     await until(() => D().clients.length >= 3 && D().request >= 0, 15000);
@@ -401,57 +413,53 @@
     const stayHeld = await until(() => D().carryingDrug === expectedStay, 5000);
     const stayScore0 = D().score.player;
     const stayPlaced = stayHeld && window.RasmaticGame._test.placeBeltNow();
-    const stayT0 = Date.now();
-    let earlyChange = null;
-    let stayedDelivered = false;
-    for (let i = 0; i < 220; i++) {
-      const d = D();
-      if (d.score.player > stayScore0) { stayedDelivered = true; break; }
-      if (d.request !== reqStay) {
-        earlyChange = { ms: Date.now() - stayT0, request: d.request,
-          belt: d.belt, employee: d.employee, score: d.score.player };
-        break;
-      }
-      await sleep(100);
-    }
-    ok('V21-17 el pedido no cambia hasta que la caja llega al cliente',
+    const stayAdvanced = await until(() => D().request !== reqStay, 4000);
+    const stayItem = D().belt.items[0];
+    const stayedDelivered = await until(() => D().score.player > stayScore0, 24000);
+    ok('V21-17 el pedido avanza al colocar y la entrega sigue validando',
       stayAim === true && stayGrab === true && stayHeld && stayPlaced === true &&
-      stayedDelivered && earlyChange === null,
+      stayAdvanced && stayItem && stayItem.request === reqStay && stayedDelivered,
       { pedido: reqStay, medicamento: expectedStay, colocado: stayPlaced,
-        entregado: stayedDelivered, cambio_anticipado: earlyChange,
+        siguiente: D().request, item: stayItem, entregado: stayedDelivered,
         cinta: D().belt, empleado: D().employee });
 
-    /* ---------------- V21-18: el HUD no cambia con la caja en tránsito ----- */
+    /* ---------------- V21-18: soltar solo en la vitrina ------------------ */
     window.RasmaticGame._test.startNow();
     await until(() => D().state === 'playing', 5000);
     await until(() => D().clients.length >= 3 && D().request >= 0, 15000);
     window.RasmaticGame._test.config({ beltSpeed: 24 });
-    const lockReq0 = D().request;
-    const lockDrug0 = window.RasmaticGame._test.expectedDrug(lockReq0);
-    const lockImg0 = document.getElementById('rg-req-img').getAttribute('src');
-    const lockAim = window.RasmaticGame._test.aimAtDrug(lockDrug0);
-    const lockGrab = lockAim && window.RasmaticGame.interact();
-    const lockHeld = await until(() => D().carryingDrug === lockDrug0, 5000);
-    const lockPlaced = lockHeld && window.RasmaticGame._test.placeBeltNow();
-    const lockSet = lockPlaced && D().requestLock === lockReq0;
-    window.RasmaticGame._test.advanceFront();
+    const storeReq = D().request;
+    const storeDrug = window.RasmaticGame._test.expectedDrug(storeReq);
+    const storeAim = window.RasmaticGame._test.aimAtStation(storeReq);
+    const storeGrab = storeAim && window.RasmaticGame.interact();
+    const storeHeld = await until(() => D().carryingDrug === storeDrug, 5000);
+    const storeId = D().carryingBox ? D().carryingBox.id : -1;
+    const storeHome = storeId >= 0
+      ? G().pharmacy.shelfBoxes[storeId].userData.home.clone() : null;
+    const grabPos = { x: D().player.x, z: D().player.z };
+    /* Lejos de la vitrina y de la cinta no se puede soltar. */
+    window.RasmaticGame._test.teleport(30, 22);
+    const noDrop = window.RasmaticGame.interact() === false;
     await sleep(250);
-    const lockReq1 = D().request;
-    const lockImg1 = document.getElementById('rg-req-img').getAttribute('src');
-    const heldDisplay = lockImg1 === lockImg0 && D().requestLock === lockReq0 &&
-      D().pendingRequest === lockReq1 && lockReq1 !== lockReq0;
-    const unlocked = await until(() => D().requestLock === -1, 35000);
-    const lockImg2 = document.getElementById('rg-req-img').getAttribute('src');
-    const expectedImg = PH().drugImage(window.RasmaticGame._test.expectedDrug(lockReq1));
-    ok('V21-18 con una caja en tránsito el HUD conserva el pedido colocado',
-      lockAim === true && lockGrab === true && lockHeld && lockPlaced === true &&
-      lockSet && heldDisplay && unlocked && lockImg2 === expectedImg,
-      { colocado: lockPlaced, pedido_colocado: lockReq0, pedido_nuevo: lockReq1,
-        imagen_congelada: lockImg1 === lockImg0, bloqueo: D().requestLock,
-        pendiente: D().pendingRequest, desbloqueado: unlocked,
-        imagen_final_ok: lockImg2 === expectedImg,
-        cinta: D().belt, empleado: D().employee, pedido_actual: D().request,
-        llevando: D().carrying, stock: D().stockP });
+    const storeStillHeld = D().carryingDrug === storeDrug;
+    /* De vuelta a la vitrina: se guarda en su hueco. */
+    window.RasmaticGame._test.teleport(grabPos.x, grabPos.z);
+    const canStore = await until(() => D().deposit && D().deposit.store === true, 4000);
+    const stored = canStore && window.RasmaticGame.interact() === true;
+    const backInSlot = await until(() => {
+      const b = window.RasmaticGame._test.shelfBox(storeId);
+      return b && D().carrying === -1 && b.held === false && b.taken === false &&
+        b.storing === false && b.visible === true &&
+        Math.hypot(b.x - storeHome.x, b.z - storeHome.z) < 0.05;
+    }, 5000);
+    const finalBox = window.RasmaticGame._test.shelfBox(storeId);
+    ok('V21-18 sin soltura libre y devolución solo a la vitrina',
+      storeAim === true && storeGrab === true && storeHeld && noDrop &&
+      storeStillHeld && canStore && stored && backInSlot,
+      { pedido: storeReq, caja: storeId, sin_soltar: noDrop,
+        sigue_en_mano: storeStillHeld, puede_guardar: canStore,
+        guardada: stored, en_hueco: backInSlot, caja_final: finalBox,
+        home: storeHome && [+storeHome.x.toFixed(2), +storeHome.z.toFixed(2)] });
 
     /* Restaurar un estado limpio. */
     window.RasmaticGame._test.config({ beltSpeed: 3.6 });

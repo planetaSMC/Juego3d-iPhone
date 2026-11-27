@@ -128,7 +128,7 @@
     /* ---------------- V15: escena V20 (farmacia del HTML) ---------------- */
     const PH = G().pharmacy;
     const v20Scene = !!PH && PH.drugs.length === 15 && PH.shelves.length === 3 &&
-      PH.stations.length === 6 && !!PH.machine && PH.machine.boxes.length === 30 &&
+      PH.stations.length === 9 && !!PH.machine && PH.machine.boxes.length === 30 &&
       !G().logo.emblem;
     ok('V15 la escena es la farmacia V20, sin restos del almacén',
       v20Scene,

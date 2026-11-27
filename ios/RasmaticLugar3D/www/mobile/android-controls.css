@@ -75,47 +75,28 @@ html.ras-android #ras-game button {
 }
 
 /* ---------- joystick ---------- */
+/* ---------- joystick táctil invisible y dinámico ---------- */
+/* V21.3: se quitó el stick visual. Toda la zona izquierda inferior es un
+   área de arrastre; el centro se toma donde apoya el dedo. */
 #ras-stick {
   position: fixed;
-  left: calc(18px + env(safe-area-inset-left, 0px));
-  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
-  width: clamp(108px, 21vmin, 156px);
-  height: clamp(108px, 21vmin, 156px);
-  border-radius: 50%;
+  left: 0;
+  bottom: 0;
+  width: clamp(88px, 26vw, 220px);
+  height: 42vh;
+  border-radius: 0;
   pointer-events: auto;
   touch-action: none;
-  background: radial-gradient(circle at 50% 42%,
-      rgba(255, 255, 255, .30),
-      rgba(255, 255, 255, .13) 58%,
-      rgba(255, 255, 255, .07));
-  border: 1px solid rgba(255, 255, 255, .55);
-  box-shadow: 0 8px 22px rgba(8, 24, 56, .28), inset 0 0 26px rgba(255, 255, 255, .18);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: none;
+  border: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   user-select: none;
   -webkit-user-select: none;
 }
-#ras-stick::before {
-  content: "";
-  position: absolute;
-  inset: 17%;
-  border-radius: 50%;
-  border: 1px dashed rgba(255, 255, 255, .38);
-}
-#ras-knob {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 46%;
-  height: 46%;
-  margin: -23% 0 0 -23%;
-  border-radius: 50%;
-  background: linear-gradient(160deg, rgba(255, 255, 255, .96), rgba(196, 212, 233, .78));
-  border: 1px solid rgba(255, 255, 255, .95);
-  box-shadow: 0 5px 16px rgba(8, 24, 56, .38);
-  will-change: transform;
-  pointer-events: none;
-}
+#ras-stick::before { display: none; }
+#ras-knob { display: none; }
 
 /* ---------- correr ---------- */
 #ras-run {
@@ -354,7 +335,6 @@ html.ras-android body.ras-paused #ras-pad-badge { display: none; }
 }
 
 @media (max-height: 430px) {
-  #ras-stick { width: 104px; height: 104px; }
   #ras-run { left: calc(18px + 104px + 12px + env(safe-area-inset-left, 0px)); bottom: calc(26px + env(safe-area-inset-bottom, 0px)); width: 52px; height: 52px; }
   #ras-pause .ras-card { padding: 18px; }
   #ras-pause button { height: 42px; margin-bottom: 6px; }

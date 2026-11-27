@@ -55,9 +55,9 @@ V21.1 está implementada y probada en simulación. No se probó en un iPhone fí
 
 - 543 draw calls / 69.786 triángulos / 1.275 mallas / 32 texturas con 3
   clientes en la vista de arranque, medido con SwiftShader.
-- V21.1 tiene 330 cajas individuales: las mallas suben respecto de V21 (1.041)
-  porque ya no hay fusión decorativa. El atlas por medicamento mantiene una
-  llamada de dibujo por caja y reduce las texturas.
+- V21.2/V21.3 usan cajas individuales de color sólido: las mallas suben
+  respecto de V21 (1.041) porque no hay fusión decorativa, pero cada material
+  es un color limpio sin atlas ni texturas de producto.
 - No hay FPS reales de iPhone.
 - En VR SBS se renderiza dos veces; el presupuesto de GPU real queda por medir.
 

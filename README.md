@@ -1,4 +1,4 @@
-# RASMATIC VR · versión iPhone (V21.2)
+# RASMATIC VR · versión iPhone (V21.3)
 
 Port del juego **RASMATIC Lugar 3D** a **una sola app iOS**:
 
@@ -55,8 +55,7 @@ V21.1 añade:
 V21.2 añade:
 
 - **Depósito restringido**: el medicamento no se suelta en el piso; permanece
-  en la mano hasta colocarlo en la cinta, desde una zona amplia alrededor de
-  la boca de entrada.
+  en la mano hasta colocarlo en la cinta o devolverlo a su hueco en la vitrina.
 - **Tres estanterías habilitadas**: las decorativas quedan visibles pero
   bloqueadas, con contorno rojo y aviso al apuntarlas.
 - **Cajas de color sólido**: sin texturas, con un color por medicamento y
@@ -68,6 +67,20 @@ V21.2 añade:
 - **Interfaz por dispositivo**: detección iOS/Android/Windows, Head Tracking
   local oculto cuando Windows está conectado y sin atajos superpuestos en
   partida.
+
+V21.3 añade:
+
+- **Pedido continuo**: al colocar un medicamento en la cinta, el HUD pasa al
+  siguiente cliente al instante; el empleado entrega a cada cliente con su
+  paquete.
+- **Nueve colores**: celeste, rosa y marrón se suman a los seis anteriores, con
+  nueve estaciones y grupos de tres colores por estantería.
+- **Huecos persistentes**: al sacar una caja queda el hueco; al entregarla no
+  reaparece. Se puede devolver a la vitrina con `GUARDAR` para recuperarlo.
+- **Clientes sin superposición** y balanceo suave del medicamento en la mano.
+- **Sin stick visible**: la zona inferior izquierda funciona como joystick
+  dinámico invisible; el resto de la pantalla sigue mirando.
+
 
 V20 **reemplaza por completo** el mapa anterior (góndolas, productos y logo del
 almacén). No quedan elementos ocultos ni superpuestos.
@@ -269,7 +282,7 @@ Resultados de la última ejecución (2026-11-27, Windows + Edge headless):
 | `check-xcode.js` | **164/164** |
 | `test-v21.js` | **19/19** |
 | `test-v20.js` | **18/18** |
-| `test-web.js` | **31/31** + horizontal + offline |
+| `test-web.js` | **32/32** + horizontal + offline |
 | `test-vr.js` | **34/34** |
 | `test-pad.js` | **23/23** |
 | calibrador Windows | **62/62** (requiere `npm install`) |
@@ -293,6 +306,7 @@ Capturas en `docs/evidencias/` y `docs/evidencias/v20/`.
 | `docs/v20/limitations.md` | límites de la validación V20 |
 | `docs/v21/README.md` | resumen de gameplay y archivos V21 |
 | `docs/v21/v21.2-polish.md` | agarre/depósito, estanterías, colores, física y dispositivos |
+| `docs/v21/v21.3-gameplay.md` | pedido continuo, 9 colores, huecos, vitrina y control táctil |
 | `docs/v21/aim-and-queue.md` | mira, contorno, pedido y fila |
 | `docs/v21/individual-medications.md` | cajas individuales, agarre/depósito y mandos |
 | `docs/v21/conveyor-delivery.md` | recorrido y validación de la cinta |
@@ -324,6 +338,8 @@ Implementado y probado en simulación:
 - V21.2: depósito solo en la cinta, tres estanterías habilitadas, cajas de
   color sólido, feedback de acierto/error, física de apoyo y detección de
   dispositivo con Head Tracking remoto sin duplicados.
+- V21.3: pedido continuo al colocar, 9 colores/estaciones, huecos persistentes,
+  devolución a la vitrina, clientes sin superposición y joystick invisible.
 
 **Compilación iOS:** la corrección del pedido estable compiló en GitHub Actions
 con Xcode 16.4 (`BUILD SUCCEEDED`, run 46041477056). IPA sin firmar de

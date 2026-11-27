@@ -22,7 +22,7 @@ Cada caja creada por `stockRow` guarda:
 | `userData.onBelt` | está en la cinta |
 | `userData.consumed` | ya fue entregada |
 | `userData.accessible` | `true` solo en las tres estanterías habilitadas |
-| `userData.gc` | índice de color de juego (0…5) o `-1` si es decorativa |
+| `userData.gc` | índice de color de juego (0…8) o `-1` si es decorativa |
 
 No se usa `InstancedMesh` ni geometría fusionada. Se comparte una única
 geometría de caja y un material de color sólido por medicamento. No hay atlas
@@ -40,31 +40,31 @@ ni texturas de producto: cada caja muestra un color limpio y uniforme.
    delante de la cámara con una transición de 220 ms. La caja real deja la
    estantería; no se cambia por un cubo genérico.
 5. Mientras se lleva una caja no se puede agarrar otra.
-6. Lejos de la cinta, la acción no suelta nada: el HUD indica que hay que
-   llevarla hasta la cinta. No existe `SOLTAR` libre.
+6. Lejos de la cinta y de la vitrina, la acción no suelta nada. Cerca de su
+   hueco, la acción muestra `GUARDAR` y la caja vuelve a la estantería con una
+   animación corta. No existe `SOLTAR` libre en el piso.
 7. Dentro de la zona de depósito, la acción muestra `COLOCAR`. La caja cae
    unos centímetros con gravedad, se apoya en la superficie de la cinta y
-   comienza el recorrido. El pedido visible se congela con el que se colocó y
-   no avanza hasta que la caja y el empleado terminan; si el mando repite el
-   flanco, una ventana de 300 ms impide agarrar el siguiente medicamento.
+   comienza el recorrido. El HUD pasa al siguiente medicamento en el acto y el
+   paquete conserva el cliente/pedido que le correspondía; si el mando repite
+   el flanco, una ventana de 300 ms impide agarrar el siguiente medicamento.
 
 En VR SBS la caja se parenta a la cámara del juego. El render estero desplaza
 la cámara por ojo y la caja se dibuja correctamente en ambos ojos.
 
 ## 3. Validación por medicamento exacto
 
-El pedido del cliente se sigue mostrando como imagen. Al final de la cinta:
+El pedido del cliente se muestra como muestra de color sólida. Al final de la
+cinta:
 
-- se compara `item.drug` con el medicamento canónico del color pedido;
+- se compara `item.drug` con el medicamento canónico del pedido guardado en el
+  paquete (`item.request`);
 - una caja de otra presentación **no suma**, aunque comparta categoría de color;
-- si la caja pertenecía al stock de una estación, el stock se restaura y la
-  caja vuelve a su lugar;
-- si era una copia decorativa, vuelve a su lugar sin tocar el stock;
-- al acertar, el puntaje sube y la fila avanza.
-
-Las cajas de estación que todavía tienen stock vuelven a aparecer como una
-unidad nueva; las copias individuales entregadas quedan consumidas hasta el
-reinicio.
+- la caja se consume y **deja el hueco** en la estantería: no vuelve sola ni se
+  duplica;
+- si el medicamento era incorrecto, el mismo cliente vuelve a quedar pendiente
+  y su pedido reaparece en el HUD;
+- al acertar, el puntaje sube y el cliente se retira; la fila avanza.
 
 ## 4. Controles
 

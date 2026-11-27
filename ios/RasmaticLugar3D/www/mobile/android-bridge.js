@@ -177,11 +177,13 @@
       if (view.paused || blockingMenu() || !stickAllowed()) return;
       /* Un segundo dedo no debe robar el joystick ya activo. */
       if (view.stickId !== null) return;
-      const r = stickEl.getBoundingClientRect();
+      /* V21.3: stick invisible y dinámico. El centro es el punto donde el
+         jugador apoya el dedo, no el centro del área de toque. */
       view.stickId = e.pointerId;
-      view.cx = r.left + r.width / 2;
-      view.cy = r.top + r.height / 2;
-      view.radius = r.width / 2;
+      view.cx = e.clientX;
+      view.cy = e.clientY;
+      view.radius = Math.max(46, Math.min(92,
+        Math.min(window.innerWidth, window.innerHeight) * 0.18));
       try { stickEl.setPointerCapture(e.pointerId); } catch (err) {}
       updateStick(e.clientX, e.clientY);
       e.preventDefault();
@@ -249,7 +251,7 @@
         '<button type="button" data-act="home">Volver al inicio</button>' +
         '<button type="button" data-act="exit">Salir</button>' +
         '<p class="ras-help">Mando: stick izq. mover · stick der. cámara · A interactuar<br>' +
-        'Táctil: joystick izq. · arrastrá el resto de la pantalla para mirar</p>' +
+        'Táctil: arrastrá la zona izquierda para mover · resto de la pantalla para mirar</p>' +
       '</div>';
     pauseEl.addEventListener('click', function (e) {
       const btn = e.target.closest('[data-act]');
@@ -664,7 +666,7 @@
     const keys = document.querySelector('#intro .keys');
     if (keys) {
       keys.textContent =
-        'Joystick: mover · arrastrá la pantalla: mirar · CORRER: correr · mando: sticks y botones';
+        'Táctil: arrastrá la zona izquierda para mover · resto: mirar · CORRER: correr · mando: sticks y botones';
     }
     window.RasmaticModes.enter('original');
     window.RasmaticModes.onChange(refreshModeButtons);

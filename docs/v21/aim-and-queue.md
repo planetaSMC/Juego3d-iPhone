@@ -20,7 +20,7 @@ dirección = (0,0,-1) aplicada a:
 
 - `Raycaster.far = CFG.aimRange` (16).
 - Objetos: **todas las cajas visibles de las estanterías** (`pharmacy.shelfBoxes`),
-  no solo las seis de estación. Cada caja es una malla individual.
+  no solo las nueve de estación. Cada caja es una malla individual.
 - Se excluyen las cajas que están en la mano, en la cinta o ya entregadas.
 - Se toma el **primer impacto**: ese medicamento es el objetivo, sin etiquetas
   intermedias ni selección por proximidad.
@@ -28,7 +28,8 @@ dirección = (0,0,-1) aplicada a:
   más distancia, pero RECOGER solo aparece si el jugador está cerca.
 
 V21.1: al agarrar se usa la malla real. Desde V21.2 el medicamento no se
-suelta en el piso: permanece en la mano hasta depositarlo en la cinta. Ver
+suelta en el piso: permanece en la mano hasta depositarlo en la cinta o
+devolverlo a su hueco en la vitrina. Ver
 `individual-medications.md` y `v21.2-polish.md`.
 
 ### Contorno
@@ -48,7 +49,7 @@ Se eliminaron los carteles `makeTag` de las estaciones y del cliente. Queda
 únicamente el cartel del kiosco BOT·CNC. `debug().stationLabels === 0` y la suite
 lo comprueba.
 
-## 3. Pedido por imagen
+## 3. Pedido por color
 
 - El HUD `#rg-req` contiene `#rg-req-img`.
 - `pharmacy.drugImage(drugIndex)` devuelve un `data:image/png` generado desde la
@@ -96,10 +97,10 @@ Posiciones (`QUEUE`):
 
 ## 6. Pruebas
 
-- V21-03: tres clientes en slots y pedido con imagen.
+- V21-03: tres clientes en slots y pedido con color.
 - V21-04: mira, contorno, desaparición al mirar afuera, sin etiquetas.
 - V21-07: avance de fila y reposición.
 - V21-10: escala de personajes, cartel y cajas de color.
 - V21-11/12: mira y cuenta regresiva en VR.
-- V21-14/15/16: cajas individuales, soltar/volver a agarrar y validación
+- V21-14/15/16: cajas individuales, agarre/depósito/vitrina y validación
   por medicamento exacto.
